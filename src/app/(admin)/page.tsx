@@ -19,7 +19,7 @@ import { getCurrentUser } from "@/lib/auth"; // Your auth helper (returns user o
 import { getRole } from "../../../lib/auth";
 
 export const metadata: Metadata = {
-  title: "Click Invoice Dashboard",
+  title: "ClickInvoice Dashboard",
   description: "Overview of your invoicing platform: invoices, revenue, tenants, and more.",
 };
 

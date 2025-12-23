@@ -511,7 +511,8 @@ export default function InvoiceViewPage() {
   return (
     <div className="max-w-4xl mx-auto py-8">
       <button
-        onClick={() => router.push("/invoices")}
+        // onClick={() => router.push("/invoices")}
+        onClick={() => window.history.back()}
         className="mb-6 inline-flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900"
       >
         <ChevronLeftIcon className="w-5 h-5" />

@@ -224,7 +224,7 @@ export default function SignUpForm() {
               <Image
                 width={231}
                 height={48}
-                src="./images/logo/logo.svg"
+                src="/images/logo/logo.svg"
                 alt="Logo"
                 priority // Optional: faster load on initial view
               />

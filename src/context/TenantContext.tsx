@@ -30,56 +30,55 @@ export const TenantProvider = ({ children }: { children: React.ReactNode }) => {
   const [currentTenant, setCurrentTenant] = useState<Tenant | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Refresh user & tenant data
   const refreshUserData = useCallback(async () => {
-  setLoading(true);
-  try {
-    const res = await api.get("/user", { withCredentials: true });
-    const data = res.data;
+    setLoading(true);
+    try {
+      const res = await api.get("/user", { withCredentials: true });
+      const data = res.data;
 
-    const fetchedTenants: Tenant[] =
-      (data.user?.default_tenant || []).map((t: any) => ({
-        tenantId: t.tenantId,
-        tenantName: t.tenantName,
-        tenantLogo: t.tenantLogo,
-        isDefault: Number(t.isDefault), // ensure number
-      }));
+      const fetchedTenants: Tenant[] =
+        (data.user?.default_tenant || []).map((t: any) => ({
+          tenantId: t.tenantId,
+          tenantName: t.tenantName,
+          tenantLogo: t.tenantLogo,
+          isDefault: Number(t.isDefault),
+        }));
 
-    // Pick the tenant marked as default, fallback to first tenant
-    const defaultTenant =
-      fetchedTenants.find((t) => t.isDefault === 1) ||
-      fetchedTenants[0] ||
-      null;
+      const defaultTenant =
+        fetchedTenants.find((t) => t.isDefault === 1) ||
+        fetchedTenants[0] ||
+        null;
 
-    setTenants(fetchedTenants);
-    setCurrentTenant(defaultTenant);
-    // setCurrentTenant(defaultTenant);
-console.log("Current tenant:", defaultTenant);
+      setTenants(fetchedTenants);
+      setCurrentTenant(defaultTenant);
 
+      console.log("Current tenant:", defaultTenant);
 
-    if (defaultTenant) {
-      localStorage.setItem("currentTenantId", String(defaultTenant.tenantId));
-      localStorage.setItem("currentTenant", JSON.stringify(defaultTenant));
+      // ← ONLY IN BROWSER
+      if (typeof window !== "undefined" && defaultTenant) {
+        localStorage.setItem("currentTenantId", String(defaultTenant.tenantId));
+        localStorage.setItem("currentTenant", JSON.stringify(defaultTenant));
+      }
+    } catch (err) {
+      console.error("Failed to fetch tenant data:", err);
+      setTenants([]);
+      setCurrentTenant(null);
+
+      // ← ONLY IN BROWSER
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("currentTenantId");
+        localStorage.removeItem("currentTenant");
+      }
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    console.error("Failed to fetch tenant data:", err);
-    setTenants([]);
-    setCurrentTenant(null);
-    localStorage.removeItem("currentTenantId");
-    localStorage.removeItem("currentTenant");
-  } finally {
-    setLoading(false);
-  }
-}, []);
+  }, []);
 
-
-  // Switch tenant
   const switchTenant = async (tenant: Tenant) => {
     if (tenant.tenantId === currentTenant?.tenantId) return;
 
     setLoading(true);
     try {
-      // send empty body PATCH to avoid 400
       await api.patch(`/tenants/${tenant.tenantId}/set-default`, {});
 
       setCurrentTenant(tenant);
@@ -90,8 +89,11 @@ console.log("Current tenant:", defaultTenant);
         }))
       );
 
-      localStorage.setItem("currentTenant", JSON.stringify(tenant));
-      localStorage.setItem("currentTenantId", String(tenant.tenantId));
+      // ← ONLY IN BROWSER
+      if (typeof window !== "undefined") {
+        localStorage.setItem("currentTenant", JSON.stringify(tenant));
+        localStorage.setItem("currentTenantId", String(tenant.tenantId));
+      }
     } catch (err) {
       console.error("Failed to switch tenant:", err);
       throw err;
@@ -100,7 +102,6 @@ console.log("Current tenant:", defaultTenant);
     }
   };
 
-  // Initial fetch
   useEffect(() => {
     refreshUserData();
   }, [refreshUserData]);

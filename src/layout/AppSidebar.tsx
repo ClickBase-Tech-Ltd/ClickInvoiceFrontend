@@ -19,10 +19,11 @@ import {
   BillIcon,
   DollarLineIcon,
   GroupIcon,
-  DocsIcon
+  DocsIcon,
+  BoxIconLine
 } from "../icons/index";
 import SidebarWidget from "./SidebarWidget";
-import { ReceiptPercentIcon } from "@heroicons/react/24/outline";
+import { ReceiptPercentIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 
 type NavItem = {
   name: string;
@@ -54,8 +55,8 @@ const navItems: NavItem[] = [
   },
    {
     icon: <PageIcon />,
-    name: "Receipt",
-    path: "/receipt",
+    name: "Receipts",
+    path: "/receipts",
   },
   {
     icon: <UserCircleIcon />,
@@ -63,9 +64,9 @@ const navItems: NavItem[] = [
     path: "/profile",
   },
    {
-    icon: <DollarLineIcon />,
-    name: "Billings",
-    path: "/profile",
+    icon: <BoxIconLine />,
+    name: "Customers",
+    path: "/customers",
   },
   // {
   //   name: "Forms",

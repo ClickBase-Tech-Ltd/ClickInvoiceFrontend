@@ -1,0 +1,26 @@
+import UserAddressCard from "@/components/user-profile/UserAddressCard";
+import UserInfoCard from "@/components/user-profile/UserInfoCard";
+import UserMetaCard from "@/components/user-profile/UserMetaCard";
+import { Metadata } from "next";
+import React from "react";
+
+import ReceiptsPage from "../../../components/tables/Receipts";
+
+export const metadata: Metadata = {
+  title: "ClickInvoice Dashboard",
+  description: "Overview of your invoicing platform: invoices, revenue, tenants, and more.",
+};
+
+export default function Invoices() {
+  return (
+    <div>
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] lg:p-6">
+     
+        <div className="space-y-6">
+          <ReceiptsPage />
+        </div>
+      </div>
+    </div>
+  );
+}
+

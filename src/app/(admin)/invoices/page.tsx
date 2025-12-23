@@ -8,7 +8,7 @@ import CompaniesListPage from "../../../components/tables/Tenants";
 import InvoicesPage from "../../../components/tables/Invoices";
 
 export const metadata: Metadata = {
-  title: "Click Invoice Dashboard",
+  title: "ClickInvoice Dashboard",
   description: "Overview of your invoicing platform: invoices, revenue, tenants, and more.",
 };
 
@@ -24,3 +24,4 @@ export default function Invoices() {
     </div>
   );
 }
+
