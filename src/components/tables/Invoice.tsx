@@ -17,6 +17,27 @@ import Button from "../../components/ui/button/Button";
 import api from "../../../lib/api";
 import { ChevronLeftIcon } from "@/icons";
 
+const ShareIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    <circle cx="18" cy="5" r="3" />
+    <circle cx="6" cy="12" r="3" />
+    <circle cx="18" cy="19" r="3" />
+    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+  </svg>
+);
+
 // ==================== UPDATED TYPES ====================
 interface FullInvoice {
   invoiceId: string;
@@ -255,6 +276,187 @@ const StatusBadge = ({ status }: { status: string }) => {
     <span className={`${baseClasses} ${colorClasses}`}>
       {status}
     </span>
+  );
+};
+
+// ==================== SHARE BUTTONS COMPONENT ====================
+const ShareButtons = ({ invoice, pdfBlob }: { invoice: FullInvoice, pdfBlob: Blob | null }) => {
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [shareableLink, setShareableLink] = useState<string>("");
+
+  // Generate shareable link
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const currentUrl = window.location.href;
+      setShareableLink(currentUrl);
+    }
+  }, []);
+
+  const formatMoney = (value: number, symbol: string = "₦") => {
+    return `${symbol} ${new Intl.NumberFormat("en-NG", {
+      minimumFractionDigits: 2,
+    }).format(value)}`;
+  };
+
+  // Share message template
+  const getShareMessage = () => {
+    return `Invoice ${invoice.userGeneratedInvoiceId || invoice.invoiceId}
+From: ${invoice.company.name}
+To: ${invoice.customerName}
+Amount: ${formatMoney(invoice.totalAmount, invoice.currencySymbol)}
+Status: ${invoice.status}
+View Invoice: ${shareableLink}`;
+  };
+
+  // Share on WhatsApp
+  const shareOnWhatsApp = () => {
+    const message = encodeURIComponent(getShareMessage());
+    window.open(`https://wa.me/?text=${message}`, '_blank');
+  };
+
+  // Share on Telegram
+  const shareOnTelegram = () => {
+    const message = encodeURIComponent(getShareMessage());
+    window.open(`https://t.me/share/url?url=${encodeURIComponent(shareableLink)}&text=${message}`, '_blank');
+  };
+
+  // Share on LinkedIn
+  const shareOnLinkedIn = () => {
+    const title = encodeURIComponent(`Invoice: ${invoice.projectName}`);
+    const summary = encodeURIComponent(`Invoice ${invoice.userGeneratedInvoiceId || invoice.invoiceId} from ${invoice.company.name}`);
+    const source = encodeURIComponent(invoice.company.name);
+    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareableLink)}&title=${title}&summary=${summary}&source=${source}`, '_blank');
+  };
+
+  // Share on Facebook
+  const shareOnFacebook = () => {
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareableLink)}&quote=${encodeURIComponent(getShareMessage())}`, '_blank');
+  };
+
+  // Copy link to clipboard
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(shareableLink);
+      alert('Link copied to clipboard!');
+    } catch (err) {
+      console.error('Failed to copy:', err);
+      alert('Failed to copy link');
+    }
+  };
+
+  // Share PDF file if available
+  const sharePDF = async () => {
+    if (!pdfBlob) {
+      alert('Please generate PDF first');
+      return;
+    }
+
+    try {
+      const file = new File([pdfBlob], `Invoice_${invoice.userGeneratedInvoiceId || invoice.invoiceId}.pdf`, { type: 'application/pdf' });
+      
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          title: `Invoice ${invoice.userGeneratedInvoiceId || invoice.invoiceId}`,
+          text: getShareMessage(),
+          files: [file],
+        });
+      } else {
+        alert('Web Share API not supported on this device. Download the PDF and share manually.');
+      }
+    } catch (err) {
+      console.error('Error sharing PDF:', err);
+    }
+  };
+
+  return (
+    <div className="relative">
+      <Button
+        variant="outline"
+        onClick={() => setShowShareMenu(!showShareMenu)}
+        className="flex items-center gap-2"
+      >
+        <ShareIcon className="w-5 h-5" />
+        Share Invoice
+      </Button>
+
+      {showShareMenu && (
+        <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-lg shadow-lg border z-50 p-4">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-700">Share via:</span>
+              <button
+                onClick={() => setShowShareMenu(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => {
+                  shareOnWhatsApp();
+                  setShowShareMenu(false);
+                }}
+                className="flex items-center justify-center gap-2 p-3 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg transition-colors"
+              >
+                <span className="font-semibold">WhatsApp</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  shareOnTelegram();
+                  setShowShareMenu(false);
+                }}
+                className="flex items-center justify-center gap-2 p-3 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors"
+              >
+                <span className="font-semibold">Telegram</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  shareOnLinkedIn();
+                  setShowShareMenu(false);
+                }}
+                className="flex items-center justify-center gap-2 p-3 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-lg transition-colors"
+              >
+                <span className="font-semibold">LinkedIn</span>
+              </button>
+              
+              <button
+                onClick={() => {
+                  shareOnFacebook();
+                  setShowShareMenu(false);
+                }}
+                className="flex items-center justify-center gap-2 p-3 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors"
+              >
+                <span className="font-semibold">Facebook</span>
+              </button>
+            </div>
+
+            <div className="pt-3 border-t">
+              <button
+                onClick={copyToClipboard}
+                className="w-full flex items-center justify-center gap-2 p-3 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg transition-colors"
+              >
+                <span>Copy Link</span>
+              </button>
+            </div>
+
+            {pdfBlob && (
+              <div className="pt-2 border-t">
+                <button
+                  onClick={sharePDF}
+                  className="w-full flex items-center justify-center gap-2 p-3 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg transition-colors"
+                >
+                  <span>Share PDF File</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -511,12 +713,11 @@ export default function InvoiceViewPage() {
   return (
     <div className="max-w-4xl mx-auto py-8">
       <button
-        // onClick={() => router.push("/invoices")}
         onClick={() => window.history.back()}
         className="mb-6 inline-flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900"
       >
         <ChevronLeftIcon className="w-5 h-5" />
-        Back to Invoices
+        Back
       </button>
 
       <ComponentCard title={`Invoice ${invoice.userGeneratedInvoiceId || invoice.invoiceId}`}>
@@ -714,25 +915,22 @@ export default function InvoiceViewPage() {
           )}
 
           <div className="flex flex-wrap gap-4 pt-8 border-t">
-            {/* <Button 
-              onClick={handleSendEmail} 
-              disabled={loading || !invoice.customerEmail}
-              className={!invoice.customerEmail ? "opacity-50 cursor-not-allowed bg-[#0A66C2]" : ""}
-            >
-              {loading ? "Sending..." : `Send to ${invoice.customerEmail || "Customer Email"}`}
-            </Button> */}
-
             <button
-  onClick={handleSendEmail}
-  disabled={loading || !invoice.customerEmail}
-  className={`
-    px-4 py-2 rounded-md text-white transition
-    bg-[#0A66C2] hover:bg-[#084e96]
-    disabled:opacity-50 disabled:cursor-not-allowed
-  `}
->
-  {loading ? "Sending..." : `Send to ${invoice.customerEmail ?? "Customer Email"}`}
-</button>
+              onClick={handleSendEmail}
+              disabled={loading || !invoice.customerEmail}
+              className={`
+                px-4 py-2 rounded-md text-white transition
+                bg-[#0A66C2] hover:bg-[#084e96]
+                disabled:opacity-50 disabled:cursor-not-allowed
+              `}
+            >
+              {loading ? "Sending..." : `Send to ${invoice.customerEmail ?? "Customer Email"}`}
+            </button>
+
+            {/* Share Button */}
+            {invoice && (
+              <ShareButtons invoice={invoice} pdfBlob={pdfBlob} />
+            )}
 
             {!pdfBlob ? (
               <Button variant="outline" onClick={generatePDF} disabled={isGeneratingPdf}>

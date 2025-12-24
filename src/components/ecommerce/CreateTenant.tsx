@@ -31,66 +31,74 @@ function SuccessModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
   if (!isOpen) return null;
 
   return (
-    <div
-  className="fixed inset-0 z-50 flex items-center justify-center p-4
-             bg-white/40 dark:bg-black/40
-             backdrop-blur-md"
->
-  <div
-    className="bg-white dark:bg-gray-800
-               rounded-xl shadow-xl
-               max-w-md w-full p-6
-               ring-1 ring-black/5 dark:ring-white/10"
-  >
-    <div className="flex flex-col items-center text-center">
-      {/* Success Icon */}
-      <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mb-4">
-        <svg
-          className="w-8 h-8 text-green-600 dark:text-green-400"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M5 13l4 4L19 7"
-          />
-        </svg>
-      </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/40 dark:bg-black/40 backdrop-blur-md">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6 ring-1 ring-black/5 dark:ring-white/10">
+        <div className="flex flex-col items-center text-center">
+          <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mb-4">
+            <svg
+              className="w-8 h-8 text-green-600 dark:text-green-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
 
-      {/* Success Message */}
-      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-        Success!
-      </h3>
-      <p className="text-gray-600 dark:text-gray-300 mb-6">
-        Tenant has been created successfully.
-      </p>
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            Success!
+          </h3>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">
+            Tenant has been created successfully.
+          </p>
 
-      {/* Action Buttons */}
-      <div className="flex gap-3 w-full">
-        {/* <Button
-          onClick={onClose}
-          className="flex-1 bg-brand-600 hover:bg-brand-700"
-        >
-          Stay Here
-        </Button> */}
-        <Button
-          onClick={() => {
-            onClose();
-            window.history.back();
-          }}
-          variant="outline"
-          className="flex-1 bg-brand-600 hover:bg-brand-700"
-        >
-          Go Back
-        </Button>
+          <div className="flex gap-3 w-full">
+            <Button
+              onClick={() => {
+                onClose();
+                window.history.back();
+              }}
+              className="flex-1 bg-brand-600 hover:bg-brand-700"
+            >
+              Go Back
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-</div>
+  );
+}
 
+// New Error Modal Component
+function ErrorModal({ isOpen, message, onClose }: { isOpen: boolean; message: string; onClose: () => void }) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/40 dark:bg-black/40 backdrop-blur-md">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6 ring-1 ring-black/5 dark:ring-white/10">
+        <div className="flex flex-col items-center text-center">
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center mb-4">
+            <svg
+              className="w-8 h-8 text-red-600 dark:text-red-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            Error
+          </h3>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">{message}</p>
+
+          <Button onClick={onClose} variant="outline" className="w-full">
+            Close
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -102,7 +110,10 @@ export default function AddCompanyPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  // Common timezones (most used globally)
+  // Error state
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Common timezones
   const timezones: Timezone[] = [
     { value: "Africa/Lagos", label: "West Africa Time (Lagos, Nigeria) - WAT" },
     { value: "Africa/Accra", label: "Greenwich Mean Time (Accra, Ghana) - GMT" },
@@ -130,9 +141,9 @@ export default function AddCompanyPage() {
         if (!res.ok) throw new Error("Failed to fetch currencies");
         const data = await res.json();
         setCurrencies(data);
-      } catch (err) {
+      } catch (err: any) {
         console.error(err);
-        alert("Failed to load currencies.");
+        setErrorMessage(err.message || "Failed to load currencies.");
       } finally {
         setLoadingCurrencies(false);
       }
@@ -140,18 +151,17 @@ export default function AddCompanyPage() {
     fetchCurrencies();
   }, []);
 
-  // Fetch payment gateways from endpoint
+  // Fetch payment gateways
   useEffect(() => {
     const fetchGateways = async () => {
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/payment-gateways`);
-        if (!res.ok) throw new Error("Failed to fetch gateways");
+        if (!res.ok) throw new Error("Failed to fetch payment gateways");
         const data = await res.json();
-        // Expected format: [{ id: "paystack", name: "Paystack" }, ...] or similar
         setGateways(data);
-      } catch (err) {
+      } catch (err: any) {
         console.error(err);
-        alert("Failed to load payment gateways.");
+        setErrorMessage(err.message || "Failed to load payment gateways.");
       } finally {
         setLoadingGateways(false);
       }
@@ -166,31 +176,20 @@ export default function AddCompanyPage() {
     const formData = new FormData(e.currentTarget);
 
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/tenants`,
-        {
-          method: "POST",
-          body: formData, // ✅ browser handles multipart
-          credentials: "include", // if auth cookies are used
-          headers: {
-            // ❌ DO NOT set Content-Type
-            Accept: "application/json",
-          },
-        }
-      );
+      await api.post("/tenants", formData, {
+        headers: {
+          Accept: "application/json",
+        },
+      });
 
-      if (res.ok) {
-        // Show modal instead of alert
-        setShowSuccessModal(true);
-        // Optionally reset form here if needed
-        // e.currentTarget.reset();
-      } else {
-        const error = await res.json();
-        alert(error.message || "Failed to add tenant");
-      }
-    } catch (error) {
-      console.error("Submission error:", error);
-      alert("An unexpected error occurred. Please try again.");
+      setShowSuccessModal(true);
+    } catch (error: any) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to create tenant. Please try again.";
+
+      setErrorMessage(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -321,9 +320,16 @@ export default function AddCompanyPage() {
       </div>
 
       {/* Success Modal */}
-      <SuccessModal 
-        isOpen={showSuccessModal} 
-        onClose={() => setShowSuccessModal(false)} 
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+      />
+
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={!!errorMessage}
+        message={errorMessage || "An unknown error occurred."}
+        onClose={() => setErrorMessage(null)}
       />
     </>
   );

@@ -9,7 +9,6 @@ import { ChevronLeftIcon } from "@/icons";
 import api from "../../../lib/api";
 
 /* ---------------- types ---------------- */
-
 interface Item {
   itemDescription: string;
   amount: number;
@@ -31,7 +30,6 @@ interface Customer {
 }
 
 /* ---------------- success modal ---------------- */
-
 function InvoiceSuccessModal({
   isOpen,
   onClose,
@@ -62,15 +60,70 @@ function InvoiceSuccessModal({
   );
 }
 
-/* ---------------- page ---------------- */
+/* ---------------- error modal ---------------- */
+// function ErrorModal({
+//   isOpen,
+//   message,
+//   onClose,
+// }: {
+//   isOpen: boolean;
+//   message: string;
+//   onClose: () => void;
+// }) {
+//   if (!isOpen) return null;
 
+//   return (
+//     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur">
+//       <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md">
+//         <h3 className="text-xl font-semibold text-red-600 mb-2">Error</h3>
+//         <p className="mb-6 text-gray-700 dark:text-gray-300">{message}</p>
+//         <Button onClick={onClose} className="w-full" variant="outline">
+//           Close
+//         </Button>
+//       </div>
+//     </div>
+//   );
+// }
+
+
+function ErrorModal({ isOpen, message, onClose }: { isOpen: boolean; message: string; onClose: () => void }) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/40 dark:bg-black/40 backdrop-blur-md">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6 ring-1 ring-black/5 dark:ring-white/10">
+        <div className="flex flex-col items-center text-center">
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center mb-4">
+            <svg
+              className="w-8 h-8 text-red-600 dark:text-red-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            Error
+          </h3>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">{message}</p>
+
+          <Button onClick={onClose} variant="outline" className="w-full">
+            Close
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+/* ---------------- page ---------------- */
 export default function CreateInvoicePage() {
   /* ---------------- tenant defaults ---------------- */
   const tenantDefaultCurrencyId = "";
   const tenantDefaultCurrencySymbol = "";
 
   /* ---------------- state ---------------- */
-
   const [items, setItems] = useState<Item[]>([
     { itemDescription: "", amount: 0 },
   ]);
@@ -90,7 +143,6 @@ export default function CreateInvoicePage() {
   });
 
   /* ---------------- customers ---------------- */
-
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loadingCustomers, setLoadingCustomers] = useState(true);
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | "">("");
@@ -104,7 +156,6 @@ export default function CreateInvoicePage() {
   });
 
   /* ---------------- currency ---------------- */
-
   const [useCustomCurrency, setUseCustomCurrency] = useState(false);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [loadingCurrencies, setLoadingCurrencies] = useState(true);
@@ -112,8 +163,10 @@ export default function CreateInvoicePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  /* ---------------- load customers ---------------- */
+  /* ---------------- error state ---------------- */
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  /* ---------------- load customers ---------------- */
   useEffect(() => {
     const loadCustomers = async () => {
       try {
@@ -129,7 +182,6 @@ export default function CreateInvoicePage() {
   }, []);
 
   /* ---------------- load currencies ---------------- */
-
   useEffect(() => {
     const loadCurrencies = async () => {
       try {
@@ -145,7 +197,6 @@ export default function CreateInvoicePage() {
   }, []);
 
   /* ---------------- calculations ---------------- */
-
   const subTotal = useMemo(
     () => items.reduce((sum, i) => sum + Number(i.amount || 0), 0),
     [items]
@@ -160,7 +211,6 @@ export default function CreateInvoicePage() {
   const balanceDue = totalWithTax - Number(form.amountPaid || 0);
 
   /* ---------------- item handlers ---------------- */
-
   const addItem = () =>
     setItems([...items, { itemDescription: "", amount: 0 }]);
 
@@ -182,10 +232,9 @@ export default function CreateInvoicePage() {
   };
 
   /* ---------------- add customer ---------------- */
-
   const handleAddCustomer = async () => {
     if (!newCustomer.customerName) {
-      alert("Customer name is required");
+      setErrorMessage("Customer name is required");
       return;
     }
 
@@ -201,12 +250,11 @@ export default function CreateInvoicePage() {
         customerAddress: "",
       });
     } catch (err: any) {
-      alert(err?.response?.data?.message || "Failed to add customer");
+      setErrorMessage(err?.response?.data?.message || "Failed to add customer");
     }
   };
 
   /* ---------------- submit ---------------- */
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -232,14 +280,15 @@ export default function CreateInvoicePage() {
       await api.post("/invoices", payload);
       setShowSuccessModal(true);
     } catch (error: any) {
-      alert(error?.response?.data?.message || "Something went wrong");
+      setErrorMessage(
+        error?.response?.data?.message || "Something went wrong while creating the invoice"
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
   /* ---------------- UI ---------------- */
-
   return (
     <div className="max-w-4xl mx-auto">
       <button
@@ -252,6 +301,7 @@ export default function CreateInvoicePage() {
 
       <ComponentCard title="Create Invoice">
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* ... [rest of the form fields remain unchanged] ... */}
 
           {/* Invoice ID */}
           <div>
@@ -429,15 +479,23 @@ export default function CreateInvoicePage() {
         </form>
       </ComponentCard>
 
+      {/* Modals */}
       <InvoiceSuccessModal
         isOpen={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}
       />
 
+      <ErrorModal
+        isOpen={!!errorMessage}
+        message={errorMessage || "An unknown error occurred"}
+        onClose={() => setErrorMessage(null)}
+      />
+      
+
       {/* Add customer modal */}
       {showAddCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md space-y-4">
             <h3 className="text-lg font-semibold">Add Customer</h3>
 
             <Input

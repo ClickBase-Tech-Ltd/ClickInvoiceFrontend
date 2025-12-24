@@ -7,6 +7,7 @@ import Button from "../../components/ui/button/Button";
 import { ChevronLeftIcon } from "@/icons";
 import api from "../../../lib/api";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 /* ---------------- types ---------------- */
 
@@ -104,7 +105,7 @@ export default function InvoicesPage() {
         Back
       </button>
 
-      <ComponentCard title="Invoices">
+      {/* <ComponentCard> */}
         {/* Loading */}
         {loading && (
           <p className="text-center text-sm text-gray-500 py-8">
@@ -129,6 +130,18 @@ export default function InvoicesPage() {
           </div>
         )}
 
+ {/* Page Header */}
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+              My Tenants
+            </h1>
+            <Link
+              href="/invoices/create"
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition"
+            >
+              Create Invoice
+            </Link>
+          </div>
         {/* Table */}
         {!loading && !error && invoices.length > 0 && (
           <div className="overflow-x-auto">
@@ -193,7 +206,7 @@ export default function InvoicesPage() {
             </table>
           </div>
         )}
-      </ComponentCard>
+      {/* </ComponentCard> */}
     </div>
   );
 }
