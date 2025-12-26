@@ -8,7 +8,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
-
+import Icon from "@/components/Icons";
 interface LoginResponse {
   success?: boolean;
   message?: string;
@@ -155,9 +155,11 @@ export default function SignInForm() {
                     className="absolute z-30 -translate-y-1/2 cursor-pointer right-4 top-1/2"
                   >
                     {showPassword ? (
-                      <EyeIcon className="fill-gray-500 dark:fill-gray-400" />
+                      // <EyeIcon className="fill-gray-500 dark:fill-gray-400" />
+                      <Icon src={EyeIcon} className="fill-gray-500 dark:fill-gray-400"/>
                     ) : (
-                      <EyeCloseIcon className="fill-gray-500 dark:fill-gray-400" />
+                      // <EyeCloseIcon className="fill-gray-500 dark:fill-gray-400" />
+                      <Icon src={EyeCloseIcon} className="fill-gray-500 dark:fill-gray-400"/>
                     )}
                   </span>
                 </div>

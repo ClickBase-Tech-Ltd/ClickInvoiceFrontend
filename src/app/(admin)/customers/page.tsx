@@ -2,8 +2,15 @@ import { Suspense } from "react";
 import { Metadata } from "next";
 import CustomersPage from "../../../components/tables/Customers";
 export const metadata: Metadata = {
-  title: "ClickInvoice Dashboard",
-  description: "Overview of your invoicing platform: invoices, revenue, tenants, and more.",
+  title: "Customer | Customer Manager",
+  description: "Create customers, send customized emails and texts while generating invoices.",
+  keywords: [
+    "create customer",
+    "create invoice",
+    "online invoicing",
+    "send invoice Nigeria",
+    "invoice tracking",
+  ],
 };
 export default function Receipt() {
   return (

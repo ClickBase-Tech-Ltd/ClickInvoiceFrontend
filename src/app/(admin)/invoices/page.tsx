@@ -3,13 +3,19 @@ import UserInfoCard from "@/components/user-profile/UserInfoCard";
 import UserMetaCard from "@/components/user-profile/UserMetaCard";
 import { Metadata } from "next";
 import React from "react";
-import AddCompanyPage from "../../../../components/ecommerce/CreateTenant";
+import AddCompanyPage from "../../../components/ecommerce/CreateTenant";
 import CompaniesListPage from "../../../components/tables/Tenants";
 import InvoicesPage from "../../../components/tables/Invoices";
 
 export const metadata: Metadata = {
-  title: "ClickInvoice Dashboard",
-  description: "Overview of your invoicing platform: invoices, revenue, tenants, and more.",
+  title: "Invoices | Invoice Manager",
+  description: "Create, manage, send and track invoices online.",
+  keywords: [
+    "create invoice",
+    "online invoicing",
+    "send invoice Nigeria",
+    "invoice tracking",
+  ],
 };
 
 export default function Invoices() {

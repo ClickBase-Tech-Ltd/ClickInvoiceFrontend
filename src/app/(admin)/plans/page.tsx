@@ -2,8 +2,14 @@ import { Suspense } from "react";
 import { Metadata } from "next";
 import PlansPage from "@/components/ecommerce/Plans";
 export const metadata: Metadata = {
-  title: "ClickInvoice Dashboard",
-  description: "Overview of your invoicing platform: invoices, revenue, tenants, and more.",
+  title: "Plans | ClickInvoice",
+  description: "Manage plans, upgrade to higher plans and enjoy unlimited offers.",
+  keywords: [
+    "manage plans",
+    "invoice plans",
+    "send invoice Africa",
+    "invoice tracking",
+  ],
 };
 export default function Receipt() {
   return (

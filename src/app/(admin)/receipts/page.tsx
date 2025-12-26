@@ -7,8 +7,15 @@ import React from "react";
 import ReceiptsPage from "../../../components/tables/Receipts";
 
 export const metadata: Metadata = {
-  title: "ClickInvoice Dashboard",
-  description: "Overview of your invoicing platform: invoices, revenue, tenants, and more.",
+   title: "Receipts | Receipt Manager",
+  description: "Create, send and track receipts online.",
+  keywords: [
+    "create receipt",
+    "online receipts",
+    "send receipt Nigeria",
+    "send receipt Africa",
+    "receipt tracking",
+  ],
 };
 
 export default function Invoices() {

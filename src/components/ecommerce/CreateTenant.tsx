@@ -1,12 +1,12 @@
 // app/companies/create/page.tsx
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import ComponentCard from "../../components/common/ComponentCard";
 import Label from "../../components/form/Label";
-import Input from "../../components/form/input/InputField";
 import Button from "../../components/ui/button/Button";
 import { ChevronLeftIcon } from "@/icons";
 import api from "../../../lib/api";
+import Icon from "@/components/Icons";
 
 interface Currency {
   id: number;
@@ -26,7 +26,7 @@ interface Gateway {
   paymentGatewayName: string;
 }
 
-// Success Modal Component
+// Success Modal
 function SuccessModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   if (!isOpen) return null;
 
@@ -35,23 +35,12 @@ function SuccessModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6 ring-1 ring-black/5 dark:ring-white/10">
         <div className="flex flex-col items-center text-center">
           <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mb-4">
-            <svg
-              className="w-8 h-8 text-green-600 dark:text-green-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            Success!
-          </h3>
-          <p className="text-gray-600 dark:text-gray-300 mb-6">
-            Tenant has been created successfully.
-          </p>
-
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Success!</h3>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">Tenant has been created successfully.</p>
           <div className="flex gap-3 w-full">
             <Button
               onClick={() => {
@@ -69,7 +58,7 @@ function SuccessModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
   );
 }
 
-// New Error Modal Component
+// Error Modal
 function ErrorModal({ isOpen, message, onClose }: { isOpen: boolean; message: string; onClose: () => void }) {
   if (!isOpen) return null;
 
@@ -78,21 +67,12 @@ function ErrorModal({ isOpen, message, onClose }: { isOpen: boolean; message: st
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6 ring-1 ring-black/5 dark:ring-white/10">
         <div className="flex flex-col items-center text-center">
           <div className="w-16 h-16 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center mb-4">
-            <svg
-              className="w-8 h-8 text-red-600 dark:text-red-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </div>
-
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            Error
-          </h3>
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Error</h3>
           <p className="text-gray-600 dark:text-gray-300 mb-6">{message}</p>
-
           <Button onClick={onClose} variant="outline" className="w-full">
             Close
           </Button>
@@ -109,11 +89,16 @@ export default function AddCompanyPage() {
   const [loadingGateways, setLoadingGateways] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-
-  // Error state
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Common timezones
+  // Image preview states
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
+
+  // Refs for file inputs (uncontrolled)
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const signatureInputRef = useRef<HTMLInputElement>(null);
+
   const timezones: Timezone[] = [
     { value: "Africa/Lagos", label: "West Africa Time (Lagos, Nigeria) - WAT" },
     { value: "Africa/Accra", label: "Greenwich Mean Time (Accra, Ghana) - GMT" },
@@ -133,7 +118,6 @@ export default function AddCompanyPage() {
     { value: "UTC", label: "Coordinated Universal Time - UTC" },
   ];
 
-  // Fetch currencies
   useEffect(() => {
     const fetchCurrencies = async () => {
       try {
@@ -142,7 +126,6 @@ export default function AddCompanyPage() {
         const data = await res.json();
         setCurrencies(data);
       } catch (err: any) {
-        console.error(err);
         setErrorMessage(err.message || "Failed to load currencies.");
       } finally {
         setLoadingCurrencies(false);
@@ -151,7 +134,6 @@ export default function AddCompanyPage() {
     fetchCurrencies();
   }, []);
 
-  // Fetch payment gateways
   useEffect(() => {
     const fetchGateways = async () => {
       try {
@@ -160,7 +142,6 @@ export default function AddCompanyPage() {
         const data = await res.json();
         setGateways(data);
       } catch (err: any) {
-        console.error(err);
         setErrorMessage(err.message || "Failed to load payment gateways.");
       } finally {
         setLoadingGateways(false);
@@ -169,6 +150,32 @@ export default function AddCompanyPage() {
     fetchGateways();
   }, []);
 
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setLogoPreview(null);
+    }
+  };
+
+  const handleSignatureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSignaturePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setSignaturePreview(null);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -176,11 +183,7 @@ export default function AddCompanyPage() {
     const formData = new FormData(e.currentTarget);
 
     try {
-      await api.post("/tenants", formData, {
-        headers: {
-          Accept: "application/json",
-        },
-      });
+      await api.post("/tenants", formData, { headers: { "Content-Type": undefined } }); // No headers object at all
 
       setShowSuccessModal(true);
     } catch (error: any) {
@@ -188,7 +191,6 @@ export default function AddCompanyPage() {
         error?.response?.data?.message ||
         error?.message ||
         "Failed to create tenant. Please try again.";
-
       setErrorMessage(message);
     } finally {
       setIsSubmitting(false);
@@ -198,35 +200,54 @@ export default function AddCompanyPage() {
   return (
     <>
       <div className="max-w-4xl mx-auto py-8">
-        {/* Back Button */}
         <div className="mb-8">
           <button
             onClick={() => window.history.back()}
             className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition"
           >
-            <ChevronLeftIcon className="w-5 h-5" />
+            <Icon src={ChevronLeftIcon} className="w-5 h-5" />
             Back
           </button>
         </div>
 
         <ComponentCard title="Add New Tenant">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Company Name & Contact */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <Label htmlFor="tenantName">Tenant Name</Label>
-                <Input id="tenantName" name="tenantName" type="text" placeholder="Acme Corporation" required />
+                <input
+                  id="tenantName"
+                  name="tenantName"
+                  type="text"
+                  placeholder="Acme Corporation"
+                  required
+                  className="mt-1 w-full px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
               </div>
               <div>
                 <Label htmlFor="tenantPhone">Phone Number</Label>
-                <Input id="tenantPhone" name="tenantPhone" type="tel" placeholder="+234 801 234 5678" required />
+                <input
+                  id="tenantPhone"
+                  name="tenantPhone"
+                  type="tel"
+                  placeholder="+234 801 234 5678"
+                  required
+                  className="mt-1 w-full px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <Label htmlFor="tenantEmail">Email Address</Label>
-                <Input id="tenantEmail" name="tenantEmail" type="email" placeholder="info@acme.com" required />
+                <input
+                  id="tenantEmail"
+                  name="tenantEmail"
+                  type="email"
+                  placeholder="info@acme.com"
+                  required
+                  className="mt-1 w-full px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
               </div>
               <div>
                 <Label htmlFor="currency">Currency</Label>
@@ -247,25 +268,52 @@ export default function AddCompanyPage() {
               </div>
             </div>
 
-            {/* Logo Upload */}
+            {/* Logo Upload with Preview */}
             <div>
               <Label htmlFor="tenantLogo">Company Logo</Label>
-              <Input id="tenantLogo" name="tenantLogo" type="file" accept="image/*" className="mt-1" />
+              <input
+                ref={logoInputRef}
+                id="tenantLogo"
+                name="tenantLogo"
+                type="file"
+                accept="image/*"
+                onChange={handleLogoChange}
+                className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100 dark:file:bg-gray-700 dark:file:text-brand-300"
+              />
               <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                 Recommended: Square image (e.g., 512x512 PNG or JPG)
               </p>
+              {logoPreview && (
+                <div className="mt-4">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Preview:</p>
+                  <img src={logoPreview} alt="Logo preview" className="h-32 w-32 object-contain rounded-lg border border-gray-300 dark:border-gray-700" />
+                </div>
+              )}
             </div>
 
-            {/* Authorized Signature */}
+            {/* Authorized Signature with Preview */}
             <div>
               <Label htmlFor="authorizedSignature">Authorized Signature</Label>
-              <Input id="authorizedSignature" name="authorizedSignature" type="file" accept="image/*" className="mt-1" />
+              <input
+                ref={signatureInputRef}
+                id="authorizedSignature"
+                name="authorizedSignature"
+                type="file"
+                accept="image/*"
+                onChange={handleSignatureChange}
+                className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100 dark:file:bg-gray-700 dark:file:text-brand-300"
+              />
               <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                 Upload signature image (transparent PNG preferred)
               </p>
+              {signaturePreview && (
+                <div className="mt-4">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Preview:</p>
+                  <img src={signaturePreview} alt="Signature preview" className="h-24 w-64 object-contain rounded-lg border border-gray-300 dark:border-gray-700 bg-white" />
+                </div>
+              )}
             </div>
 
-            {/* Timezone & Gateway Preference */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <Label htmlFor="timezone">Timezone</Label>
@@ -293,9 +341,7 @@ export default function AddCompanyPage() {
                   required
                   disabled={loadingGateways}
                 >
-                  <option value="">
-                    {loadingGateways ? "Loading gateways..." : "Select gateway"}
-                  </option>
+                  <option value="">{loadingGateways ? "Loading gateways..." : "Select gateway"}</option>
                   {gateways.map((gateway) => (
                     <option key={gateway.gatewayId} value={gateway.gatewayId}>
                       {gateway.paymentGatewayName}
@@ -305,7 +351,6 @@ export default function AddCompanyPage() {
               </div>
             </div>
 
-            {/* Submit */}
             <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
               <Button
                 type="submit"
@@ -319,13 +364,8 @@ export default function AddCompanyPage() {
         </ComponentCard>
       </div>
 
-      {/* Success Modal */}
-      <SuccessModal
-        isOpen={showSuccessModal}
-        onClose={() => setShowSuccessModal(false)}
-      />
+      <SuccessModal isOpen={showSuccessModal} onClose={() => setShowSuccessModal(false)} />
 
-      {/* Error Modal */}
       <ErrorModal
         isOpen={!!errorMessage}
         message={errorMessage || "An unknown error occurred."}

@@ -27,8 +27,14 @@ import { Suspense } from "react";
 import InvoiceViewPage from "../../../components/tables/Invoice";
 import { Metadata } from "next";
 export const metadata: Metadata = {
-  title: "ClickInvoice Dashboard",
-  description: "Overview of your invoicing platform: invoices, revenue, tenants, and more.",
+  title: "Generated Invoice | Invoice Manager",
+  description: "Create, send and track invoices online.",
+  keywords: [
+    "create invoice",
+    "online invoicing",
+    "send invoice Nigeria",
+    "invoice tracking",
+  ],
 };
 export default function Invoices() {
   return (

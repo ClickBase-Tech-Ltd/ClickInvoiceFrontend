@@ -16,7 +16,7 @@ import ComponentCard from "../../components/common/ComponentCard";
 import Button from "../../components/ui/button/Button";
 import api from "../../../lib/api";
 import { ChevronLeftIcon } from "@/icons";
-
+import Icon from "@/components/Icons";
 const ShareIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -716,7 +716,8 @@ export default function InvoiceViewPage() {
         onClick={() => window.history.back()}
         className="mb-6 inline-flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900"
       >
-        <ChevronLeftIcon className="w-5 h-5" />
+        {/* <ChevronLeftIcon className="w-5 h-5" /> */}
+        <Icon src={ChevronLeftIcon} className="w-5 h-5"/>
         Back
       </button>
 

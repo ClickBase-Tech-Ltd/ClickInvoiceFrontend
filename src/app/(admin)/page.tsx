@@ -15,7 +15,7 @@ import SuperAdminDashboard from "@/components/ecommerce/SuperAdminDashboard"; //
 // Assume you have an auth utility or context to get user role
 // In real app, this would come from session/cookies or server-side auth
 // For demo, we'll simulate with a server-side check (use getServerSession or similar)
-import { getCurrentUser } from "@/lib/auth"; // Your auth helper (returns user object with role)
+// import { getCurrentUser } from "../../../lib/auth"; // Your auth helper (returns user object with role)
 import { getRole } from "../../../lib/auth";
 
 export const metadata: Metadata = {

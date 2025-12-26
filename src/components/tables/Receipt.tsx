@@ -16,6 +16,7 @@ import ComponentCard from "../../components/common/ComponentCard";
 import Button from "../../components/ui/button/Button";
 import api from "../../../lib/api";
 import { ChevronLeftIcon } from "@/icons";
+import Icon from "@/components/Icons";
 
 // ==================== RECEIPT TYPES ====================
 interface FullReceipt {
@@ -436,7 +437,8 @@ export default function ReceiptViewPage() {
         onClick={() => window.history.back()}
         className="mb-6 inline-flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900"
       >
-        <ChevronLeftIcon className="w-5 h-5" />
+        {/* <ChevronLeftIcon className="w-5 h-5" /> */}
+         <Icon src={ChevronLeftIcon} className="w-5 h-5"/>
         Back to Receipts
       </button>
 
@@ -445,7 +447,7 @@ export default function ReceiptViewPage() {
           {/* Company Header */}
           <div className="flex justify-between items-start border-b pb-8">
             <div>
-              <h1 className="text-3xl font-bold text-green-700">{receipt.company.name}</h1>
+              <h1 className="text-3xl font-bold text-[#0A66C2]">{receipt.company.name}</h1>
               <p className="text-gray-600">{receipt.company.email}</p>
               <p className="text-gray-600">{receipt.company.phone}</p>
             </div>
@@ -476,7 +478,7 @@ export default function ReceiptViewPage() {
               </div>
             </div>
             <div className="text-right">
-              <p className="text-3xl font-bold text-green-600">
+              <p className="text-3xl font-bold text-[#0A66C2]">
                 {formatMoney(receipt.amountPaid, receipt.currencySymbol)}
               </p>
               <p className="text-sm text-gray-500 mt-1">Amount Paid</p>
@@ -495,7 +497,7 @@ export default function ReceiptViewPage() {
             </div>
             <div>
               <p className="text-gray-500">Amount Paid</p>
-              <p className="font-medium text-green-600">{formatMoney(receipt.amountPaid, receipt.currencySymbol)}</p>
+              <p className="font-medium text-[#0A66C2]">{formatMoney(receipt.amountPaid, receipt.currencySymbol)}</p>
             </div>
           </div>
 
@@ -503,7 +505,7 @@ export default function ReceiptViewPage() {
             <h3 className="font-semibold text-lg mb-4">Receipt Items</h3>
             <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b text-left text-gray-600 bg-green-50">
+                <tr className="border-b text-left text-gray-600 bg-blue-50">
                   <th className="py-3">Description</th>
                   <th className="py-3 text-right">Amount</th>
                 </tr>
@@ -525,9 +527,9 @@ export default function ReceiptViewPage() {
                   <td className="py-3 text-right font-medium">Tax ({receipt.taxPercentage}%)</td>
                   <td className="py-3 text-right">{formatMoney(receipt.taxAmount, receipt.currencySymbol)}</td>
                 </tr>
-                <tr className="bg-green-50">
+                <tr className="bg-blue-50">
                   <td className="py-4 text-right font-bold text-lg">Total Paid</td>
-                  <td className="py-4 text-right font-bold text-xl text-green-600">
+                  <td className="py-4 text-right font-bold text-xl text-[#0A66C2]">
                     {formatMoney(receipt.amountPaid, receipt.currencySymbol)}
                   </td>
                 </tr>
@@ -535,7 +537,7 @@ export default function ReceiptViewPage() {
             </table>
           </div>
 
-          <div className="bg-green-50 p-6 rounded-lg">
+          <div className="bg-blue-50 p-6 rounded-lg">
             <h3 className="font-semibold mb-3">Payment Received Via</h3>
             <p><strong>Account Name:</strong> {receipt.accountName}</p>
             <p><strong>Account Number:</strong> {receipt.accountNumber}</p>
@@ -568,7 +570,7 @@ export default function ReceiptViewPage() {
               disabled={loading || !receipt.customerEmail}
               className={`
                 px-4 py-2 rounded-md text-white transition
-                bg-[#16A34A] hover:bg-[#15803d]
+                bg-[#0A66C2] hover:bg-[#0A66A7]
                 disabled:opacity-50 disabled:cursor-not-allowed
               `}
             >

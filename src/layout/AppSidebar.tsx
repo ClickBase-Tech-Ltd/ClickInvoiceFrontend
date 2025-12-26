@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
+import Icon from "@/components/Icons";
 import {
   GridIcon,
   GroupIcon,
@@ -42,27 +43,31 @@ const useUserRole = (): UserRole => {
 const getMenuItems = (role: UserRole) => {
   const baseItems = [
     {
-      icon: <GridIcon />,
+      icon: <Icon src={GridIcon} />,
       name: "Dashboard",
       path: "/",
     },
     {
-      icon: <DocsIcon />,
+      // icon: <DocsIcon />,
+      icon: <Icon src={DocsIcon} />,
       name: "Invoices",
       path: "/invoices",
     },
     {
-      icon: <PageIcon />,
+      // icon: <PageIcon />,
+      icon: <Icon src={PageIcon} />,
       name: "Receipts",
       path: "/receipts",
     },
     {
-      icon: <BoxIconLine />,
+      // icon: <BoxIconLine />,
+      icon: <Icon src={BoxIconLine} />,
       name: "Customers",
       path: "/customers",
     },
     {
-      icon: <UserCircleIcon />,
+      // icon: <UserCircleIcon />,
+      icon: <Icon src={UserCircleIcon} />,
       name: "Profile",
       path: "/profile",
     },
@@ -72,8 +77,9 @@ const getMenuItems = (role: UserRole) => {
   if (role === "SUPER_ADMIN") {
     return [
       {
-        icon: <GroupIcon />,
-        name: "Tenants",
+        // icon: <GroupIcon />,
+        icon: <Icon src={GroupIcon} />,
+        name: "Businesses",
         path: "/tenants",
       },
       ...baseItems,
@@ -89,32 +95,38 @@ const getMenuItems = (role: UserRole) => {
   if (role === "USER") {
     return [
       {
-        icon: <GridIcon />,
+        // icon: <GridIcon />,
+        icon: <Icon src={GridIcon} />,
         name: "Dashboard",
         path: "/",
       },
       {
-      icon: <BoxIconLine />,
+      // icon: <BoxIconLine />,
+      icon: <Icon src={BoxIconLine} />,
       name: "My Customers",
       path: "/customers",
     },
     {
-        icon: <GroupIcon />,
-        name: "My Tenants",
+        // icon: <GroupIcon />,
+        icon: <Icon src={GroupIcon} />,
+        name: "My Businesses",
         path: "/tenants",
       },
       {
-        icon: <DocsIcon />,
+        // icon: <DocsIcon />,
+        icon: <Icon src={DocsIcon} />,
         name: "My Invoices",
         path: "/invoices",
       },
       {
-        icon: <PageIcon />,
+        // icon: <PageIcon />,
+        icon: <Icon src={PageIcon} />,
         name: "My Receipts",
         path: "/receipts",
       },
       {
-        icon: <UserCircleIcon />,
+        // icon: <UserCircleIcon />,
+        icon: <Icon src={UserCircleIcon} />,
         name: "Profile",
         path: "/profile",
       },
@@ -189,53 +201,49 @@ const AppSidebar: React.FC = () => {
       onMouseEnter={() => !isExpanded && setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div
-        className={`py-8 flex items-center pt-5 ${
-          !isExpanded && !isHovered ? "lg:justify-center" : "justify-start"
-        }`}
-      >
-        <Link href="/">
-          {isExpanded || isHovered || isMobileOpen ? (
-            <>
-              <Image
-                className="dark:hidden"
-                src="/images/logo/logo.svg"
-                alt="Logo"
-                width={250}
-                height={70}
-                priority
-              />
-              <Image
-                className="hidden dark:block"
-                src="/images/logo/logo-dark.svg"
-                alt="Logo"
-                width={250}
-                height={70}
-                priority
-              />
-            </>
-          ) : (
-            <>
-              <Image
-                className="dark:hidden"
-                src="/images/logo/logo-icon.svg"
-                alt="Logo Icon"
-                width={32}
-                height={32}
-                priority
-              />
-              <Image
-                className="hidden dark:block"
-                src="/images/logo/logo-icon-dark.svg"
-                alt="Logo"
-                width={32}
-                height={32}
-                priority
-              />
-            </>
-          )}
-        </Link>
-      </div>
+      <div className="hidden lg:block py-8 flex items-center pt-5">
+      <Link href="/">
+        {isExpanded || isHovered || isMobileOpen ? (
+          <>
+            <Image
+              className="dark:hidden"
+              src="/images/logo/logo.svg"
+              alt="Logo"
+              width={250}
+              height={70}
+              priority
+            />
+            <Image
+              className="hidden dark:block"
+              src="/images/logo/logo-dark.svg"
+              alt="Logo"
+              width={250}
+              height={70}
+              priority
+            />
+          </>
+        ) : (
+          <>
+            <Image
+              className="dark:hidden"
+              src="/images/logo/logo-icon.svg"
+              alt="Logo Icon"
+              width={32}
+              height={32}
+              priority
+            />
+            <Image
+              className="hidden dark:block"
+              src="/images/logo/logo-icon-dark.svg"
+              alt="Logo"
+              width={32}
+              height={32}
+              priority
+            />
+          </>
+        )}
+      </Link>
+    </div>
 
       <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
         <nav className="mb-6">
@@ -249,7 +257,9 @@ const AppSidebar: React.FC = () => {
                 {isExpanded || isHovered || isMobileOpen ? (
                   "Menu"
                 ) : (
-                  <HorizontaLDots />
+                  // <HorizontaLDots />
+                  <Icon src={HorizontaLDots} />
+
                 )}
               </h2>
               {renderMenuItems()}

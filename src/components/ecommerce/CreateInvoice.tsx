@@ -7,6 +7,7 @@ import Input from "../../components/form/input/InputField";
 import Button from "../../components/ui/button/Button";
 import { ChevronLeftIcon } from "@/icons";
 import api from "../../../lib/api";
+import Icon from "@/components/Icons";
 
 /* ---------------- types ---------------- */
 interface Item {
@@ -295,7 +296,8 @@ export default function CreateInvoicePage() {
         onClick={() => history.back()}
         className="mb-6 inline-flex items-center gap-2 text-sm"
       >
-        <ChevronLeftIcon className="w-5 h-5" />
+        {/* <ChevronLeftIcon className="w-5 h-5" /> */}
+         <Icon src={ChevronLeftIcon} className="w-5 h-5"/>
         Return
       </button>
 

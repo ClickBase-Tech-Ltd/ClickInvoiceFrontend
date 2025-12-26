@@ -7,7 +7,7 @@ import Button from "../../components/ui/button/Button";
 import { ChevronLeftIcon } from "@/icons";
 import api from "../../../lib/api";
 import { useRouter } from "next/navigation";
-
+import Icon from "@/components/Icons";
 /* ---------------- types ---------------- */
 
 interface Receipt {
@@ -98,7 +98,8 @@ export default function ReceiptsPage() {
         onClick={() => window.history.back()}
         className="mb-6 inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900"
       >
-        <ChevronLeftIcon className="w-5 h-5" />
+        {/* <ChevronLeftIcon className="w-5 h-5" /> */}
+         <Icon src={ChevronLeftIcon} className="w-5 h-5"/>
         Back
       </button>
 

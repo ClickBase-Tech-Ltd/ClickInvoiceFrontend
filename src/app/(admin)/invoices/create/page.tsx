@@ -6,8 +6,14 @@ import React from "react";
 import CreateInvoicePage from "../../../../components/ecommerce/CreateInvoice";
 
 export const metadata: Metadata = {
-  title: "ClickInvoice Dashboard",
-  description: "Overview of your invoicing platform: invoices, revenue, tenants, and more.",
+  title: "Create Invoice | Invoice Manager",
+  description: "Create, send and track invoices online.",
+  keywords: [
+    "create invoice",
+    "online invoicing",
+    "send invoice Nigeria",
+    "invoice tracking",
+  ],
 };
 
 export default function CreateInvoice() {

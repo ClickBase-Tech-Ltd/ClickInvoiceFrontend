@@ -13,6 +13,7 @@ import Badge from "../../components/ui/badge/Badge";
 import Image from "next/image";
 import Link from "next/link";
 import { EyeIcon } from "@/icons";
+import Icon from "@/components/Icons";
 import api from "../../../lib/api";
 import { useModal } from "../../../context/ModalContext";
 
@@ -53,7 +54,7 @@ export default function CompaniesListPage() {
     const fetchTenants = async () => {
       try {
         setLoading(true);
-        const response = await api.get("/tenants");
+        const response = await api.get("/tenants/user-tenants");
         setTenants(response.data ?? []);
       } catch (error) {
         console.error("Error fetching tenants:", error);
@@ -116,13 +117,13 @@ export default function CompaniesListPage() {
           {/* Page Header */}
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-              My Tenants
+              My Businesses
             </h1>
             <Link
               href="/tenants/create"
               className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition"
             >
-              Add Tenant
+              Add Business
             </Link>
           </div>
 
@@ -134,7 +135,7 @@ export default function CompaniesListPage() {
                   <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
                     <TableRow>
                       <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                        Tenant
+                        Business Name
                       </TableCell>
                       <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
                         Active
@@ -161,7 +162,7 @@ export default function CompaniesListPage() {
                     {loading ? (
                       <TableRow>
                         <TableCell colSpan={7} className="py-10 text-center text-gray-500 dark:text-gray-400">
-                          Loading tenants...
+                          Loading organizations...
                         </TableCell>
                       </TableRow>
                     ) : tenants.length === 0 ? (
@@ -169,7 +170,7 @@ export default function CompaniesListPage() {
                         <TableCell colSpan={7} className="py-10 text-center text-gray-500 dark:text-gray-400">
                           No companies found.{" "}
                           <Link href="/tenants/create" className="text-brand-500 hover:underline">
-                            Add your first tenant
+                            Add your first organization
                           </Link>
                         </TableCell>
                       </TableRow>
@@ -259,7 +260,9 @@ export default function CompaniesListPage() {
                                 className="text-gray-600 hover:text-brand-600 transition"
                                 title="View details"
                               >
-                                <EyeIcon className="w-5 h-5" />
+                                {/* <EyeIcon className="w-5 h-5" /> */}
+                                <Icon src={EyeIcon} className="w-5 h-5"/>
+
                               </button>
 
                               <Link
@@ -286,7 +289,7 @@ export default function CompaniesListPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-gray-900 p-6 shadow-2xl">
             <div className="flex justify-between items-start mb-6">
-              <h2 className="text-2xl font-semibold">Tenant Details</h2>
+              <h2 className="text-2xl font-semibold">Organization Details</h2>
               <button
                 onClick={handleCloseModal}
                 className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition"

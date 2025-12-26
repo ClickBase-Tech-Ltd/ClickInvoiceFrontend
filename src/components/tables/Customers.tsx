@@ -7,6 +7,7 @@ import Button from "../../components/ui/button/Button";
 import { ChevronLeftIcon, MailIcon } from "@/icons";
 import api from "../../../lib/api";
 import { useRouter } from "next/navigation";
+import Icon from "@/components/Icons";
 
 interface Customer {
   customerId: string;
@@ -170,7 +171,8 @@ export default function CustomersPage() {
         onClick={() => window.history.back()}
         className="mb-6 inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900"
       >
-        <ChevronLeftIcon className="w-5 h-5" />
+        {/* <ChevronLeftIcon className="w-5 h-5" /> */}
+        <Icon src={ChevronLeftIcon} className="w-5 h-5"/>
         Back
       </button>
 
@@ -188,7 +190,8 @@ export default function CustomersPage() {
               disabled={customers.length === 0}
               className="flex items-center gap-2"
             >
-              <MailIcon className="w-4 h-4" />
+              {/* <MailIcon className="w-4 h-4" /> */}
+              <Icon src={MailIcon} className="w-4 h-4" />
               {selectedCustomers.size > 0 ? "Email Selected" : "Broadcast Email"}
             </Button>
           </div>
@@ -251,7 +254,8 @@ export default function CustomersPage() {
                           onClick={() => openSingleEmailModal(customer)}
                           className="flex items-center gap-1"
                         >
-                          <MailIcon className="w-3 h-3" />
+                          {/* <MailIcon className="w-3 h-3" /> */}
+                          <Icon src={MailIcon} className="w-3 h-3"  />
                           Email
                         </Button>
                       )}

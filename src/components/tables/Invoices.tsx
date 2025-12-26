@@ -8,7 +8,7 @@ import { ChevronLeftIcon } from "@/icons";
 import api from "../../../lib/api";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-
+import Icon from "@/components/Icons";
 /* ---------------- types ---------------- */
 
 interface Invoice {
@@ -101,7 +101,8 @@ export default function InvoicesPage() {
         onClick={() => window.history.back()}
         className="mb-6 inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900"
       >
-        <ChevronLeftIcon className="w-5 h-5" />
+        {/* <ChevronLeftIcon className="w-5 h-5" /> */}
+        <Icon src={ChevronLeftIcon} className="w-5 h-5"/>
         Back
       </button>
 
@@ -133,7 +134,7 @@ export default function InvoicesPage() {
  {/* Page Header */}
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-              My Tenants
+              My Invoices
             </h1>
             <Link
               href="/invoices/create"

@@ -60,13 +60,13 @@ export default function OutstandingAndCollected({
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
               {currency} {data.outstanding.toLocaleString()}
             </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-[#0A66C2] dark:text-gray-400">
               Amount yet to receive
             </p>
           </div>
 
           <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-400">
-            <FontAwesomeIcon icon={faMoneyBillWave} className="text-lg" />
+            <FontAwesomeIcon icon={faMoneyBillWave} className="text-[#0A66C2]" />
           </div>
         </div>
       </div>
@@ -81,13 +81,13 @@ export default function OutstandingAndCollected({
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
               {currency} {data.collected.toLocaleString()}
             </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-[#0A66C2] dark:text-gray-400">
               Total payments received
             </p>
           </div>
 
           <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-400">
-            <FontAwesomeIcon icon={faCircleCheck} className="text-lg" />
+            <FontAwesomeIcon icon={faCircleCheck} className="text-[#0A66C2]" />
           </div>
         </div>
       </div>
