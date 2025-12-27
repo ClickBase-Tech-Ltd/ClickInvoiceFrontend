@@ -7,6 +7,7 @@ import Button from "../../components/ui/button/Button";
 import { ChevronLeftIcon } from "@/icons";
 import api from "../../../lib/api";
 import Icon from "@/components/Icons";
+import Link from "next/link";
 
 interface Currency {
   id: number;
@@ -58,7 +59,38 @@ function SuccessModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
   );
 }
 
-// Error Modal
+// New Upgrade Required Modal
+function UpgradeModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/40 dark:bg-black/40 backdrop-blur-md">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6 ring-1 ring-black/5 dark:ring-white/10">
+        <div className="flex flex-col items-center text-center">
+          <div className="w-16 h-16 bg-orange-100 dark:bg-orange-900 rounded-full flex items-center justify-center mb-4">
+            <svg className="w-8 h-8 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Upgrade Required</h3>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">
+            Sorry you can't add any more businesses. Upgrade to premium to add more businesses.
+          </p>
+          <div className="flex gap-3 w-full">
+            <Button variant="outline" onClick={onClose} className="flex-1">
+              Cancel
+            </Button>
+            <Button asChild className="flex-1">
+              <Link href="/dashboard/plans">Upgrade Now</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Updated Error Modal (now without Upgrade button by default)
 function ErrorModal({ isOpen, message, onClose }: { isOpen: boolean; message: string; onClose: () => void }) {
   if (!isOpen) return null;
 
@@ -90,12 +122,13 @@ export default function AddCompanyPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   // Image preview states
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
 
-  // Refs for file inputs (uncontrolled)
+  // Refs for file inputs
   const logoInputRef = useRef<HTMLInputElement>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
 
@@ -179,11 +212,13 @@ export default function AddCompanyPage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setErrorMessage(null);
+    setShowUpgradeModal(false);
 
     const formData = new FormData(e.currentTarget);
 
     try {
-      await api.post("/tenants", formData, { headers: { "Content-Type": undefined } }); // No headers object at all
+      await api.post("/tenants", formData, { headers: { "Content-Type": undefined } });
 
       setShowSuccessModal(true);
     } catch (error: any) {
@@ -191,7 +226,13 @@ export default function AddCompanyPage() {
         error?.response?.data?.message ||
         error?.message ||
         "Failed to create tenant. Please try again.";
-      setErrorMessage(message);
+
+      // Exact match for the subscription limit message
+      if (message === "Sorry you can't add any more businesses. Upgrade to premium to add more businesses.") {
+        setShowUpgradeModal(true);
+      } else {
+        setErrorMessage(message);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -212,6 +253,7 @@ export default function AddCompanyPage() {
 
         <ComponentCard title="Add New Tenant">
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Form fields remain unchanged */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <Label htmlFor="tenantName">Tenant Name</Label>
@@ -268,7 +310,7 @@ export default function AddCompanyPage() {
               </div>
             </div>
 
-            {/* Logo Upload with Preview */}
+            {/* Logo Upload */}
             <div>
               <Label htmlFor="tenantLogo">Company Logo</Label>
               <input
@@ -291,7 +333,7 @@ export default function AddCompanyPage() {
               )}
             </div>
 
-            {/* Authorized Signature with Preview */}
+            {/* Authorized Signature */}
             <div>
               <Label htmlFor="authorizedSignature">Authorized Signature</Label>
               <input
@@ -365,6 +407,8 @@ export default function AddCompanyPage() {
       </div>
 
       <SuccessModal isOpen={showSuccessModal} onClose={() => setShowSuccessModal(false)} />
+
+      <UpgradeModal isOpen={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
 
       <ErrorModal
         isOpen={!!errorMessage}

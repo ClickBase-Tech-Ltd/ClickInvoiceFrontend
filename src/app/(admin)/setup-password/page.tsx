@@ -1,5 +1,6 @@
+import SetupPasswordPage from "@/components/auth/SetupPassword";
 import { Metadata } from "next";
-import SetupPasswordPage from "../../../../components/auth/SetupPassword";
+// import SetupPasswordPage from "../../../components/auth/SetupPassword";
 
 export const metadata: Metadata = {
   title:

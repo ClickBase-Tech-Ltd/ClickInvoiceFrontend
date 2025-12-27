@@ -10,7 +10,6 @@ import {
   TableRow,
 } from "../../components/ui/table";
 import Button from "../../components/ui/button/Button";
-import Badge from "../../components/ui/badge/Badge";
 import { ChevronLeftIcon, MailIcon, EyeIcon } from "@/icons";
 import api from "../../../lib/api";
 import { useRouter } from "next/navigation";
@@ -23,6 +22,70 @@ interface Customer {
   customerPhone?: string | null;
   customerAddress?: string | null;
   created_at: string;
+}
+
+// Success Modal for Email Sent
+function EmailSuccessModal({
+  isOpen,
+  message,
+  onClose,
+}: {
+  isOpen: boolean;
+  message: string;
+  onClose: () => void;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/40 dark:bg-black/40 backdrop-blur-md">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6 ring-1 ring-black/5 dark:ring-white/10">
+        <div className="flex flex-col items-center text-center">
+          <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mb-4">
+            <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Email Sent!</h3>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">{message}</p>
+          <Button onClick={onClose} className="w-full !bg-[#0A66C2] hover:!bg-[#084d93]">
+            OK
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Error Modal for Email Failure
+function EmailErrorModal({
+  isOpen,
+  message,
+  onClose,
+}: {
+  isOpen: boolean;
+  message: string;
+  onClose: () => void;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/40 dark:bg-black/40 backdrop-blur-md">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6 ring-1 ring-black/5 dark:ring-white/10">
+        <div className="flex flex-col items-center text-center">
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center mb-4">
+            <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Failed to Send</h3>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">{message}</p>
+          <Button variant="outline" onClick={onClose} className="w-full">
+            Close
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function CustomersPage() {
@@ -43,14 +106,25 @@ export default function CustomersPage() {
   const [singleEmailCustomer, setSingleEmailCustomer] = useState<Customer | null>(null);
   const [singleSubject, setSingleSubject] = useState("");
   const [singleMessage, setSingleMessage] = useState("");
+  const [useAlternateEmail, setUseAlternateEmail] = useState(false);
+  const [alternateEmail, setAlternateEmail] = useState("");
 
   // Bulk Email Modal
   const [isBulkEmailModalOpen, setIsBulkEmailModalOpen] = useState(false);
   const [bulkSubject, setBulkSubject] = useState("");
   const [bulkMessage, setBulkMessage] = useState("");
 
+  // Success/Error states for emails
+  const [showEmailSuccess, setShowEmailSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [showEmailError, setShowEmailError] = useState(false);
+  const [emailErrorMessage, setEmailErrorMessage] = useState("");
+
   const [sendingSingle, setSendingSingle] = useState(false);
   const [sendingBulk, setSendingBulk] = useState(false);
+
+  // Assume user is premium (you can fetch this from auth context or API in real app)
+  const isPremiumUser = true; // Set to false if not premium
 
   useEffect(() => {
     const fetchCustomers = async () => {
@@ -98,29 +172,48 @@ export default function CustomersPage() {
     setSingleEmailCustomer(customer);
     setSingleSubject(`Hello ${customer.customerName}`);
     setSingleMessage(`Dear ${customer.customerName},\n\n`);
+    setUseAlternateEmail(false);
+    setAlternateEmail("");
     setIsSingleEmailModalOpen(true);
   };
 
   const handleSendSingleEmail = async () => {
     if (!singleSubject.trim() || !singleMessage.trim()) {
-      alert("Please provide subject and message.");
+      setEmailErrorMessage("Please provide subject and message.");
+      setShowEmailError(true);
+      return;
+    }
+
+    if (useAlternateEmail && !alternateEmail.trim()) {
+      setEmailErrorMessage("Please enter an alternate email address.");
+      setShowEmailError(true);
       return;
     }
 
     setSendingSingle(true);
     try {
-      await api.post(`/customers/${singleEmailCustomer?.customerId}/send-email`, {
+      const payload: any = {
         subject: singleSubject,
         message: singleMessage,
-      });
+      };
 
-      alert("Email sent successfully!");
+      if (useAlternateEmail && alternateEmail.trim()) {
+        payload.alternateEmail = alternateEmail.trim();
+      }
+
+      await api.post(`/customers/${singleEmailCustomer?.customerId}/send-email`, payload);
+
+      setSuccessMessage("Email sent successfully!");
+      setShowEmailSuccess(true);
       setIsSingleEmailModalOpen(false);
       setSingleSubject("");
       setSingleMessage("");
       setSingleEmailCustomer(null);
+      setUseAlternateEmail(false);
+      setAlternateEmail("");
     } catch (err: any) {
-      alert("Failed to send email: " + (err?.response?.data?.message || err.message));
+      setEmailErrorMessage(err?.response?.data?.message || "Failed to send email.");
+      setShowEmailError(true);
     } finally {
       setSendingSingle(false);
     }
@@ -133,7 +226,8 @@ export default function CustomersPage() {
       : customers.map(c => c.customerId);
 
     if (ids.length === 0) {
-      alert("No customers available to email.");
+      setEmailErrorMessage("No customers available to email.");
+      setShowEmailError(true);
       return;
     }
 
@@ -144,7 +238,8 @@ export default function CustomersPage() {
 
   const handleSendBulkEmail = async () => {
     if (!bulkSubject.trim() || !bulkMessage.trim()) {
-      alert("Please provide subject and message.");
+      setEmailErrorMessage("Please provide subject and message.");
+      setShowEmailError(true);
       return;
     }
 
@@ -160,13 +255,15 @@ export default function CustomersPage() {
         message: bulkMessage,
       });
 
-      alert(`Broadcast sent to ${customerIds.length} customer(s)!`);
+      setSuccessMessage(`Broadcast sent to ${customerIds.length} customer(s)!`);
+      setShowEmailSuccess(true);
       setIsBulkEmailModalOpen(false);
       setBulkSubject("");
       setBulkMessage("");
       setSelectedCustomers(new Set());
     } catch (err: any) {
-      alert("Failed to send broadcast: " + (err?.response?.data?.message || err.message));
+      setEmailErrorMessage(err?.response?.data?.message || "Failed to send broadcast.");
+      setShowEmailError(true);
     } finally {
       setSendingBulk(false);
     }
@@ -194,10 +291,8 @@ export default function CustomersPage() {
             <Button
               onClick={openBulkEmailModal}
               disabled={customers.length === 0}
-              // className="flex items-center gap-2"
               className="!bg-[#0A66C2] hover:!bg-[#084d93] flex items-center gap-2"
             >
-              {/* <Icon src={MailIcon} className="w-4 h-4 !text-white" /> */}
               {selectedCustomers.size > 0 ? "Email Selected" : "Broadcast Email"}
             </Button>
           )}
@@ -324,7 +419,7 @@ export default function CustomersPage() {
         </div>
       </div>
 
-      {/* View Modal */}
+      {/* Existing View Modal */}
       {viewModalOpen && selectedCustomer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-gray-900 p-8 shadow-2xl">
@@ -362,15 +457,15 @@ export default function CustomersPage() {
 
             <div className="mt-8 flex flex-col gap-3">
               <Button
-  onClick={() =>
-    router.push(
-      `/dashboard/customer-invoices-and-receipts?customerId=${selectedCustomer.customerId}`
-    )
-  }
-  className="!bg-[#0A66C2] hover:!bg-[#084d93]"
->
-  View All Invoices & Receipts
-</Button>
+                onClick={() =>
+                  router.push(
+                    `/dashboard/customer-invoices-and-receipts?customerId=${selectedCustomer.customerId}`
+                  )
+                }
+                className="!bg-[#0A66C2] hover:!bg-[#084d93]"
+              >
+                View All Invoices & Receipts
+              </Button>
 
               <Button variant="outline" onClick={() => setViewModalOpen(false)} className="w-full">
                 Close
@@ -404,12 +499,43 @@ export default function CustomersPage() {
                   className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+
+              {/* Premium Feature: Alternate Email */}
+              {isPremiumUser && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="useAlternate"
+                      checked={useAlternateEmail}
+                      onChange={(e) => setUseAlternateEmail(e.target.checked)}
+                      className="rounded"
+                    />
+                    <label htmlFor="useAlternate" className="text-sm font-medium cursor-pointer">
+                      Send to alternate email address (Premium)
+                    </label>
+                  </div>
+                  {useAlternateEmail && (
+                    <input
+                      type="email"
+                      value={alternateEmail}
+                      onChange={(e) => setAlternateEmail(e.target.value)}
+                      placeholder="alternate@example.com"
+                      className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  )}
+                </div>
+              )}
             </div>
             <div className="flex justify-end gap-3 mt-6">
               <Button variant="outline" onClick={() => setIsSingleEmailModalOpen(false)} disabled={sendingSingle}>
                 Cancel
               </Button>
-              <Button onClick={handleSendSingleEmail} disabled={sendingSingle || !singleSubject.trim() || !singleMessage.trim()}>
+              <Button
+                onClick={handleSendSingleEmail}
+                disabled={sendingSingle || !singleSubject.trim() || !singleMessage.trim()}
+                className="!bg-[#0A66C2] hover:!bg-[#084d93]"
+              >
                 {sendingSingle ? "Sending..." : "Send Email"}
               </Button>
             </div>
@@ -449,13 +575,30 @@ export default function CustomersPage() {
               <Button variant="outline" onClick={() => setIsBulkEmailModalOpen(false)} disabled={sendingBulk}>
                 Cancel
               </Button>
-              <Button onClick={handleSendBulkEmail} disabled={sendingBulk || !bulkSubject.trim() || !bulkMessage.trim()}>
+              <Button
+                onClick={handleSendBulkEmail}
+                disabled={sendingBulk || !bulkSubject.trim() || !bulkMessage.trim()}
+                className="!bg-[#0A66C2] hover:!bg-[#084d93]"
+              >
                 {sendingBulk ? "Sending..." : "Send Broadcast"}
               </Button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Success & Error Modals for Email Actions */}
+      <EmailSuccessModal
+        isOpen={showEmailSuccess}
+        message={successMessage}
+        onClose={() => setShowEmailSuccess(false)}
+      />
+
+      <EmailErrorModal
+        isOpen={showEmailError}
+        message={emailErrorMessage}
+        onClose={() => setShowEmailError(false)}
+      />
     </div>
   );
 }

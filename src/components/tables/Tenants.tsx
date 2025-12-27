@@ -120,7 +120,7 @@ export default function CompaniesListPage() {
               My Businesses
             </h1>
             <Link
-              href="/dahsboard/tenants/create"
+              href="/dashboard/tenants/create"
               className="inline-flex items-center gap-2 rounded-lg !bg-[#0A66C2] hover:!bg-[#084d93] px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition"
             >
               Add Business

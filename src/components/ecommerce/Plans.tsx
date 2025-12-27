@@ -53,22 +53,22 @@ export default function PlansPage() {
   const [error, setError] = useState<string | null>(null);
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
 
-  // Load Flutterwave script only on client
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if ((window as any).FlutterwaveCheckout) return;
+  // // Load Flutterwave script only on client
+  // useEffect(() => {
+  //   if (typeof window === "undefined") return;
+  //   if ((window as any).FlutterwaveCheckout) return;
 
-    const script = document.createElement("script");
-    script.src = "https://checkout.flutterwave.com/v3.js";
-    script.async = true;
-    document.body.appendChild(script);
+  //   const script = document.createElement("script");
+  //   script.src = "https://checkout.flutterwave.com/v3.js";
+  //   script.async = true;
+  //   document.body.appendChild(script);
 
-    return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
-      }
-    };
-  }, []);
+  //   return () => {
+  //     if (document.body.contains(script)) {
+  //       document.body.removeChild(script);
+  //     }
+  //   };
+  // }, []);
 
   useEffect(() => {
     const fetchPlans = async () => {
@@ -133,47 +133,28 @@ export default function PlansPage() {
 //   const userEmail = "customer@example.com"; // Replace with real user email from auth
 const userEmail = getUserEmail();
 
-  const handleUpgrade = (plan: Plan) => {
-    if (!(window as any).FlutterwaveCheckout) {
-      alert("Payment system is still loading. Please try again.");
-      return;
+const handleUpgrade = async (plan: Plan) => {
+  if (plan.price === 0) {
+    alert("This is the free plan. No payment required!");
+    return;
+  }
+
+  setProcessingPlan(plan.id.toString());
+
+  try {
+    const res = await api.post(`/subscribe/${plan.id}`);
+    const { payment_link } = res.data;
+
+    if (payment_link) {
+      window.location.href = payment_link; // Redirect to hosted page
     }
-
-    const publicKey = process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY;
-    if (!publicKey) {
-      alert("Payment configuration missing. Please contact support.");
-      return;
-    }
-
-    // Don't process free plans
-    if (plan.price === 0) {
-      alert("This is the free plan. No payment required!");
-      return;
-    }
-
-    setProcessingPlan(plan.id.toString());
-
-    (window as any).FlutterwaveCheckout({
-      public_key: publicKey,
-      tx_ref: `plan-${plan.id}-${Date.now()}`,
-      amount: plan.price,
-      currency: "NGN",
-      payment_options: "card,banktransfer,ussd",
-      customer: { email: userEmail },
-      customizations: {
-        title: `${plan.name} Plan`,
-        description: `Upgrade to ${plan.name} plan`,
-      },
-      meta: { plan_id: plan.id },
-      onclose: () => setProcessingPlan(null),
-      callback: (response: any) => {
-        console.log("Payment completed:", response);
-        alert("Payment successful! Your plan has been upgraded.");
-        setProcessingPlan(null);
-        // TODO: Verify on backend
-      },
-    });
-  };
+  } catch (err) {
+    console.error("Failed to initiate subscription:", err);
+    alert("Failed to start subscription. Please try again.");
+  } finally {
+    setProcessingPlan(null);
+  }
+};
 
   if (loading) {
     return (
@@ -218,10 +199,10 @@ const userEmail = getUserEmail();
               <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">{plan.name}</h2>
 
               <div className="mt-6">
-                <span className="text-4xl font-bold text-gray-900 dark:text-white">
+                <span className="text-3xl font-bold text-gray-900 dark:text-white">
                   {plan.price === 0 ? "Free" : `${plan.currencySymbol}${plan.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
                 </span>
-                {plan.price > 0 && <span className="text-xl text-gray-500 dark:text-gray-400">/month</span>}
+                {plan.price > 0 && <span className="text-xl text-gray-500 dark:text-gray-400"><br/>per month</span>}
               </div>
 
               <ul className="mt-8 space-y-4 text-left">

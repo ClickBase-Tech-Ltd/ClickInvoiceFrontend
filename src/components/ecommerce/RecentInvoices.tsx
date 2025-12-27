@@ -72,7 +72,7 @@ export default function RecentInvoices() {
   };
 
   const handleViewInvoice = (invoiceId: string) => {
-    router.push(`/invoice?invoiceId=${invoiceId}`);
+    router.push(`/dashboard/invoice?invoiceId=${invoiceId}`);
   };
 
   if (loading) {
@@ -175,7 +175,7 @@ export default function RecentInvoices() {
       {invoices.length > 0 && (
         <div className="mt-4 text-right">
           <button
-            onClick={() => router.push("/invoices")}
+            onClick={() => router.push("/dashboard/invoices")}
             className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
           >
             View all invoices →

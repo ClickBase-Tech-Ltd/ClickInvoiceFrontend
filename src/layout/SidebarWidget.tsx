@@ -13,7 +13,7 @@ export default function SidebarWidget() {
         Create professional invoices, manage payments, automate recurring billing, track expenses, and get paid faster — perfect for freelancers, startups, and businesses in Africa and beyond.
       </p>
       <a
-        href="/plans"
+        href="/dashboard/plans"
         target="_blank"
         rel="nofollow"
         className="flex items-center justify-center p-3 font-medium text-white rounded-lg bg-[#0A66C2] text-theme-sm hover:bg-brand-600"

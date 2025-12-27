@@ -96,6 +96,10 @@ export default function InvoicesPage() {
     }
   };
 
+  const navigateToInvoice = (invoiceId: string) => {
+    router.push(`/dashboard/invoice?invoiceId=${invoiceId}`);
+  };
+
   /* ---------------- UI ---------------- */
   return (
     <div className="relative min-h-screen">
@@ -117,7 +121,7 @@ export default function InvoicesPage() {
 
           <Link
             href="/dashboard/invoices/create"
-            className="inline-flex items-center gap-2 rounded-lg !bg-[#0A66C2] hover:!bg-[#084d93] px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition"
+            className="inline-flex items-center gap-2 rounded-lg !bg-[#0A66C2] hover:!bg-[#084d93] px-4 py-2 text-sm font-medium text-white transition"
           >
             Create Invoice
           </Link>
@@ -182,31 +186,50 @@ export default function InvoicesPage() {
                     invoices.map((inv) => (
                       <TableRow
                         key={inv.invoiceId}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-800"
+                        className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
                       >
-                        <TableCell className="px-5 py-4 text-start">
+                        {/* Clickable area covering all columns except Actions */}
+                        <TableCell
+                          className="px-5 py-4 text-start"
+                          onClick={() => navigateToInvoice(inv.invoiceId)}
+                        >
                           <span className="font-medium text-gray-800 dark:text-white/90">
                             {inv.userGeneratedInvoiceId || inv.invoiceId}
                           </span>
                         </TableCell>
 
-                        <TableCell className="px-5 py-4 text-start text-theme-sm text-gray-600 dark:text-gray-400">
+                        <TableCell
+                          className="px-5 py-4 text-start text-theme-sm text-gray-600 dark:text-gray-400"
+                          onClick={() => navigateToInvoice(inv.invoiceId)}
+                        >
                           {inv.projectName || "—"}
                         </TableCell>
 
-                        <TableCell className="px-5 py-4 text-start text-theme-sm text-gray-600 dark:text-gray-400">
+                        <TableCell
+                          className="px-5 py-4 text-start text-theme-sm text-gray-600 dark:text-gray-400"
+                          onClick={() => navigateToInvoice(inv.invoiceId)}
+                        >
                           {formatDate(inv.invoiceDate)}
                         </TableCell>
 
-                        <TableCell className="px-5 py-4 text-start font-medium text-gray-800 dark:text-white/90">
+                        <TableCell
+                          className="px-5 py-4 text-start font-medium text-gray-800 dark:text-white/90"
+                          onClick={() => navigateToInvoice(inv.invoiceId)}
+                        >
                           {formatMoney(inv.totalAmount, inv.currency_detail?.currencySymbol || inv.currencySymbol)}
                         </TableCell>
 
-                        <TableCell className="px-5 py-4 text-start font-medium text-gray-800 dark:text-white/90">
+                        <TableCell
+                          className="px-5 py-4 text-start font-medium text-gray-800 dark:text-white/90"
+                          onClick={() => navigateToInvoice(inv.invoiceId)}
+                        >
                           {formatMoney(inv.balanceDue, inv.currency_detail?.currencySymbol || inv.currencySymbol)}
                         </TableCell>
 
-                        <TableCell className="px-5 py-4 text-start">
+                        <TableCell
+                          className="px-5 py-4 text-start"
+                          onClick={() => navigateToInvoice(inv.invoiceId)}
+                        >
                           <span
                             className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
                               {
@@ -221,9 +244,10 @@ export default function InvoicesPage() {
                           </span>
                         </TableCell>
 
+                        {/* Actions column - NOT clickable to avoid conflict */}
                         <TableCell className="px-5 py-4 text-start">
                           <button
-                            onClick={() => router.push(`/dashboard/invoice?invoiceId=${inv.invoiceId}`)}
+                            onClick={() => navigateToInvoice(inv.invoiceId)}
                             className="text-gray-600 hover:text-brand-600 transition"
                             title="View invoice"
                           >
