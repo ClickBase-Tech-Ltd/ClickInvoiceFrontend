@@ -423,7 +423,7 @@ export default function ReceiptViewPage() {
     return (
       <div className="max-w-4xl mx-auto py-12 text-center">
         <p className="text-red-600 text-lg">{error || "Receipt not found"}</p>
-        <button onClick={() => router.push("/receipts")} className="mt-6 text-blue-600 hover:underline">
+        <button onClick={() => window.history.back()} className="mt-6 text-blue-600 hover:underline">
           ← Back to Receipts
         </button>
       </div>

@@ -11,10 +11,10 @@ import {
 
 export default function QuickActions() {
   const actions = [
-    { href: "/tenants/create", label: "Create Tenant", icon: faBuilding },
-    { href: "/invoices/create", label: "Create Invoice", icon: faCirclePlus },
-    { href: "/invoices", label: "Billing", icon: faReceipt },
-    { href: "/pricing", label: "Pricing", icon: faTags },
+    { href: "/dashboard/tenants/create", label: "Create Tenant", icon: faBuilding },
+    { href: "/dashboard/invoices/create", label: "Create Invoice", icon: faCirclePlus },
+    { href: "/dashboard/invoices", label: "Billing", icon: faReceipt },
+    { href: "/dashboard/plans", label: "Pricing", icon: faTags },
     // { href: "/support", label: "Support", icon: faComments },
     // { href: "/settings", label: "Settings", icon: faGear },
   ];

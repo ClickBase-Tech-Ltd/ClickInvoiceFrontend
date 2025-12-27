@@ -45,31 +45,31 @@ const getMenuItems = (role: UserRole) => {
     {
       icon: <Icon src={GridIcon} />,
       name: "Dashboard",
-      path: "/",
+      path: "/dashboard",
     },
     {
       // icon: <DocsIcon />,
       icon: <Icon src={DocsIcon} />,
       name: "Invoices",
-      path: "/invoices",
+      path: "/dashboard/invoices",
     },
     {
       // icon: <PageIcon />,
       icon: <Icon src={PageIcon} />,
       name: "Receipts",
-      path: "/receipts",
+      path: "/dashboard/receipts",
     },
     {
       // icon: <BoxIconLine />,
       icon: <Icon src={BoxIconLine} />,
       name: "Customers",
-      path: "/customers",
+      path: "/dashboard/customers",
     },
     {
       // icon: <UserCircleIcon />,
       icon: <Icon src={UserCircleIcon} />,
       name: "Profile",
-      path: "/profile",
+      path: "/dashboard/profile",
     },
   ];
 
@@ -80,7 +80,7 @@ const getMenuItems = (role: UserRole) => {
         // icon: <GroupIcon />,
         icon: <Icon src={GroupIcon} />,
         name: "Businesses",
-        path: "/tenants",
+        path: "/dashboard/tenants",
       },
       ...baseItems,
     ];
@@ -98,37 +98,37 @@ const getMenuItems = (role: UserRole) => {
         // icon: <GridIcon />,
         icon: <Icon src={GridIcon} />,
         name: "Dashboard",
-        path: "/",
+        path: "/dashboard",
       },
       {
       // icon: <BoxIconLine />,
       icon: <Icon src={BoxIconLine} />,
       name: "My Customers",
-      path: "/customers",
+      path: "/dashboard/customers",
     },
     {
         // icon: <GroupIcon />,
         icon: <Icon src={GroupIcon} />,
         name: "My Businesses",
-        path: "/tenants",
+        path: "/dashboard/tenants",
       },
       {
         // icon: <DocsIcon />,
         icon: <Icon src={DocsIcon} />,
         name: "My Invoices",
-        path: "/invoices",
+        path: "/dashboard/invoices",
       },
       {
         // icon: <PageIcon />,
         icon: <Icon src={PageIcon} />,
         name: "My Receipts",
-        path: "/receipts",
+        path: "/dashboard/receipts",
       },
       {
         // icon: <UserCircleIcon />,
         icon: <Icon src={UserCircleIcon} />,
         name: "Profile",
-        path: "/profile",
+        path: "/dashboard/profile",
       },
     ];
   }
@@ -154,28 +154,50 @@ const AppSidebar: React.FC = () => {
   const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>({});
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  const isActive = useCallback((path: string) => path === pathname, [pathname]);
+  // const isActive = useCallback((path: string) => path === pathname, [pathname]);
+
+  const isActive = useCallback(
+  (path: string) => {
+    // Dashboard should only be active on exact match
+    if (path === "/dashboard") {
+      return pathname === "/dashboard/";
+    }
+
+    // Other routes can match subpaths
+    return pathname === path || pathname.startsWith(path + "/");
+  },
+  [pathname]
+);
+
 
   const renderMenuItems = () => (
     <ul className="flex flex-col gap-4">
       {navItems.map((nav, index) => (
         <li key={nav.name}>
           {nav.path ? (
-            <Link
-              href={nav.path}
-              className={`menu-item group ${
-                isActive(nav.path) ? "menu-item-active" : "menu-item-inactive"
-              }`}
-            >
-              <span
-                className={`${
-                  isActive(nav.path)
-                    ? "menu-item-icon-active"
-                    : "menu-item-icon-inactive"
-                }`}
-              >
-                {nav.icon}
-              </span>
+  <Link
+  href={nav.path}
+  className={`menu-item group transition-colors
+    ${
+      isActive(nav.path)
+        ? "bg-[#0A66C2] text-white"
+        : "menu-item-inactive hover:bg-[#0A66C2] hover:text-white"
+    }
+  `}
+>
+
+<span
+  className={`transition-colors ${
+    isActive(nav.path)
+      ? "invert brightness-0"
+      : "group-hover:invert group-hover:brightness-0"
+  }`}
+>
+  {nav.icon}
+</span>
+
+
+               
               {(isExpanded || isHovered || isMobileOpen) && (
                 <span className="menu-item-text">{nav.name}</span>
               )}

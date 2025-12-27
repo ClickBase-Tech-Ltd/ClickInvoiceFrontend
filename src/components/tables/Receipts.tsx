@@ -122,7 +122,7 @@ export default function ReceiptsPage() {
             <p className="text-gray-500 mb-6">
               No receipts found for this tenant.
             </p>
-            <Button onClick={() => router.push("/receipts/create")}>
+            <Button onClick={() => router.push("/dashboard/receipts/create")}>
               Create Receipt
             </Button>
           </div>
@@ -188,7 +188,7 @@ export default function ReceiptsPage() {
                       <Button
   variant="outline"
   size="sm"
-  onClick={() => router.push(`/receipt?receiptId=${receipt.receiptId}`)}
+  onClick={() => router.push(`/dashboard/receipt?receiptId=${receipt.receiptId}`)}
 >
   View
 </Button>

@@ -351,7 +351,7 @@ export default function UserInfoCard() {
               Cancel
             </Button>
 
-            <Button onClick={handleSaveProfile} disabled={updating}>
+            <Button onClick={handleSaveProfile} disabled={updating} className="!bg-[#0A66C2] hover:!bg-[#084d93]">
               {updating ? "Saving..." : "Save Profile"}
             </Button>
 

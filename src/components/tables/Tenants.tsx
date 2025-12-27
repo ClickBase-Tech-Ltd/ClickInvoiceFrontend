@@ -120,8 +120,8 @@ export default function CompaniesListPage() {
               My Businesses
             </h1>
             <Link
-              href="/tenants/create"
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition"
+              href="/dahsboard/tenants/create"
+              className="inline-flex items-center gap-2 rounded-lg !bg-[#0A66C2] hover:!bg-[#084d93] px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition"
             >
               Add Business
             </Link>
@@ -220,22 +220,22 @@ export default function CompaniesListPage() {
                           </TableCell>
 
                           <TableCell className="px-4 py-3 text-start text-theme-sm text-gray-600 dark:text-gray-400">
-                            {tenant.currency.currencySymbol} {tenant.currency.currencyCode}
+                            {tenant?.currency?.currencySymbol} {tenant?.currency?.currencyCode}
                           </TableCell>
 
                           <TableCell className="px-4 py-3 text-start">
                             <div className="flex items-center gap-3">
                               <button
                                 onClick={() => handleStatusToggle(tenant)}
-                                disabled={updatingStatus === tenant.tenantId}
+                                disabled={updatingStatus === tenant?.tenantId}
                                 className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none disabled:opacity-50"
                                 style={{
-                                  backgroundColor: tenant.status === "active" ? "#10b981" : "#6b7280",
+                                  backgroundColor: tenant?.status === "active" ? "#10b981" : "#6b7280",
                                 }}
                               >
                                 <span
                                   className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                    tenant.status === "active" ? "translate-x-6" : "translate-x-1"
+                                    tenant?.status === "active" ? "translate-x-6" : "translate-x-1"
                                   }`}
                                 />
                               </button>
@@ -266,7 +266,7 @@ export default function CompaniesListPage() {
                               </button>
 
                               <Link
-                                href={`/companies/${tenant.tenantId}/edit`}
+                                href={`/dahsboard/companies/${tenant.tenantId}/edit`}
                                 className="text-brand-500 hover:text-brand-600 text-sm font-medium"
                               >
                                 Edit
@@ -339,20 +339,20 @@ export default function CompaniesListPage() {
                 <div>
                   <span className="font-medium text-gray-500">Currency:</span>
                   <p className="mt-1">
-                    {selectedTenant.currency.currencySymbol} {selectedTenant.currency.currencyName} ({selectedTenant.currency.currencyCode})
+                    {selectedTenant.currency?.currencySymbol} {selectedTenant.currency?.currencyName} ({selectedTenant.currency?.currencyCode})
                   </p>
                 </div>
                 <div>
                   <span className="font-medium text-gray-500">Country:</span>
-                  <p className="mt-1">{selectedTenant.currency.country}</p>
+                  <p className="mt-1">{selectedTenant.currency?.country}</p>
                 </div>
                 <div>
                   <span className="font-medium text-gray-500">Timezone:</span>
-                  <p className="mt-1">{selectedTenant.timezone}</p>
+                  <p className="mt-1">{selectedTenant?.timezone}</p>
                 </div>
                 <div>
                   <span className="font-medium text-gray-500">Payment Gateway:</span>
-                  <p className="mt-1">{selectedTenant.payment_gateway.paymentGatewayName}</p>
+                  <p className="mt-1">{selectedTenant.payment_gateway?.paymentGatewayName}</p>
                 </div>
                 <div>
                   <span className="font-medium text-gray-500">Status:</span>

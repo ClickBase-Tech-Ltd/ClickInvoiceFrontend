@@ -78,7 +78,7 @@ export default function SignInForm() {
         // }
 
         // Redirect to dashboard
-        router.push("/");
+        router.push("/dashboard");
       } else {
         setError(data.message || "Invalid credentials. Please try again.");
       }

@@ -2,13 +2,20 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import ComponentCard from "../../components/common/ComponentCard";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableRow,
+} from "../../components/ui/table";
 import Button from "../../components/ui/button/Button";
-import { ChevronLeftIcon } from "@/icons";
+import { ChevronLeftIcon, EyeIcon } from "@/icons";
 import api from "../../../lib/api";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Icon from "@/components/Icons";
+
 /* ---------------- types ---------------- */
 
 interface Invoice {
@@ -23,6 +30,9 @@ interface Invoice {
   status: "draft" | "sent" | "paid" | "overdue";
   invoiceDate: string;
   createdAt: string;
+  currency_detail?: {
+    currencySymbol: string;
+  };
 }
 
 /* ---------------- component ---------------- */
@@ -33,23 +43,22 @@ export default function InvoicesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  /* ---------------- Money Formatter with Commas ---------------- */
+  /* ---------------- Money Formatter ---------------- */
   const formatMoney = (value: number | null | undefined, currencySymbol: string = "$") => {
     const num = Number(value);
     if (isNaN(num)) return `${currencySymbol}0.00`;
 
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: "USD", // We use this only for formatting (commas & decimals)
+      currency: "USD",
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })
       .format(num)
-      .replace("$", currencySymbol); // Replace default $ with actual symbol (e.g., £, €)
+      .replace("$", currencySymbol);
   };
 
   /* ---------------- fetch invoices ---------------- */
-
   useEffect(() => {
     const fetchInvoices = async () => {
       try {
@@ -66,7 +75,6 @@ export default function InvoicesPage() {
   }, []);
 
   /* ---------------- helpers ---------------- */
-
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString(undefined, {
       year: "numeric",
@@ -74,140 +82,163 @@ export default function InvoicesPage() {
       day: "numeric",
     });
 
-  const statusColor = (status: Invoice["status"]) => {
+  const statusBadgeColor = (status: Invoice["status"]) => {
     switch (status) {
       case "paid":
-        return "bg-green-100 text-green-700";
+        return "success";
       case "overdue":
-        return "bg-red-100 text-red-700";
+        return "error";
       case "sent":
-        return "bg-blue-100 text-blue-700";
+        return "info";
       case "draft":
       default:
-        return "bg-gray-100 text-gray-700";
+        return "secondary";
     }
   };
 
-  const handleViewInvoice = (invoiceId: string) => {
-    router.push(`/invoices/${invoiceId}/view`);
-  };
-
   /* ---------------- UI ---------------- */
-
   return (
-    <div className="max-w-6xl mx-auto py-8">
-      {/* Back */}
-      <button
-        onClick={() => window.history.back()}
-        className="mb-6 inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900"
-      >
-        {/* <ChevronLeftIcon className="w-5 h-5" /> */}
-        <Icon src={ChevronLeftIcon} className="w-5 h-5"/>
-        Back
-      </button>
-
-      {/* <ComponentCard> */}
-        {/* Loading */}
-        {loading && (
-          <p className="text-center text-sm text-gray-500 py-8">
-            Loading invoices...
-          </p>
-        )}
-
-        {/* Error */}
-        {!loading && error && (
-          <p className="text-center text-sm text-red-600 py-8">{error}</p>
-        )}
-
-        {/* Empty */}
-        {!loading && !error && invoices.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500 mb-6">
-              No invoices found for this tenant.
-            </p>
-            <Button onClick={() => router.push("/invoices/create")}>
-              Create Invoice
-            </Button>
-          </div>
-        )}
-
- {/* Page Header */}
-          <div className="flex items-center justify-between">
+    <div className="relative min-h-screen">
+      <div className="space-y-6 py-6 px-4 md:px-6 lg:px-8">
+        {/* Page Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => window.history.back()}
+              className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900"
+            >
+              <Icon src={ChevronLeftIcon} className="w-5 h-5" />
+              Back
+            </button>
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
               My Invoices
             </h1>
-            <Link
-              href="/invoices/create"
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition"
-            >
-              Create Invoice
-            </Link>
           </div>
+
+          <Link
+            href="/dashboard/invoices/create"
+            className="inline-flex items-center gap-2 rounded-lg !bg-[#0A66C2] hover:!bg-[#084d93] px-4 py-2 text-sm font-medium text-white hover:bg-brand-600 transition"
+          >
+            Create Invoice
+          </Link>
+        </div>
+
         {/* Table */}
-        {!loading && !error && invoices.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="border-b text-left text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                  <th className="py-4 font-medium">Invoice</th>
-                  <th className="py-4 font-medium">Project</th>
-                  <th className="py-4 font-medium">Date</th>
-                  <th className="py-4 font-medium">Total</th>
-                  <th className="py-4 font-medium">Balance Due</th>
-                  <th className="py-4 font-medium">Status</th>
-                  <th className="py-4 text-right font-medium">Actions</th>
-                </tr>
-              </thead>
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+          <div className="max-w-full overflow-x-auto">
+            <div className="min-w-[900px]">
+              <Table>
+                <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
+                  <TableRow>
+                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                      Invoice
+                    </TableCell>
+                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                      Project
+                    </TableCell>
+                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                      Date
+                    </TableCell>
+                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                      Total
+                    </TableCell>
+                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                      Balance Due
+                    </TableCell>
+                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                      Status
+                    </TableCell>
+                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                      Actions
+                    </TableCell>
+                  </TableRow>
+                </TableHeader>
 
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {invoices.map((inv) => (
-                  <tr
-                    key={inv.invoiceId}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                  >
-                    <td className="py-4 font-medium">
-                      {inv.userGeneratedInvoiceId || inv.invoiceId}
-                    </td>
-
-                    <td className="py-4">{inv.projectName || "-"}</td>
-
-                    <td className="py-4">{formatDate(inv.invoiceDate)}</td>
-
-                    <td className="py-4 font-medium">
-                      {formatMoney(inv.totalAmount, inv.currency_detail?.currencySymbol)}
-                    </td>
-
-                    <td className="py-4 font-medium">
-                      {formatMoney(inv.balanceDue, inv.currency_detail?.currencySymbol)}
-                    </td>
-
-                    <td className="py-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
-                          inv.status
-                        )}`}
+                <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="py-10 text-center text-gray-500 dark:text-gray-400">
+                        Loading invoices...
+                      </TableCell>
+                    </TableRow>
+                  ) : error ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="py-10 text-center text-red-600">
+                        {error}
+                      </TableCell>
+                    </TableRow>
+                  ) : invoices.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="py-10 text-center text-gray-500 dark:text-gray-400">
+                        No invoices found.
+                        <div className="mt-4">
+                          <Button onClick={() => router.push("/dashboard/invoices/create")}>
+                            Create Invoice
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    invoices.map((inv) => (
+                      <TableRow
+                        key={inv.invoiceId}
+                        className="hover:bg-gray-50 dark:hover:bg-gray-800"
                       >
-                        {inv.status.toUpperCase()}
-                      </span>
-                    </td>
+                        <TableCell className="px-5 py-4 text-start">
+                          <span className="font-medium text-gray-800 dark:text-white/90">
+                            {inv.userGeneratedInvoiceId || inv.invoiceId}
+                          </span>
+                        </TableCell>
 
-                    <td className="py-4 text-right">
-                     
-<Button
-  variant="outline"
-  size="sm"
-  onClick={() => router.push(`/invoice?invoiceId=${inv.invoiceId}`)}
->
-  View
-</Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                        <TableCell className="px-5 py-4 text-start text-theme-sm text-gray-600 dark:text-gray-400">
+                          {inv.projectName || "—"}
+                        </TableCell>
+
+                        <TableCell className="px-5 py-4 text-start text-theme-sm text-gray-600 dark:text-gray-400">
+                          {formatDate(inv.invoiceDate)}
+                        </TableCell>
+
+                        <TableCell className="px-5 py-4 text-start font-medium text-gray-800 dark:text-white/90">
+                          {formatMoney(inv.totalAmount, inv.currency_detail?.currencySymbol || inv.currencySymbol)}
+                        </TableCell>
+
+                        <TableCell className="px-5 py-4 text-start font-medium text-gray-800 dark:text-white/90">
+                          {formatMoney(inv.balanceDue, inv.currency_detail?.currencySymbol || inv.currencySymbol)}
+                        </TableCell>
+
+                        <TableCell className="px-5 py-4 text-start">
+                          <span
+                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
+                              {
+                                success: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+                                error: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+                                info: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+                                secondary: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300",
+                              }[statusBadgeColor(inv.status)]
+                            }`}
+                          >
+                            {inv.status.toUpperCase()}
+                          </span>
+                        </TableCell>
+
+                        <TableCell className="px-5 py-4 text-start">
+                          <button
+                            onClick={() => router.push(`/dashboard/invoice?invoiceId=${inv.invoiceId}`)}
+                            className="text-gray-600 hover:text-brand-600 transition"
+                            title="View invoice"
+                          >
+                            <Icon src={EyeIcon} className="w-5 h-5" />
+                          </button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </div>
-        )}
-      {/* </ComponentCard> */}
+        </div>
+      </div>
     </div>
   );
 }
