@@ -44,7 +44,10 @@ interface Plan {
   price: number;
   features: PlanFeature[];
   isPopular?: boolean;
-  currencySymbol: string;
+  // currencySymbol: string;
+  currency_detail?: {
+    currencySymbol: string;
+  };
 }
 
 export default function PlansPage() {
@@ -114,7 +117,7 @@ export default function PlansPage() {
             price: isFree ? 0 : price,
             features,
             isPopular: raw.isPopular === 1 || raw.isPopular === true,
-            currencySymbol: "₦",
+            currencySymbol: raw.currency_detail?.currencySymbol || "",
           };
         });
 
@@ -200,7 +203,7 @@ const handleUpgrade = async (plan: Plan) => {
 
               <div className="mt-6">
                 <span className="text-3xl font-bold text-gray-900 dark:text-white">
-                  {plan.price === 0 ? "Free" : `${plan.currencySymbol}${plan.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+                  {plan.price === 0 ? "Free" : `${plan?.currencySymbol}${plan.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
                 </span>
                 {plan.price > 0 && <span className="text-xl text-gray-500 dark:text-gray-400"><br/>per month</span>}
               </div>

@@ -396,10 +396,10 @@ export default function AddCompanyPage() {
             <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
               <Button
                 type="submit"
-                className="w-full md:w-auto"
+                className="w-full md:w-auto !bg-[#0A66C2] hover:!bg-[#084d93]"
                 disabled={isSubmitting || loadingCurrencies || loadingGateways}
               >
-                {isSubmitting ? "Creating Tenant..." : "Create Tenant"}
+                {isSubmitting ? "Creating Business..." : "Create Business"}
               </Button>
             </div>
           </form>

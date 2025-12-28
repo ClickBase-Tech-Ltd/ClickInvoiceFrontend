@@ -129,11 +129,19 @@ export default function CustomerInvoicesAndReceipts() {
         }));
 
         const receiptsRes = await api.get(`/receipts?customerId=${customerId}`);
+        // const receipts: Receipt[] = (receiptsRes.data || []).map((r: any) => ({
+        //   ...r,
+        //   type: "receipt" as const,
+        //   currencySymbol: r.currency_detail?.currencySymbol || "$",
+        // }));
         const receipts: Receipt[] = (receiptsRes.data || []).map((r: any) => ({
-          ...r,
-          type: "receipt" as const,
-          currencySymbol: r.currency_detail?.currencySymbol || "$",
-        }));
+  ...r,
+  type: "receipt" as const,
+  currencySymbol: r.currency_detail?.currencySymbol || "$",
+  receiptDate: r.updated_at.split("T")[0], // Extract YYYY-MM-DD from ISO timestamp
+  // Optional: keep invoiceDate if needed later
+  invoiceDate: r.invoiceDate,
+}));
 
         const combined = [...invoices, ...receipts].sort((a, b) => {
           const dateA = new Date(a.type === "invoice" ? a.invoiceDate : a.receiptDate);
@@ -195,7 +203,9 @@ export default function CustomerInvoicesAndReceipts() {
             </h1>
           </div>
 
-          <Button onClick={() => router.push("/invoices/create")}>
+          <Button 
+          className="!bg-[#0A66C2] hover:!bg-[#084d93]"
+          onClick={() => router.push("/dashboard/invoices/create")}>
             Create Invoice
           </Button>
         </div>
