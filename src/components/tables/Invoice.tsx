@@ -99,7 +99,7 @@ interface FullInvoice {
     signatureUrl: string;
   };
   user: {
-    currentPlan: number; // 1 = free, 2 = premium, 3 = pro, etc.
+    currentPlan: number | string; // 1 = free, 2 = premium, 3 = pro, etc.
   };
 }
 
@@ -693,7 +693,11 @@ const handleSendEmail = async (sendToAlternate: boolean = false) => {
     );
   }
 
-const isPremium = invoice.user.currentPlan === 2 || invoice.user.currentPlan === 3;
+// const isPremium = invoice.user.currentPlan === 2 || invoice.user.currentPlan === 3;
+// Safely check if user is on a premium plan (plan 2 or 3)
+// Recommended: Explicit and safe comparison
+const isPremium = ["2", "3", 2, 3].includes(invoice.user.currentPlan);
+
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <button

@@ -74,7 +74,7 @@ interface FullReceipt {
     signatureUrl: string;
   };
   user: {
-    currentPlan: number; // From creator.currentPlan
+    currentPlan: number | string; // From creator.currentPlan
   };
 }
 
@@ -465,8 +465,9 @@ export default function ReceiptViewPage() {
     );
   }
 
-  const isPremium = receipt.user.currentPlan === 2 || receipt.user.currentPlan === 3;
-
+  // const isPremium = receipt.user.currentPlan === 2 || receipt.user.currentPlan === 3;
+// Recommended: Explicit and safe comparison
+const isPremium = ["2", "3", 2, 3].includes(receipt.user.currentPlan);
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <button

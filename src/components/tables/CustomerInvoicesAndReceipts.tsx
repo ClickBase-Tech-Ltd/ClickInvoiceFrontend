@@ -155,9 +155,9 @@ export default function CustomerInvoicesAndReceipts() {
   /* ---------------- View Handler ---------------- */
   const handleViewDocument = (doc: Document) => {
     if (doc.type === "invoice") {
-      router.push(`/invoice?invoiceId=${doc.invoiceId}`);
+      router.push(`/dashboard/invoice?invoiceId=${doc.invoiceId}`);
     } else {
-      router.push(`/receipt?receiptId=${doc.receiptId}`);
+      router.push(`/dashboard/receipt?receiptId=${doc.receiptId}`);
     }
   };
 

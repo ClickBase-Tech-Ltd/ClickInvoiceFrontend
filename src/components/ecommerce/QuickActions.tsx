@@ -11,12 +11,12 @@ import {
 
 export default function QuickActions() {
   const actions = [
-    { href: "/dashboard/tenants/create", label: "Create Tenant", icon: faBuilding },
+    { href: "/dashboard/tenants/create", label: "Create Business", icon: faBuilding },
     { href: "/dashboard/invoices/create", label: "Create Invoice", icon: faCirclePlus },
     { href: "/dashboard/invoices", label: "Billing", icon: faReceipt },
     { href: "/dashboard/plans", label: "Pricing", icon: faTags },
     // { href: "/support", label: "Support", icon: faComments },
-    // { href: "/settings", label: "Settings", icon: faGear },
+    { href: "/dashboard/profile", label: "Settings", icon: faGear },
   ];
 
   return (

@@ -251,12 +251,12 @@ export default function AddCompanyPage() {
           </button>
         </div>
 
-        <ComponentCard title="Add New Tenant">
+        <ComponentCard title="Add New Business">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Form fields remain unchanged */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <Label htmlFor="tenantName">Tenant Name</Label>
+                <Label htmlFor="tenantName">Business Name</Label>
                 <input
                   id="tenantName"
                   name="tenantName"
@@ -312,7 +312,7 @@ export default function AddCompanyPage() {
 
             {/* Logo Upload */}
             <div>
-              <Label htmlFor="tenantLogo">Company Logo</Label>
+              <Label htmlFor="tenantLogo">Business Logo</Label>
               <input
                 ref={logoInputRef}
                 id="tenantLogo"
