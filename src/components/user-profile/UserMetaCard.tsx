@@ -19,6 +19,7 @@ interface UserProfile {
   linkedin: string;
   instagram: string;
   profileImage: string;
+  user_plan: string;
 }
 
 export default function UserMetaCard() {
@@ -37,6 +38,7 @@ export default function UserMetaCard() {
     linkedin: "",
     instagram: "",
     profileImage: "",
+    user_plan: "",
   });
   const [updating, setUpdating] = useState(false);
 
@@ -57,6 +59,7 @@ export default function UserMetaCard() {
           linkedin: response.data.linkedin || "https://www.linkedin.com/company/pimjo",
           instagram: response.data.instagram || "https://instagram.com/PimjoHQ",
           profileImage: response.data.profileImage || "/images/user/owner.jpg",
+          user_plan: response.data.user_plan || "FREE",
         });
       } catch (err: any) {
         setError(err?.response?.data?.message || "Failed to load profile");
@@ -126,6 +129,10 @@ export default function UserMetaCard() {
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                  {userData?.phoneNumber}
                 </p>
+                <div className="hidden h-3.5 w-px bg-gray-300 dark:bg-gray-700 xl:block"></div>
+                <span className="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-300">
+                  Current Plan: {userData?.user_plan}
+                </span>
               </div>
             </div>
             <div className="flex items-center order-2 gap-2 grow xl:order-3 xl:justify-end">

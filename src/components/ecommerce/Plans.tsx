@@ -5,9 +5,8 @@ import React, { useState, useEffect } from "react";
 import ComponentCard from "../../components/common/ComponentCard";
 import Button from "../../components/ui/button/Button";
 import api from "../../../lib/api";
-import { getUserEmail } from "../../../lib/auth";
 
-// Checkmark for available features
+// Checkmark & Cross SVGs
 function CheckSVG({ className }: { className?: string }) {
   return (
     <svg className={className || "w-6 h-6 text-green-500 flex-shrink-0"} fill="currentColor" viewBox="0 0 20 20">
@@ -20,7 +19,6 @@ function CheckSVG({ className }: { className?: string }) {
   );
 }
 
-// Cross for unavailable features
 function CrossSVG({ className }: { className?: string }) {
   return (
     <svg className={className || "w-6 h-6 text-red-500 flex-shrink-0"} fill="currentColor" viewBox="0 0 20 20">
@@ -44,10 +42,8 @@ interface Plan {
   price: number;
   features: PlanFeature[];
   isPopular?: boolean;
-  // currencySymbol: string;
-  currency_detail?: {
-    currencySymbol: string;
-  };
+  currencySymbol: string;
+  is_subscribed: boolean;
 }
 
 export default function PlansPage() {
@@ -55,23 +51,6 @@ export default function PlansPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
-
-  // // Load Flutterwave script only on client
-  // useEffect(() => {
-  //   if (typeof window === "undefined") return;
-  //   if ((window as any).FlutterwaveCheckout) return;
-
-  //   const script = document.createElement("script");
-  //   script.src = "https://checkout.flutterwave.com/v3.js";
-  //   script.async = true;
-  //   document.body.appendChild(script);
-
-  //   return () => {
-  //     if (document.body.contains(script)) {
-  //       document.body.removeChild(script);
-  //     }
-  //   };
-  // }, []);
 
   useEffect(() => {
     const fetchPlans = async () => {
@@ -83,7 +62,6 @@ export default function PlansPage() {
         const processedPlans: Plan[] = rawPlans.map((raw: any) => {
           let rawFeatures = raw.features || "";
 
-          // Clean the string: remove outer quotes if present
           if (typeof rawFeatures === "string") {
             let cleaned = rawFeatures.trim();
             if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
@@ -92,16 +70,14 @@ export default function PlansPage() {
             rawFeatures = cleaned;
           }
 
-          // Split by ", " but handle the ✓ or ✗ prefix
           const featureStrings = rawFeatures
             .split('", "')
             .map((f: string) => f.replace(/^"|"$/g, "").trim())
             .filter((f: string) => f.length > 0);
 
-          // Parse each feature: check if it starts with ✗ or \u2717 (cross)
           const features: PlanFeature[] = featureStrings.map((feature: string) => {
             const hasCross = feature.startsWith("✗") || feature.startsWith("\u2717");
-            const text = feature.replace(/^✗|\u2717\s*/, "").trim(); // remove ✗ and whitespace
+            const text = feature.replace(/^✗|\u2717\s*/, "").trim();
             return {
               text,
               available: !hasCross,
@@ -109,15 +85,15 @@ export default function PlansPage() {
           });
 
           const price = parseFloat(raw.price);
-          const isFree = price === 0;
 
           return {
             id: raw.planId,
             name: raw.planName,
-            price: isFree ? 0 : price,
+            price,
             features,
             isPopular: raw.isPopular === 1 || raw.isPopular === true,
-            currencySymbol: raw.currency_detail?.currencySymbol || "",
+            currencySymbol: raw.currency_detail?.currencySymbol || "$",
+            is_subscribed: raw.is_subscribed === true,
           };
         });
 
@@ -133,31 +109,29 @@ export default function PlansPage() {
     fetchPlans();
   }, []);
 
-//   const userEmail = "customer@example.com"; // Replace with real user email from auth
-const userEmail = getUserEmail();
-
-const handleUpgrade = async (plan: Plan) => {
-  if (plan.price === 0) {
-    alert("This is the free plan. No payment required!");
-    return;
-  }
-
-  setProcessingPlan(plan.id.toString());
-
-  try {
-    const res = await api.post(`/subscribe/${plan.id}`);
-    const { payment_link } = res.data;
-
-    if (payment_link) {
-      window.location.href = payment_link; // Redirect to hosted page
+  const handleUpgrade = async (plan: Plan) => {
+    // Allow clicking on any paid plan (even if lower tier or same)
+    // Only block if it's free or currently processing
+    if (plan.price === 0) {
+      return;
     }
-  } catch (err) {
-    console.error("Failed to initiate subscription:", err);
-    alert("Failed to start subscription. Please try again.");
-  } finally {
-    setProcessingPlan(null);
-  }
-};
+
+    setProcessingPlan(plan.id.toString());
+
+    try {
+      const res = await api.post(`/subscribe/${plan.id}`);
+      const { payment_link } = res.data;
+
+      if (payment_link) {
+        window.location.href = payment_link;
+      }
+    } catch (err: any) {
+      console.error("Failed to initiate subscription:", err);
+      alert(err?.response?.data?.error || "Failed to start subscription. Please try again.");
+    } finally {
+      setProcessingPlan(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -175,6 +149,9 @@ const handleUpgrade = async (plan: Plan) => {
     );
   }
 
+  // Find current active plan ID for downgrade detection (for display only)
+  const currentPlanId = plans.find((p) => p.is_subscribed)?.id || null;
+
   return (
     <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
       <div className="text-center mb-12">
@@ -185,60 +162,94 @@ const handleUpgrade = async (plan: Plan) => {
       </div>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-        {plans.map((plan) => (
-          <ComponentCard
-            key={plan.id}
-            className={`relative ${plan.isPopular ? "border-2 border-brand-500 shadow-lg" : ""}`}
-          >
-            {plan.isPopular && (
-              <div className="absolute -top-5 left-1/2 -translate-x-1/2">
-                <span className="bg-[#0A66C2] text-white px-4 py-1 rounded-full text-sm font-medium">
-                  Most Popular
-                </span>
-              </div>
-            )}
+        {plans.map((plan) => {
+          const isCurrentPlan = plan.is_subscribed;
+          const isFreePlan = plan.price === 0;
+          const isLowerTier =
+            plan.price > 0 &&
+            !isCurrentPlan &&
+            currentPlanId &&
+            (plan.id as number) < (currentPlanId as number);
 
-            <div className="text-center">
-              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">{plan.name}</h2>
+          const buttonText = isCurrentPlan
+            ? "Current Plan"
+            : isFreePlan
+            ? "Free Plan"
+            : isLowerTier
+            ? "Downgrade"
+            : "Upgrade Now";
 
-              <div className="mt-6">
-                <span className="text-3xl font-bold text-gray-900 dark:text-white">
-                  {plan.price === 0 ? "Free" : `${plan?.currencySymbol}${plan.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
-                </span>
-                {plan.price > 0 && <span className="text-xl text-gray-500 dark:text-gray-400"><br/>per month</span>}
-              </div>
+          // Only disable: Current Plan, Free Plan, or while processing
+          const isButtonDisabled = isCurrentPlan || isFreePlan || processingPlan === plan.id.toString();
 
-              <ul className="mt-8 space-y-4 text-left">
-                {plan.features.map((feature, i) => (
-                  <li key={i} className="flex items-start gap-3">
-                    {feature.available ? <CheckSVG /> : <CrossSVG />}
-                    <span
-                      className={`text-gray-700 dark:text-gray-300 ${
-                        !feature.available ? "text-gray-400 line-through" : ""
-                      }`}
-                    >
-                      {feature.text}
+          return (
+            <ComponentCard
+              key={plan.id}
+              className={`relative ${plan.isPopular ? "border-2 border-brand-500 shadow-lg" : ""}`}
+            >
+              {plan.isPopular && (
+                <div className="absolute -top-5 left-1/2 -translate-x-1/2">
+                  <span className="bg-[#0A66C2] text-white px-4 py-1 rounded-full text-sm font-medium">
+                    Most Popular
+                  </span>
+                </div>
+              )}
+
+              <div className="text-center">
+                <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">{plan.name}</h2>
+
+                <div className="mt-6">
+                  <span className="text-3xl font-bold text-gray-900 dark:text-white">
+                    {isFreePlan
+                      ? "Free"
+                      : `${plan.currencySymbol}${plan.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+                  </span>
+                  {!isFreePlan && (
+                    <span className="text-xl text-gray-500 dark:text-gray-400">
+                      <br />
+                      per month
                     </span>
-                  </li>
-                ))}
-              </ul>
+                  )}
+                </div>
 
-              <Button
-  onClick={() => handleUpgrade(plan)}
-  disabled={processingPlan === plan.id.toString() || plan.price === 0}
-  className={`mt-8 w-full ${
-    plan.isPopular ? "bg-[#0A66C2] hover:bg-brand-500" : ""
-  }`}
->
-  {processingPlan === plan.id.toString()
-    ? "Processing..."
-    : plan.price === 0
-    ? "Current Plan"
-    : "Upgrade Now"}
-</Button>
-            </div>
-          </ComponentCard>
-        ))}
+                <ul className="mt-8 space-y-4 text-left">
+                  {plan.features.map((feature, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      {feature.available ? <CheckSVG /> : <CrossSVG />}
+                      <span
+                        className={`text-gray-700 dark:text-gray-300 ${
+                          !feature.available ? "text-gray-400 line-through" : ""
+                        }`}
+                      >
+                        {feature.text}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+                <Button
+                  onClick={() => handleUpgrade(plan)}
+                  disabled={isButtonDisabled}
+                  className={`mt-8 w-full ${
+                    plan.isPopular && !isCurrentPlan && !isFreePlan
+                      ? "bg-[#0A66C2] hover:bg-[#084d93]"
+                      : isButtonDisabled
+                      ? "bg-gray-500 dark:bg-gray-600 cursor-not-allowed opacity-70"
+                      : "bg-[#0A66C2] hover:bg-[#084d93]"
+                  }`}
+                >
+                  {processingPlan === plan.id.toString() ? "Processing..." : buttonText}
+                </Button>
+
+                {isLowerTier && (
+                  <p className="mt-3 text-xs text-amber-600 dark:text-amber-400 text-center">
+                    Contact support to downgrade
+                  </p>
+                )}
+              </div>
+            </ComponentCard>
+          );
+        })}
       </div>
 
       <div className="mt-12 text-center text-sm text-gray-500 dark:text-gray-400">
