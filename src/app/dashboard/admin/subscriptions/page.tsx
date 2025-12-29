@@ -7,17 +7,17 @@ import React from "react";
 import AdminSubscriptionsPage from "@/components/tables/Subscribers";
 
 export const metadata: Metadata = {
-  title: "Invoices | Invoice Manager",
+  title: "Subscribers | Subscribers Manager",
   description: "Create, manage, send and track invoices online.",
   keywords: [
-    "create invoice",
+    "manage invoice subscribers",
     "online invoicing",
     "send invoice Nigeria",
     "invoice tracking",
   ],
 };
 
-export default function Invoices() {
+export default function Subscribers() {
   return (
     <div>
       <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03] lg:p-6">

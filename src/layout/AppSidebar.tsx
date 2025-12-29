@@ -19,6 +19,7 @@ import {
   BoltIcon,
   PlugInIcon,
   ChatIcon,
+  UserIcon,
 } from "../icons/index";
 import SidebarWidget from "./SidebarWidget";
 import { faCog } from "@fortawesome/free-solid-svg-icons";
@@ -58,12 +59,26 @@ const getMenuItems = (role: UserRole) => {
       name: "Subscriptions",
       path: "/dashboard/admin/subscriptions",
     },
-    // {
-    //   // icon: <PageIcon />,
-    //   icon: <Icon src={PageIcon} />,
-    //   name: "Receipts",
-    //   path: "/dashboard/receipts",
-    // },
+    {
+      // icon: <PageIcon />,
+      icon: <Icon src={UserIcon} />,
+      name: "Users",
+      path: "/dashboard/admin/users",
+    },
+
+    {
+        // icon: <GroupIcon />,
+        icon: <Icon src={GroupIcon} />,
+        name: "Businesses",
+        path: "/dashboard/admin/tenants",
+      },
+
+    {
+      // icon: <PageIcon />,
+      icon: <Icon src={GroupIcon} />,
+      name: "Customers",
+      path: "/dashboard/admin/customers",
+    },
     // {
     //   // icon: <BoxIconLine />,
     //   icon: <Icon src={BoxIconLine} />,
