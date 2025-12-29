@@ -89,6 +89,8 @@ export default function CompaniesListPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  const [statusError, setStatusError] = useState<string | null>(null);
+
   const logoInputRef = useRef<HTMLInputElement>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
 
@@ -148,9 +150,19 @@ export default function CompaniesListPage() {
 
   const handleEditTenant = (tenant: Tenant) => {
   // Ensure currency is an object
-  const currencyObject = typeof tenant.currency === 'number' 
-    ? currencies.find(c => c.currencyId === tenant.currency) || tenant.currency
-    : tenant.currency;
+  // const currencyObject = typeof tenant.currency === 'number' 
+  //   ? currencies.find(c => c.currencyId === tenant.currency) || tenant.currency
+  //   : tenant.currency;
+
+  const currencyObject = tenant.currency && typeof tenant.currency === 'object'
+  ? tenant.currency
+  : currencies.find(c => c.currencyId === Number(tenant.currency)) || {
+      currencyId: 1,
+      currencyName: "Naira",
+      currencyCode: "NGN",
+      currencySymbol: "₦",
+      country: "Nigeria"
+    };
 
   setEditingTenant({
     ...tenant,
@@ -177,26 +189,34 @@ export default function CompaniesListPage() {
     setLogoPreview(null);
     setSignaturePreview(null);
     setSuccessMessage(null);
+    setStatusError(null);
   };
 
-  const handleStatusToggle = async (tenant: Tenant) => {
-    const newStatus = tenant.status === "active" ? "inactive" : "active";
-    setUpdatingStatus(tenant.tenantId);
+const handleStatusToggle = async (tenant: Tenant) => {
+  const newStatus = tenant.status === "active" ? "inactive" : "active";
+  setUpdatingStatus(tenant.tenantId);
 
-    try {
-      await api.patch(`/tenants/${tenant.tenantId}`, { status: newStatus });
-      setTenants((prev) =>
-        prev.map((t) =>
-          t.tenantId === tenant.tenantId ? { ...t, status: newStatus } : t
-        )
-      );
-    } catch (error) {
-      console.error("Failed to update status:", error);
-      alert("Failed to update company status.");
-    } finally {
-      setUpdatingStatus(null);
-    }
-  };
+  try {
+    await api.patch(`/tenants/${tenant.tenantId}/status`, { status: newStatus });
+    setTenants((prev) =>
+      prev.map((t) =>
+        t.tenantId === tenant.tenantId ? { ...t, status: newStatus } : t
+      )
+    );
+    setStatusError(null);
+  } catch (error: any) {
+    console.error("Failed to update status:", error);
+    const message =
+      error?.response?.data?.message ||
+      error?.message ||
+      "Failed to update company status.";
+    
+    setStatusError(message); // This will show your local error modal
+    // REMOVE THIS LINE: openModal({ title: "Action Not Allowed" });
+  } finally {
+    setUpdatingStatus(null);
+  }
+};
 
   const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   e.preventDefault();
@@ -420,9 +440,8 @@ export default function CompaniesListPage() {
 
       {/* View Details Modal */}
       {/* View Details Modal */}
-{isAnyModalOpen && selectedTenant && !editingTenant && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-    <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-gray-900 p-6 shadow-2xl">
+{selectedTenant && !editingTenant && !statusError && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">   <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-gray-900 p-6 shadow-2xl">
       <div className="flex justify-between items-start mb-6">
         <h2 className="text-2xl font-semibold">Business Details</h2>
         <button onClick={handleCloseModal} className="text-gray-500 hover:text-gray-700">
@@ -601,9 +620,8 @@ export default function CompaniesListPage() {
   </div>
 )}
       {/* Edit Modal */}
-      {isAnyModalOpen && editingTenant && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 overflow-y-auto">
-          <div className="w-full max-w-4xl my-8 bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-6 max-h-[95vh] overflow-y-auto">
+     {editingTenant && !statusError && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 overflow-y-auto">     <div className="w-full max-w-4xl my-8 bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-6 max-h-[95vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-semibold">Edit Business</h2>
               <button onClick={handleCloseModal} className="text-gray-500 hover:text-gray-700">
@@ -766,6 +784,42 @@ export default function CompaniesListPage() {
           </div>
         </div>
       )}
+
+      {statusError && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+    <div className="w-full max-w-md rounded-xl bg-white dark:bg-gray-900 p-6 shadow-2xl">
+      <div className="flex items-center gap-4 mb-6">
+        <div className="flex-shrink-0 w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+          <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+          Cannot Change Status
+        </h2>
+      </div>
+
+      <div className="mb-8">
+        <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+          {statusError}
+        </p>
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          onClick={() => {
+            setStatusError(null);
+            closeModal();
+          }}
+          className="px-6 py-3 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition-colors"
+        >
+          Got it
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   );
 }
