@@ -79,6 +79,13 @@ const getMenuItems = (role: UserRole) => {
       name: "Customers",
       path: "/dashboard/admin/customers",
     },
+
+    {
+        // icon: <DocsIcon />,
+        icon: <Icon src={DocsIcon} />,
+        name: "Invoices",
+        path: "/dashboard/admin/invoices",
+      },
     // {
     //   // icon: <BoxIconLine />,
     //   icon: <Icon src={BoxIconLine} />,
