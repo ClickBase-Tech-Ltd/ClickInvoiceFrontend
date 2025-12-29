@@ -16,8 +16,13 @@ import {
   BoxIconLine,
   ChevronDownIcon,
   HorizontaLDots,
+  BoltIcon,
+  PlugInIcon,
+  ChatIcon,
 } from "../icons/index";
 import SidebarWidget from "./SidebarWidget";
+import { faCog } from "@fortawesome/free-solid-svg-icons";
+import { CogIcon } from "@heroicons/react/24/outline";
 
 // ====== USER ROLE TYPE ======
 type UserRole = "super_admin" | "admin" | "user" | null;
@@ -129,6 +134,19 @@ const getMenuItems = (role: UserRole) => {
         icon: <Icon src={UserCircleIcon} />,
         name: "Profile",
         path: "/dashboard/profile",
+      },
+      {
+        // icon: <UserCircleIcon />,
+        icon: <Icon src={PlugInIcon} />,
+        name: "Settings",
+        path: "/dashboard/profile",
+      },
+
+      {
+        // icon: <UserCircleIcon />,
+        icon: <Icon src={ChatIcon} />,
+        name: "Support",
+        path: "/dashboard/support",
       },
     ];
   }

@@ -15,7 +15,7 @@ export default function QuickActions() {
     { href: "/dashboard/invoices/create", label: "Create Invoice", icon: faCirclePlus },
     { href: "/dashboard/invoices", label: "Billing", icon: faReceipt },
     { href: "/dashboard/plans", label: "Pricing", icon: faTags },
-    // { href: "/support", label: "Support", icon: faComments },
+    { href: "/dashboard/support", label: "Support", icon: faComments },
     { href: "/dashboard/profile", label: "Settings", icon: faGear },
   ];
 
