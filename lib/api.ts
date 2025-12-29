@@ -22,6 +22,7 @@ const PUBLIC_PREFIXES = [
   "/learning",
 ];
 
+// --- REQUEST INTERCEPTOR ---
 api.interceptors.request.use(
   (config) => {
     const url = config.url ?? "";
@@ -31,14 +32,30 @@ api.interceptors.request.use(
       return config;
     }
 
-    // ✅ Attach tenant ID if exists
-    if (typeof window !== "undefined") {
-      // const tenantId = localStorage.getItem("currentTenantId");
+    if (typeof window === "undefined") return config;
+
+    // Get current user from localStorage
+    const user = localStorage.getItem("user");
+    let isAdmin = false;
+    if (user) {
+      try {
+        const parsedUser = JSON.parse(user);
+        const role = parsedUser.role?.toUpperCase();
+        isAdmin = role === "ADMIN" || role === "SUPER_ADMIN" || role === "SUPERADMIN";
+      } catch {
+        console.warn("Failed to parse user from localStorage");
+      }
+    }
+
+    // Attach tenant ID only if NOT admin
+    if (!isAdmin) {
       const tenantIdStr = localStorage.getItem("currentTenantId");
-  if (tenantIdStr) {
-    const tenantId = Number(tenantIdStr);
-    config.headers["X-Tenant-ID"] = tenantId;
-  }
+      if (tenantIdStr) {
+        const tenantId = Number(tenantIdStr);
+        if (!isNaN(tenantId)) {
+          config.headers["X-Tenant-ID"] = tenantId;
+        }
+      }
     }
 
     return config;
@@ -46,14 +63,16 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// --- RESPONSE INTERCEPTOR ---
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Redirect unauthenticated users
     if (error.response?.status === 401) {
+      // Clear local storage and redirect to signin
       if (typeof window !== "undefined") {
         localStorage.removeItem("access_token");
         localStorage.removeItem("currentTenantId");
+        localStorage.removeItem("user");
         window.location.href = "/signin";
       }
     }

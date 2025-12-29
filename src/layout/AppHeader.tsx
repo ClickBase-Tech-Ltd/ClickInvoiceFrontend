@@ -35,9 +35,10 @@ const AppHeader: React.FC = () => {
 
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isTenantDropdownOpen, setTenantDropdownOpen] = useState(false);
-  const [isMobileTenantDropdownOpen, setMobileTenantDropdownOpen] = useState(false); // NEW STATE
+  const [isMobileTenantDropdownOpen, setMobileTenantDropdownOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false); // NEW STATE
 
   const { tenants, currentTenant, loading, switchTenant } = useTenant();
   
@@ -81,6 +82,7 @@ const AppHeader: React.FC = () => {
       await api.post("/logout", {}, { withCredentials: true });
       setIsAuthenticated(false);
       setUserData(null);
+      setIsAdmin(false);
       setMobileMenuOpen(false);
       router.push("/");
     } catch (error) {
@@ -137,9 +139,12 @@ const AppHeader: React.FC = () => {
         const response = await api.get("/user", { withCredentials: true });
         setIsAuthenticated(true);
         setUserData(response.data);
+        // Check if user is admin
+        setIsAdmin(response.data.role === 'ADMIN');
       } catch {
         setIsAuthenticated(false);
         setUserData(null);
+        setIsAdmin(false);
       }
     };
     checkAuthAndFetchUser();
@@ -178,6 +183,11 @@ const AppHeader: React.FC = () => {
     return () => api.interceptors.response.eject(interceptor);
   }, [refreshToken]);
 
+  // Show tenant switcher only if not admin and tenant exists
+  // const showTenantSwitcher = !isAdmin && tenants.length > 0 && currentTenant;
+  // Show tenant switcher only if user is NOT admin and tenant data exists
+const showTenantSwitcher = !isAdmin && tenants.length > 0;
+
   return (
     <header
       className={`sticky top-0 z-50 flex w-full border-b bg-white dark:border-gray-800 dark:bg-gray-900 ${
@@ -212,87 +222,78 @@ const AppHeader: React.FC = () => {
 
         {/* RIGHT: Desktop menu */}
         <div className="hidden lg:flex items-center gap-4">
-          {/* Desktop Tenant Switcher */}
-          {tenants.length > 0 && currentTenant && (
-            <div className="relative tenant-switcher" ref={tenantDropdownRef}>
+          {/* Desktop Tenant Switcher - Only show for non-admin users */}
+         {/* Desktop Tenant Switcher - Only show for non-admin users */}
+{showTenantSwitcher && currentTenant && (
+  <div className="relative tenant-switcher" ref={tenantDropdownRef}>
+    <button
+      onClick={() => setTenantDropdownOpen(!isTenantDropdownOpen)}
+      className="tenant-switcher-button flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-900 transition-colors hover:bg-gray-50 dark:text-white dark:hover:bg-gray-800"
+      aria-label="Switch tenant"
+    >
+      <div className="flex items-center gap-2 truncate">
+        {currentTenant.tenantLogo ? (
+          <Image
+            width={32}
+            height={32}
+            src={`${process.env.NEXT_PUBLIC_FILE_URL}${currentTenant.tenantLogo}`}
+            alt={currentTenant.tenantName}
+            className="h-8 w-8 rounded-full object-cover"
+            unoptimized
+          />
+        ) : (
+          <div className="flex h-8 w-8 items-center justify-center rounded-full !bg-[#0A66C2] text-xs font-medium text-white">
+            {currentTenant.tenantName?.charAt(0)?.toUpperCase() || "T"}
+          </div>
+        )}
+        <span className="truncate max-w-[120px]">{currentTenant.tenantName}</span>
+      </div>
+      <svg
+        className={`h-4 w-4 transition-transform ${isTenantDropdownOpen ? "rotate-180" : ""}`}
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+      </svg>
+    </button>
+
+    {isTenantDropdownOpen && (
+      <div className="absolute right-0 mt-2 w-64 rounded-lg bg-white shadow-lg dark:bg-gray-800 z-50">
+        <div className="p-2">
+          <div className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400">
+            Switch Tenant
+          </div>
+          {tenants.map((tenant) => (
+            tenant.tenantId !== currentTenant.tenantId && (
               <button
-                onClick={() => setTenantDropdownOpen(!isTenantDropdownOpen)}
-                className="tenant-switcher-button flex items-center gap-2 rounded-lg border px-3 py-2 text-sm text-gray-900 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-white dark:hover:bg-gray-800"
-                aria-label="Switch tenant"
+                key={tenant.tenantId}
+                onClick={() => handleTenantSwitch(tenant)}
+                className="flex w-full items-center gap-3 rounded px-3 py-2 text-left text-sm text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700 transition-colors"
               >
-                {currentTenant?.tenantLogo ? (
+                {tenant.tenantLogo ? (
                   <Image
-                    width={24}
-                    height={24}
-                    src={`${process.env.NEXT_PUBLIC_FILE_URL}${currentTenant.tenantLogo}`}
-                    alt={currentTenant.tenantName}
-                    className="h-6 w-6 rounded-full object-cover"
+                    width={20}
+                    height={20}
+                    src={`${process.env.NEXT_PUBLIC_FILE_URL}${tenant.tenantLogo}`}
+                    alt={tenant.tenantName}
+                    className="h-5 w-5 rounded-full object-cover"
                     unoptimized
                   />
                 ) : (
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full !bg-[#0A66C2] text-xs font-medium text-white">
-                    {currentTenant?.tenantName?.charAt(0)?.toUpperCase() || "T"}
+                  <div className="flex h-5 w-5 items-center justify-center rounded-full !bg-gray-300 text-xs font-medium text-gray-700 dark:!bg-gray-600 dark:text-gray-300">
+                    {tenant.tenantName?.charAt(0)?.toUpperCase() || "T"}
                   </div>
                 )}
-                <span className="max-w-[120px] truncate">
-                  {currentTenant?.tenantName || "Select Tenant"}
-                </span>
-                <svg
-                  className={`h-4 w-4 transition-transform ${
-                    isTenantDropdownOpen ? "rotate-180" : ""
-                  }`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
+                <span className="flex-1 truncate">{tenant.tenantName}</span>
               </button>
-
-              {isTenantDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-64 rounded-lg border bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800 z-50">
-                  <div className="p-2">
-                    <div className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400">
-                      Switch Tenant
-                    </div>
-                    {tenants.map((tenant) => (
-                      <button
-                        key={tenant.tenantId}
-                        onClick={() => handleTenantSwitch(tenant)}
-                        disabled={tenant.tenantId === currentTenant?.tenantId}
-                        className={`flex w-full items-center gap-3 rounded px-3 py-2 text-left text-sm ${
-                          tenant.tenantId === currentTenant?.tenantId
-                            ? "bg-brand-50 font-medium text-brand-600 dark:bg-gray-700 dark:text-brand-400"
-                            : "text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700"
-                        } transition-colors`}
-                      >
-                        {tenant.tenantLogo ? (
-                          <Image
-                            width={20}
-                            height={20}
-                            src={`${process.env.NEXT_PUBLIC_FILE_URL}${tenant.tenantLogo}`}
-                            alt={tenant.tenantName}
-                            className="h-5 w-5 rounded-full object-cover"
-                            unoptimized
-                          />
-                        ) : (
-                          <div className="flex h-5 w-5 items-center justify-center rounded-full !bg-gray-300 text-xs font-medium text-gray-700 dark:!bg-gray-600 dark:text-gray-300">
-                            {tenant.tenantName?.charAt(0)?.toUpperCase() || "T"}
-                          </div>
-                        )}
-                        <span className="flex-1 truncate">{tenant.tenantName}</span>
-                        {tenant.tenantId === currentTenant?.tenantId && (
-                          <svg className="h-4 w-4 text-brand-600 dark:text-brand-400" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+            )
+          ))}
+        </div>
+      </div>
+    )}
+  </div>
+)}
 
           <ThemeToggleButton />
           {/* <NotificationDropdown /> */}
@@ -381,7 +382,7 @@ const AppHeader: React.FC = () => {
                   </div>
                 )}
 
-                {/* Current tenant info */}
+                {/* Current tenant info - Show for all users, but only if tenant exists */}
                 {currentTenant && (
                   <div className="border-b dark:border-gray-700 p-4">
                     <div className="flex items-center gap-3 mb-2">
@@ -409,8 +410,8 @@ const AppHeader: React.FC = () => {
                   </div>
                 )}
 
-                {/* Tenant switcher section - Now as a dropdown */}
-                {tenants.length > 1 && currentTenant && (
+                {/* Tenant switcher section - Only show for non-admin users */}
+                {showTenantSwitcher && (
                   <div className="border-b dark:border-gray-700">
                     <button
                       onClick={() => setMobileTenantDropdownOpen(!isMobileTenantDropdownOpen)}

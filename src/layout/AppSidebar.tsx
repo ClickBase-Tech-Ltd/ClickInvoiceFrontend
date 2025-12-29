@@ -55,21 +55,21 @@ const getMenuItems = (role: UserRole) => {
     {
       // icon: <DocsIcon />,
       icon: <Icon src={DocsIcon} />,
-      name: "Invoices",
-      path: "/dashboard/invoices",
+      name: "Subscriptions",
+      path: "/dashboard/admin/subscriptions",
     },
-    {
-      // icon: <PageIcon />,
-      icon: <Icon src={PageIcon} />,
-      name: "Receipts",
-      path: "/dashboard/receipts",
-    },
-    {
-      // icon: <BoxIconLine />,
-      icon: <Icon src={BoxIconLine} />,
-      name: "Customers",
-      path: "/dashboard/customers",
-    },
+    // {
+    //   // icon: <PageIcon />,
+    //   icon: <Icon src={PageIcon} />,
+    //   name: "Receipts",
+    //   path: "/dashboard/receipts",
+    // },
+    // {
+    //   // icon: <BoxIconLine />,
+    //   icon: <Icon src={BoxIconLine} />,
+    //   name: "Customers",
+    //   path: "/dashboard/customers",
+    // },
     {
       // icon: <UserCircleIcon />,
       icon: <Icon src={UserCircleIcon} />,
@@ -307,7 +307,8 @@ const AppSidebar: React.FC = () => {
           </div>
         </nav>
 
-        {(isExpanded || isHovered || isMobileOpen) && <SidebarWidget />}
+          {(isExpanded || isHovered || isMobileOpen) && userRole !== "ADMIN" && <SidebarWidget />}
+
       </div>
     </aside>
   );
