@@ -9,12 +9,13 @@ import {
   TableHeader,
   TableRow,
 } from "../../components/ui/table";
-import { ChevronLeftIcon, EyeIcon, UserIcon } from "@/icons";
+import Button from "../../components/ui/button/Button";
+import { ChevronLeftIcon, EyeIcon, MailIcon, UserIcon } from "@/icons";
 import Icon from "@/components/Icons";
 import api from "../../../lib/api";
 import Badge from "@/components/ui/badge/Badge";
 
-/* ---------------- types ---------------- */
+/* ---------------- Types ---------------- */
 
 interface UserRole {
   roleId: number;
@@ -42,7 +43,73 @@ interface User {
   user_role: UserRole;
 }
 
-/* ---------------- component ---------------- */
+/* ---------------- Modals ---------------- */
+
+// Success Modal
+function EmailSuccessModal({
+  isOpen,
+  message,
+  onClose,
+}: {
+  isOpen: boolean;
+  message: string;
+  onClose: () => void;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/40 dark:bg-black/40 backdrop-blur-md">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6 ring-1 ring-black/5 dark:ring-white/10">
+        <div className="flex flex-col items-center text-center">
+          <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mb-4">
+            <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Email Sent!</h3>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">{message}</p>
+          <Button onClick={onClose} className="w-full !bg-[#0A66C2] hover:!bg-[#084d93]">
+            OK
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Error Modal
+function EmailErrorModal({
+  isOpen,
+  message,
+  onClose,
+}: {
+  isOpen: boolean;
+  message: string;
+  onClose: () => void;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/40 dark:bg-black/40 backdrop-blur-md">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6 ring-1 ring-black/5 dark:ring-white/10">
+        <div className="flex flex-col items-center text-center">
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center mb-4">
+            <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Failed to Send</h3>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">{message}</p>
+          <Button variant="outline" onClick={onClose} className="w-full">
+            Close
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- Component ---------------- */
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -53,6 +120,29 @@ export default function AdminUsersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [roleFilter, setRoleFilter] = useState<string>("all");
+
+  // Selection & Email States
+  const [selectedUsers, setSelectedUsers] = useState<Set<number>>(new Set());
+
+  // Single Email Modal
+  const [isSingleEmailModalOpen, setIsSingleEmailModalOpen] = useState(false);
+  const [singleEmailUser, setSingleEmailUser] = useState<User | null>(null);
+  const [singleSubject, setSingleSubject] = useState("");
+  const [singleMessage, setSingleMessage] = useState("");
+
+  // Bulk Email Modal
+  const [isBulkEmailModalOpen, setIsBulkEmailModalOpen] = useState(false);
+  const [bulkSubject, setBulkSubject] = useState("");
+  const [bulkMessage, setBulkMessage] = useState("");
+
+  // Feedback
+  const [showEmailSuccess, setShowEmailSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [showEmailError, setShowEmailError] = useState(false);
+  const [emailErrorMessage, setEmailErrorMessage] = useState("");
+
+  const [sendingSingle, setSendingSingle] = useState(false);
+  const [sendingBulk, setSendingBulk] = useState(false);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -82,43 +172,32 @@ export default function AdminUsersPage() {
 
   const statusBadgeColor = (status: User["status"]) => {
     switch (status) {
-      case "active":
-        return "success";
-      case "pending":
-        return "secondary";
-      case "suspended":
-        return "error";
-      case "inactive":
-        return "warning";
-      default:
-        return "secondary";
+      case "active": return "success";
+      case "pending": return "secondary";
+      case "suspended": return "error";
+      case "inactive": return "warning";
+      default: return "secondary";
     }
   };
 
   const roleBadgeColor = (role: string) => {
     switch (role) {
-      case "ADMIN":
-        return "info";
-      case "USER":
-        return "success";
-      default:
-        return "secondary";
+      case "ADMIN": return "info";
+      case "USER": return "success";
+      default: return "secondary";
     }
   };
 
-  // Filter users based on search and filters
+  // Filtering
   const filteredUsers = users.filter((user) => {
     const matchesSearch =
       searchTerm === "" ||
-      user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (user.phoneNumber && user.phoneNumber.includes(searchTerm));
 
-    const matchesStatus =
-      statusFilter === "all" || user.status === statusFilter;
-    const matchesRole =
-      roleFilter === "all" || user.user_role.roleName === roleFilter;
+    const matchesStatus = statusFilter === "all" || user.status === statusFilter;
+    const matchesRole = roleFilter === "all" || user.user_role.roleName === roleFilter;
 
     return matchesSearch && matchesStatus && matchesRole;
   });
@@ -138,32 +217,120 @@ export default function AdminUsersPage() {
   const handleStatusChange = async (userId: number, newStatus: User["status"]) => {
     try {
       await api.patch(`/users/${userId}/status`, { status: newStatus });
-      setUsers(users.map(user => 
-        user.id === userId ? { ...user, status: newStatus } : user
-      ));
-      // If modal is open, update the selected user
+      setUsers(users.map(u => u.id === userId ? { ...u, status: newStatus } : u));
       if (selectedUser?.id === userId) {
         setSelectedUser({ ...selectedUser, status: newStatus });
       }
     } catch (err: any) {
-      console.error("Failed to update status:", err);
       alert(err?.response?.data?.message || "Failed to update user status");
     }
   };
 
   const getPlanName = (planId: number | null) => {
-    const plans: Record<number, string> = {
-      1: "Starter",
-      2: "Professional",
-      3: "Enterprise"
-    };
+    const plans: Record<number, string> = { 1: "Starter", 2: "Professional", 3: "Enterprise" };
     return planId ? plans[planId] || `Plan ${planId}` : "No Plan";
+  };
+
+  // Selection Logic
+  const toggleUserSelection = (userId: number) => {
+    const newSelected = new Set(selectedUsers);
+    newSelected.has(userId) ? newSelected.delete(userId) : newSelected.add(userId);
+    setSelectedUsers(newSelected);
+  };
+
+  const selectAll = () => {
+    setSelectedUsers(
+      selectedUsers.size === filteredUsers.length
+        ? new Set()
+        : new Set(filteredUsers.map(u => u.id))
+    );
+  };
+
+  // Single Email
+  const openSingleEmailModal = (user: User) => {
+    setSingleEmailUser(user);
+    setSingleSubject(`Hello ${user.firstName} ${user.lastName}`);
+    setSingleMessage(`Dear ${user.firstName},\n\n`);
+    setIsSingleEmailModalOpen(true);
+  };
+
+  const handleSendSingleEmail = async () => {
+    if (!singleSubject.trim() || !singleMessage.trim()) {
+      setEmailErrorMessage("Please provide subject and message.");
+      setShowEmailError(true);
+      return;
+    }
+
+    setSendingSingle(true);
+    try {
+      await api.post(`/users/${singleEmailUser?.id}/send-email`, {
+        subject: singleSubject,
+        message: singleMessage,
+      });
+
+      setSuccessMessage("Email sent successfully!");
+      setShowEmailSuccess(true);
+      setIsSingleEmailModalOpen(false);
+      setSingleSubject("");
+      setSingleMessage("");
+    } catch (err: any) {
+      setEmailErrorMessage(err?.response?.data?.message || "Failed to send email.");
+      setShowEmailError(true);
+    } finally {
+      setSendingSingle(false);
+    }
+  };
+
+  // Bulk Email
+  const openBulkEmailModal = () => {
+    if (filteredUsers.length === 0) {
+      setEmailErrorMessage("No users to email.");
+      setShowEmailError(true);
+      return;
+    }
+
+    setBulkSubject("");
+    setBulkMessage("Dear Users,\n\n");
+    setIsBulkEmailModalOpen(true);
+  };
+
+  const handleSendBulkEmail = async () => {
+    if (!bulkSubject.trim() || !bulkMessage.trim()) {
+      setEmailErrorMessage("Please provide subject and message.");
+      setShowEmailError(true);
+      return;
+    }
+
+    const userIds = selectedUsers.size > 0
+      ? Array.from(selectedUsers)
+      : filteredUsers.map(u => u.id);
+
+    setSendingBulk(true);
+    try {
+      await api.post("/users/broadcast-email", {
+        userIds,
+        subject: bulkSubject,
+        message: bulkMessage,
+      });
+
+      setSuccessMessage(`Email broadcast sent to ${userIds.length} user(s)!`);
+      setShowEmailSuccess(true);
+      setIsBulkEmailModalOpen(false);
+      setBulkSubject("");
+      setBulkMessage("");
+      setSelectedUsers(new Set());
+    } catch (err: any) {
+      setEmailErrorMessage(err?.response?.data?.message || "Failed to send broadcast.");
+      setShowEmailError(true);
+    } finally {
+      setSendingBulk(false);
+    }
   };
 
   return (
     <div className="relative min-h-screen">
       <div className="space-y-6 py-6 px-4 md:px-6 lg:px-8">
-        {/* Page Header */}
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
@@ -178,15 +345,25 @@ export default function AdminUsersPage() {
             </h1>
           </div>
 
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            Total: <span className="font-medium">{users.length}</span>
-            {filteredUsers.length !== users.length && (
-              <span className="ml-2">
-                (Filtered: {filteredUsers.length})
-              </span>
-            )}
-          </div>
+          {filteredUsers.length > 0 && (
+            <Button
+              onClick={openBulkEmailModal}
+              className="!bg-[#0A66C2] hover:!bg-[#084d93] flex items-center gap-2"
+            >
+              <Icon src={MailIcon} className="w-4 h-4" />
+              {selectedUsers.size > 0 ? `Email Selected (${selectedUsers.size})` : "Broadcast Email"}
+            </Button>
+          )}
         </div>
+
+        {/* Selection Info */}
+        {filteredUsers.length > 0 && (
+          <div className="text-sm text-gray-600 dark:text-gray-400">
+            {selectedUsers.size > 0
+              ? `${selectedUsers.size} of ${filteredUsers.length} selected`
+              : `${filteredUsers.length} total users`}
+          </div>
+        )}
 
         {/* Filters */}
         <div className="flex flex-col md:flex-row gap-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
@@ -200,22 +377,14 @@ export default function AdminUsersPage() {
             />
           </div>
           <div className="flex gap-4">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
-            >
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800">
               <option value="all">All Status</option>
               <option value="active">Active</option>
               <option value="pending">Pending</option>
               <option value="suspended">Suspended</option>
               <option value="inactive">Inactive</option>
             </select>
-            <select
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
-            >
+            <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800">
               <option value="all">All Roles</option>
               <option value="ADMIN">Admin</option>
               <option value="USER">User</option>
@@ -226,170 +395,100 @@ export default function AdminUsersPage() {
         {/* Table */}
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
           <div className="max-w-full overflow-x-auto">
-            <div>
-              <Table>
-                <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
-                  <TableRow>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                      User
-                    </TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                      Contact
-                    </TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                      Role
-                    </TableCell>
-                    {/* <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                      Plan
-                    </TableCell> */}
-                    {/* <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                      Status
-                    </TableCell> */}
-                    {/* <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                      Email Verified
-                    </TableCell> */}
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                      Created
-                    </TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                      Actions
-                    </TableCell>
-                  </TableRow>
-                </TableHeader>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableCell isHeader className="w-12 px-5 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedUsers.size === filteredUsers.length && filteredUsers.length > 0}
+                      onChange={selectAll}
+                      className="rounded"
+                    />
+                  </TableCell>
+                  <TableCell isHeader>User</TableCell>
+                  <TableCell isHeader>Contact</TableCell>
+                  <TableCell isHeader>Role</TableCell>
+                  <TableCell isHeader>Created</TableCell>
+                  <TableCell isHeader>Actions</TableCell>
+                </TableRow>
+              </TableHeader>
 
-                <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="py-10 text-center text-gray-500 dark:text-gray-400">
-                        Loading users...
+              <TableBody>
+                {loading ? (
+                  <TableRow><TableCell colSpan={6} className="py-10 text-center">Loading users...</TableCell></TableRow>
+                ) : error ? (
+                  <TableRow><TableCell colSpan={6} className="py-10 text-center text-red-600">{error}</TableCell></TableRow>
+                ) : filteredUsers.length === 0 ? (
+                  <TableRow><TableCell colSpan={6} className="py-10 text-center">No users found.</TableCell></TableRow>
+                ) : (
+                  filteredUsers.map((user) => (
+                    <TableRow key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                      <TableCell className="px-5 py-4">
+                        <input
+                          type="checkbox"
+                          checked={selectedUsers.has(user.id)}
+                          onChange={() => toggleUserSelection(user.id)}
+                          className="rounded"
+                        />
                       </TableCell>
-                    </TableRow>
-                  ) : error ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="py-10 text-center text-red-600">
-                        {error}
+                      <TableCell className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center font-semibold text-[#0A66C2]">
+                            {user.firstName[0].toUpperCase()}
+                          </div>
+                          <div>
+                            <span className="font-medium block">
+                              {user.firstName} {user.lastName}
+                            </span>
+                            {user.otherNames && <span className="text-xs text-gray-500 block">({user.otherNames})</span>}
+                          </div>
+                        </div>
                       </TableCell>
-                    </TableRow>
-                  ) : filteredUsers.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="py-10 text-center text-gray-500 dark:text-gray-400">
-                        {searchTerm || statusFilter !== "all" || roleFilter !== "all"
-                          ? "No users match your filters."
-                          : "No users found."}
+                      <TableCell className="px-5 py-4">
+                        <div className="space-y-1">
+                          <div className="text-theme-sm text-gray-600 dark:text-gray-400">{user.email}</div>
+                          {user.phoneNumber && <div className="text-xs text-gray-500">{user.phoneNumber}</div>}
+                        </div>
                       </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredUsers.map((user) => (
-                      <TableRow
-                        key={user.id}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
-                        onClick={() => openModal(user)}
-                      >
-                        <TableCell className="px-5 py-4 text-start">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center font-semibold text-[#0A66C2]">
-                              {user.firstName[0].toUpperCase()}
-                            </div>
-                            <div>
-                              <span className="font-medium text-gray-800 dark:text-white/90 block">
-                                {user.firstName} {user.lastName}
-                              </span>
-                              {user.otherNames && (
-                                <span className="text-xs text-gray-500 block">
-                                  ({user.otherNames})
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </TableCell>
-
-                        <TableCell className="px-5 py-4 text-start">
-                          <div className="space-y-1">
-                            <div className="text-theme-sm text-gray-600 dark:text-gray-400">
-                              {user.email}
-                            </div>
-                            {user.phoneNumber && (
-                              <div className="text-xs text-gray-500">
-                                {user.phoneNumber}
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-
-                        <TableCell className="px-5 py-4 text-start">
-                          <Badge
-                            color={roleBadgeColor(user.user_role.roleName)}
-                            size="sm"
-                          >
-                            {user.user_role.roleName}
-                          </Badge>
-                        </TableCell>
-
-                        {/* <TableCell className="px-5 py-4 text-start text-theme-sm text-gray-600 dark:text-gray-400">
-                          {getPlanName(user.currentPlan)}
-                        </TableCell> */}
-
-                        {/* <TableCell className="px-5 py-4 text-start">
-                          <div className="flex items-center gap-2">
-                            <Badge
-                              color={statusBadgeColor(user.status)}
-                              size="sm"
-                            >
-                              {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
-                            </Badge>
-                            <select
-                              value={user.status}
-                              onChange={(e) => handleStatusChange(user.id, e.target.value as User["status"])}
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-xs px-2 py-1 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
-                            >
-                              <option value="active">Active</option>
-                              <option value="pending">Pending</option>
-                              <option value="suspended">Suspended</option>
-                              <option value="inactive">Inactive</option>
-                            </select>
-                          </div>
-                        </TableCell> */}
-
-                        {/* <TableCell className="px-5 py-4 text-start">
-                          {user.email_verified_at ? (
-                            <Badge color="success" size="sm">
-                              Verified
-                            </Badge>
-                          ) : (
-                            <Badge color="secondary" size="sm">
-                              Not Verified
-                            </Badge>
-                          )}
-                        </TableCell> */}
-
-                        <TableCell className="px-5 py-4 text-start text-theme-sm text-gray-600 dark:text-gray-400">
-                          {formatDate(user.created_at)}
-                        </TableCell>
-
-                        <TableCell className="px-5 py-4 text-start">
+                      <TableCell className="px-5 py-4">
+                        <Badge color={roleBadgeColor(user.user_role.roleName)} size="sm">
+                          {user.user_role.roleName}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-theme-sm text-gray-600 dark:text-gray-400">
+                        {formatDate(user.created_at)}
+                      </TableCell>
+                      <TableCell className="px-5 py-4">
+                        <div className="flex items-center gap-3">
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openModal(user);
-                            }}
-                            className="text-gray-600 hover:text-brand-600 transition"
-                            title="View user details"
+                            onClick={() => openModal(user)}
+                            className="text-gray-600 hover:text-brand-600"
+                            title="View details"
                           >
                             <Icon src={EyeIcon} className="w-5 h-5" />
                           </button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openSingleEmailModal(user)}
+                            className="flex items-center gap-1"
+                          >
+                            <Icon src={MailIcon} className="w-3 h-3" />
+                            Email
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
         </div>
       </div>
 
-      {/* User Details Modal */}
+       {/* User Details Modal */}
       {isModalOpen && selectedUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-gray-900 p-6 shadow-2xl">
@@ -541,20 +640,105 @@ export default function AdminUsersPage() {
                 >
                   Close
                 </button>
-                {/* <button
-                  onClick={() => {
-                    // Add edit functionality here
-                    console.log("Edit user:", selectedUser.id);
-                  }}
-                  className="px-6 py-3 rounded-lg bg-[#0A66C2] hover:bg-[#084d93] text-white font-medium transition"
-                >
-                  Edit User
-                </button> */}
+              
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Single Email Modal */}
+      {isSingleEmailModalOpen && singleEmailUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-lg rounded-xl bg-white dark:bg-gray-900 p-6 shadow-2xl">
+            <h2 className="text-xl font-bold mb-4">
+              Send Email to {singleEmailUser.firstName} {singleEmailUser.lastName}
+            </h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Subject</label>
+                <input
+                  type="text"
+                  value={singleSubject}
+                  onChange={(e) => setSingleSubject(e.target.value)}
+                  className="w-full border rounded px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Message</label>
+                <textarea
+                  value={singleMessage}
+                  onChange={(e) => setSingleMessage(e.target.value)}
+                  rows={8}
+                  className="w-full border rounded px-3 py-2"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <Button variant="outline" onClick={() => setIsSingleEmailModalOpen(false)} disabled={sendingSingle}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSendSingleEmail}
+                disabled={sendingSingle || !singleSubject.trim() || !singleMessage.trim()}
+                className="!bg-[#0A66C2]"
+              >
+                {sendingSingle ? "Sending..." : "Send Email"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Email Modal */}
+      {isBulkEmailModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-lg rounded-xl bg-white dark:bg-gray-900 p-6 shadow-2xl">
+            <h2 className="text-xl font-bold mb-4">
+              {selectedUsers.size > 0
+                ? `Broadcast to ${selectedUsers.size} Selected User(s)`
+                : "Broadcast Email to All Users"}
+            </h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Subject</label>
+                <input
+                  type="text"
+                  value={bulkSubject}
+                  onChange={(e) => setBulkSubject(e.target.value)}
+                  className="w-full border rounded px-3 py-2"
+                  placeholder="Enter subject..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Message</label>
+                <textarea
+                  value={bulkMessage}
+                  onChange={(e) => setBulkMessage(e.target.value)}
+                  rows={8}
+                  className="w-full border rounded px-3 py-2"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <Button variant="outline" onClick={() => setIsBulkEmailModalOpen(false)} disabled={sendingBulk}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSendBulkEmail}
+                disabled={sendingBulk || !bulkSubject.trim() || !bulkMessage.trim()}
+                className="!bg-[#0A66C2]"
+              >
+                {sendingBulk ? "Sending..." : "Send Broadcast"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success & Error Modals */}
+      <EmailSuccessModal isOpen={showEmailSuccess} message={successMessage} onClose={() => setShowEmailSuccess(false)} />
+      <EmailErrorModal isOpen={showEmailError} message={emailErrorMessage} onClose={() => setShowEmailError(false)} />
     </div>
   );
 }

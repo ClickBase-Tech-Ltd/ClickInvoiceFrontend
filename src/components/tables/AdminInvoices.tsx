@@ -119,12 +119,12 @@ export default function AdminInvoices() {
             </h1>
           </div>
 
-          <Link
+          {/* <Link
             href="/dashboard/invoices/create"
             className="inline-flex items-center gap-2 rounded-lg !bg-[#0A66C2] hover:!bg-[#084d93] px-4 py-2 text-sm font-medium text-white transition"
           >
             Create Invoice
-          </Link>
+          </Link> */}
         </div>
 
         {/* Table */}
