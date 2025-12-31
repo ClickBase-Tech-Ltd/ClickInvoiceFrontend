@@ -94,9 +94,12 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="flex flex-col flex-1 lg:w-1/2 w-full bg-white dark:bg-gray-900">
-      <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto px-4 py-8">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 lg:p-10">
+    // <div className="flex flex-col flex-1 lg:w-1/2 w-full bg-white dark:bg-gray-900">
+    //   <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto px-4 py-8">
+    <div className="flex flex-col flex-1 lg:w-1/2 w-full">
+     
+      <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
+        <div>
           {/* Mobile Logo */}
           <div className="block lg:hidden mb-8 text-center">
             <Link href="/" className="inline-block">
