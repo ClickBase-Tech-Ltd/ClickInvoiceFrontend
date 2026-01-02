@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "../../components/ui/table";
 import Button from "../../components/ui/button/Button";
-import { ChevronLeftIcon, MailIcon, EyeIcon } from "@/icons";
+import { ChevronLeftIcon, MailIcon, EyeIcon, PlusIcon } from "@/icons";
 import api from "../../../lib/api";
 import { useRouter } from "next/navigation";
 import Icon from "@/components/Icons";
@@ -22,6 +22,139 @@ interface Customer {
   customerPhone?: string | null;
   customerAddress?: string | null;
   created_at: string;
+}
+
+
+function AddCustomerModal({
+  isOpen,
+  onClose,
+  onSuccess,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: (newCustomer: Customer) => void;
+}) {
+  const [form, setForm] = useState({
+    customerName: "",
+    customerEmail: "",
+    customerPhone: "",
+    customerAddress: "",
+  });
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async () => {
+    if (!form.customerName.trim()) {
+      setError("Customer name is required.");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await api.post("/customers/tenant", {
+        customerName: form.customerName.trim(),
+        customerEmail: form.customerEmail.trim() || null,
+        customerPhone: form.customerPhone.trim() || null,
+        customerAddress: form.customerAddress.trim() || null,
+      });
+
+      onSuccess(res.data);
+      onClose();
+      // Reset form
+      setForm({
+        customerName: "",
+        customerEmail: "",
+        customerPhone: "",
+        customerAddress: "",
+      });
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Failed to add customer.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-md">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6 ring-1 ring-black/5 dark:ring-white/10">
+        <h3 className="text-xl font-semibold mb-5">Add New Customer</h3>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg text-sm">
+            {error}
+          </div>
+        )}
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Name *</label>
+            <input
+              type="text"
+              value={form.customerName}
+              onChange={(e) => setForm({ ...form, customerName: e.target.value })}
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0A66C2]"
+              placeholder="John Doe"
+              disabled={loading}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Email</label>
+            <input
+              type="email"
+              value={form.customerEmail}
+              onChange={(e) => setForm({ ...form, customerEmail: e.target.value })}
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0A66C2]"
+              placeholder="john@example.com"
+              disabled={loading}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Phone</label>
+            <input
+              type="tel"
+              value={form.customerPhone}
+              onChange={(e) => setForm({ ...form, customerPhone: e.target.value })}
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0A66C2]"
+              placeholder="+1 (555) 123-4567"
+              disabled={loading}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Address</label>
+            <textarea
+              value={form.customerAddress}
+              onChange={(e) => setForm({ ...form, customerAddress: e.target.value })}
+              rows={3}
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0A66C2]"
+              placeholder="123 Main St, City, Country"
+              disabled={loading}
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 mt-6">
+          <Button variant="outline" onClick={onClose} disabled={loading}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={loading || !form.customerName.trim()}
+            className="!bg-[#0A66C2] hover:!bg-[#084d93]"
+          >
+            {loading ? "Adding..." : "Add Customer"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // Success Modal for Email Sent
@@ -123,6 +256,9 @@ export default function CustomersPage() {
   const [sendingSingle, setSendingSingle] = useState(false);
   const [sendingBulk, setSendingBulk] = useState(false);
 
+  const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
+
+
   const isPremiumUser = true;
 
   useEffect(() => {
@@ -139,6 +275,10 @@ export default function CustomersPage() {
 
     fetchCustomers();
   }, []);
+
+  const handleCustomerAdded = (newCustomer: Customer) => {
+    setCustomers((prev) => [newCustomer, ...prev]); // Add to top
+  };
 
   const formatDate = (date: string) =>
     new Date(date).toLocaleDateString(undefined, {
@@ -284,16 +424,30 @@ export default function CustomersPage() {
             </h1>
           </div>
 
-          {customers.length > 0 && (
-            <Button
-              onClick={openBulkEmailModal}
-              disabled={customers.length === 0}
-              className="!bg-[#0A66C2] hover:!bg-[#084d93] flex items-center gap-2 w-full sm:w-auto"
-            >
-              <Icon src={MailIcon} className="w-4 h-4" />
-              {selectedCustomers.size > 0 ? `Email Selected (${selectedCustomers.size})` : "Broadcast Email"}
-            </Button>
-          )}
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                      <Button
+                        onClick={() => setIsAddCustomerOpen(true)}
+                        className="flex items-center justify-center gap-2 !bg-green-600 hover:!bg-green-700 w-full sm:w-auto"
+                      >
+                        <Icon src={PlusIcon} className="w-4 h-4" />
+                        Add Customer
+                      </Button>
+          
+                      {customers.length > 0 && (
+                        <Button
+                          onClick={openBulkEmailModal}
+                          disabled={customers.length === 0}
+                          className="!bg-[#0A66C2] hover:!bg-[#084d93] flex items-center gap-2 w-full sm:w-auto"
+                        >
+                          <Icon src={MailIcon} className="w-4 h-4" />
+                          {selectedCustomers.size > 0
+                            ? `Email Selected (${selectedCustomers.size})`
+                            : "Broadcast Email"}
+                        </Button>
+                      )}
+                    </div>
+
+       
         </div>
 
         {/* Selection Info */}
@@ -664,6 +818,12 @@ export default function CustomersPage() {
         isOpen={showEmailError}
         message={emailErrorMessage}
         onClose={() => setShowEmailError(false)}
+      />
+
+      <AddCustomerModal
+        isOpen={isAddCustomerOpen}
+        onClose={() => setIsAddCustomerOpen(false)}
+        onSuccess={handleCustomerAdded}
       />
     </div>
   );

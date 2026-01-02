@@ -120,10 +120,10 @@ export default function ReceiptsPage() {
         {!loading && !error && receipts.length === 0 && (
           <div className="text-center py-12">
             <p className="text-gray-500 mb-6">
-              No receipts found for this tenant.
+              No receipts found for this tenant. Start by creating an invoice.
             </p>
-            <Button onClick={() => router.push("/dashboard/receipts/create")}>
-              Create Receipt
+            <Button onClick={() => router.push("/dashboard/invoices/create")}>
+              Create Invoice
             </Button>
           </div>
         )}

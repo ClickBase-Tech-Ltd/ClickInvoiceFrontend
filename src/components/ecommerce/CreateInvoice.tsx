@@ -232,29 +232,35 @@ export default function CreateInvoicePage() {
     setItems(updated);
   };
 
+  // Add this new state near your other useState declarations
+const [isAddingCustomer, setIsAddingCustomer] = useState(false);
   /* ---------------- add customer ---------------- */
   const handleAddCustomer = async () => {
-    if (!newCustomer.customerName) {
-      setErrorMessage("Customer name is required");
-      return;
-    }
+  if (!newCustomer.customerName.trim()) {
+    setErrorMessage("Customer name is required");
+    return;
+  }
 
-    try {
-      const res = await api.post("/customers/tenant", newCustomer);
-      setCustomers((prev) => [...prev, res.data]);
-      setSelectedCustomerId(res.data.customerId);
-      setShowAddCustomer(false);
-      setNewCustomer({
-        customerName: "",
-        customerPhone: "",
-        customerEmail: "",
-        customerAddress: "",
-      });
-    } catch (err: any) {
-      setErrorMessage(err?.response?.data?.message || "Failed to add customer");
-    }
-  };
+  setIsAddingCustomer(true); // Disable main save button
 
+  try {
+    const res = await api.post("/customers/tenant", newCustomer);
+    setCustomers((prev) => [...prev, res.data]);
+    setSelectedCustomerId(res.data.customerId);
+    setShowAddCustomer(false);
+    setNewCustomer({
+      customerName: "",
+      customerPhone: "",
+      customerEmail: "",
+      customerAddress: "",
+    });
+    setErrorMessage(null); // Clear any previous errors
+  } catch (err: any) {
+    setErrorMessage(err?.response?.data?.message || "Failed to add customer");
+  } finally {
+    setIsAddingCustomer(false); // Re-enable main button
+  }
+};
   /* ---------------- submit ---------------- */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -476,9 +482,21 @@ export default function CreateInvoicePage() {
             }
           />
 
-          <Button type="submit" disabled={isSubmitting}>
+          {/* <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? "Creating..." : "Save & Send"}
-          </Button>
+          </Button> */}
+
+          <Button 
+  type="submit" 
+  disabled={isSubmitting || isAddingCustomer}
+>
+  {isSubmitting 
+    ? "Creating..." 
+    : isAddingCustomer 
+      ? "Adding Customer..." 
+      : "Save"
+  }
+</Button>
         </form>
       </ComponentCard>
 
@@ -544,14 +562,20 @@ export default function CreateInvoicePage() {
             />
 
             <div className="flex justify-end gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setShowAddCustomer(false)}
-              >
-                Cancel
-              </Button>
-              <Button onClick={handleAddCustomer}>Save</Button>
-            </div>
+  <Button
+    variant="outline"
+    onClick={() => setShowAddCustomer(false)}
+    disabled={isAddingCustomer}
+  >
+    Cancel
+  </Button>
+  <Button 
+    onClick={handleAddCustomer}
+    disabled={isAddingCustomer}
+  >
+    {isAddingCustomer ? "Saving..." : "Save"}
+  </Button>
+</div>
           </div>
         </div>
       )}

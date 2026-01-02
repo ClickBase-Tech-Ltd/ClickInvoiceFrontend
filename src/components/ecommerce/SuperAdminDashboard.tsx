@@ -90,7 +90,7 @@ export default function SuperAdminDashboard() {
                 Welcome back, {name || "Admin"}
               </h1>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Manage your tenants, invoices, and system-wide settings
+                Manage your businesses, invoices, and system-wide settings
               </p>
             </div>
           </div>
