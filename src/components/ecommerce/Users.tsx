@@ -1,7 +1,7 @@
 // app/admin/users/page.tsx
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -111,6 +111,8 @@ function EmailErrorModal({
 
 /* ---------------- Component ---------------- */
 
+const ITEMS_PER_PAGE = 10;
+
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -120,6 +122,7 @@ export default function AdminUsersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Selection & Email States
   const [selectedUsers, setSelectedUsers] = useState<Set<number>>(new Set());
@@ -189,18 +192,27 @@ export default function AdminUsersPage() {
   };
 
   // Filtering
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch =
-      searchTerm === "" ||
-      `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (user.phoneNumber && user.phoneNumber.includes(searchTerm));
+  const filteredUsers = useMemo(() => {
+    return users.filter((user) => {
+      const matchesSearch =
+        searchTerm === "" ||
+        `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (user.phoneNumber && user.phoneNumber.includes(searchTerm));
 
-    const matchesStatus = statusFilter === "all" || user.status === statusFilter;
-    const matchesRole = roleFilter === "all" || user.user_role.roleName === roleFilter;
+      const matchesStatus = statusFilter === "all" || user.status === statusFilter;
+      const matchesRole = roleFilter === "all" || user.user_role.roleName === roleFilter;
 
-    return matchesSearch && matchesStatus && matchesRole;
-  });
+      return matchesSearch && matchesStatus && matchesRole;
+    });
+  }, [users, searchTerm, statusFilter, roleFilter]);
+
+  // Pagination
+  const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredUsers.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredUsers, currentPage]);
 
   const openModal = (user: User) => {
     setSelectedUser(user);
@@ -240,9 +252,9 @@ export default function AdminUsersPage() {
 
   const selectAll = () => {
     setSelectedUsers(
-      selectedUsers.size === filteredUsers.length
+      selectedUsers.size === paginatedUsers.length
         ? new Set()
-        : new Set(filteredUsers.map(u => u.id))
+        : new Set(paginatedUsers.map(u => u.id))
     );
   };
 
@@ -330,8 +342,8 @@ export default function AdminUsersPage() {
   return (
     <div className="relative min-h-screen">
       <div className="space-y-6 py-6 px-4 md:px-6 lg:px-8">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+        {/* Header - Responsive */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
             <button
               onClick={() => window.history.back()}
@@ -348,7 +360,7 @@ export default function AdminUsersPage() {
           {filteredUsers.length > 0 && (
             <Button
               onClick={openBulkEmailModal}
-              className="!bg-[#0A66C2] hover:!bg-[#084d93] flex items-center gap-2"
+              className="!bg-[#0A66C2] hover:!bg-[#084d93] flex items-center gap-2 w-full sm:w-auto"
             >
               <Icon src={MailIcon} className="w-4 h-4" />
               {selectedUsers.size > 0 ? `Email Selected (${selectedUsers.size})` : "Broadcast Email"}
@@ -372,19 +384,36 @@ export default function AdminUsersPage() {
               type="text"
               placeholder="Search by name, email, or phone..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
             />
           </div>
           <div className="flex gap-4">
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800">
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
+            >
               <option value="all">All Status</option>
               <option value="active">Active</option>
               <option value="pending">Pending</option>
               <option value="suspended">Suspended</option>
               <option value="inactive">Inactive</option>
             </select>
-            <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800">
+            <select
+              value={roleFilter}
+              onChange={(e) => {
+                setRoleFilter(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
+            >
               <option value="all">All Roles</option>
               <option value="ADMIN">Admin</option>
               <option value="USER">User</option>
@@ -392,8 +421,118 @@ export default function AdminUsersPage() {
           </div>
         </div>
 
-        {/* Table */}
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+        {/* Mobile Card View */}
+        <div className="block md:hidden space-y-4">
+          {loading ? (
+            <div className="text-center py-12 text-gray-500">Loading users...</div>
+          ) : error ? (
+            <div className="text-center py-12 text-red-600">{error}</div>
+          ) : filteredUsers.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">No users found.</div>
+          ) : (
+            <>
+              {paginatedUsers.map((user) => (
+                <div
+                  key={user.id}
+                  className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] p-5 shadow-sm"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedUsers.has(user.id)}
+                        onChange={() => toggleUserSelection(user.id)}
+                        className="rounded mt-1"
+                      />
+                      <div className="w-12 h-12 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center font-semibold text-[#0A66C2]">
+                        {user.firstName[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900 dark:text-white">
+                          {user.firstName} {user.lastName}
+                          {user.otherNames && <span className="text-sm text-gray-500"> ({user.otherNames})</span>}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 text-sm border-t pt-4 border-gray-100 dark:border-white/[0.08]">
+                    <div>
+                      <span className="text-gray-500">Role</span>
+                      <div className="mt-1">
+                        <Badge color={roleBadgeColor(user.user_role.roleName)} size="sm">
+                          {user.user_role.roleName}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Status</span>
+                      <div className="mt-1">
+                        <Badge color={statusBadgeColor(user.status)} size="sm">
+                          {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Phone</span>
+                      <p className="font-medium">{user.phoneNumber || "—"}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Created</span>
+                      <p className="font-medium text-xs">{formatDate(user.created_at)}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-4 border-t border-gray-100 dark:border-white/[0.08]">
+                    <button
+                      onClick={() => openModal(user)}
+                      className="p-2 text-gray-600 hover:text-brand-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                      title="View details"
+                    >
+                      <Icon src={EyeIcon} className="w-5 h-5" />
+                    </button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openSingleEmailModal(user)}
+                      className="flex items-center gap-1"
+                    >
+                      <Icon src={MailIcon} className="w-3 h-3" />
+                      Email
+                    </Button>
+                  </div>
+                </div>
+              ))}
+
+              {/* Mobile Pagination */}
+              {totalPages > 1 && (
+                <div className="flex justify-center items-center gap-2 mt-6">
+                  <button
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-1 rounded border disabled:opacity-50"
+                  >
+                    ←
+                  </button>
+                  <span className="text-sm">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-1 rounded border disabled:opacity-50"
+                  >
+                    →
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
           <div className="max-w-full overflow-x-auto">
             <Table>
               <TableHeader>
@@ -401,7 +540,7 @@ export default function AdminUsersPage() {
                   <TableCell isHeader className="w-12 px-5 py-3">
                     <input
                       type="checkbox"
-                      checked={selectedUsers.size === filteredUsers.length && filteredUsers.length > 0}
+                      checked={selectedUsers.size === paginatedUsers.length && paginatedUsers.length > 0}
                       onChange={selectAll}
                       className="rounded"
                     />
@@ -422,7 +561,7 @@ export default function AdminUsersPage() {
                 ) : filteredUsers.length === 0 ? (
                   <TableRow><TableCell colSpan={6} className="py-10 text-center">No users found.</TableCell></TableRow>
                 ) : (
-                  filteredUsers.map((user) => (
+                  paginatedUsers.map((user) => (
                     <TableRow key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                       <TableCell className="px-5 py-4">
                         <input
@@ -485,8 +624,38 @@ export default function AdminUsersPage() {
               </TableBody>
             </Table>
           </div>
+
+          {/* Desktop Pagination */}
+          {totalPages > 1 && (
+            <div className="flex justify-between items-center px-6 py-4 border-t border-gray-200 dark:border-white/[0.05]">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filteredUsers.length)} of {filteredUsers.length} users
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 rounded border disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                  Previous
+                </button>
+                <span className="text-sm px-2">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 rounded border disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+ 
 
        {/* User Details Modal */}
       {isModalOpen && selectedUser && (

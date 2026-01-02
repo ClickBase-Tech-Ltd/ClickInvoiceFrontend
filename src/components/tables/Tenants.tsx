@@ -33,7 +33,7 @@ interface Tenant {
     currencySymbol: string;
     country: string;
     currencyId: number;
-  };
+  } | number;
   payment_gateway: {
     paymentGatewayName: string;
     gatewayId: number;
@@ -88,7 +88,6 @@ export default function CompaniesListPage() {
   const [signaturePreview, setSignaturePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
   const [statusError, setStatusError] = useState<string | null>(null);
 
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -115,7 +114,6 @@ export default function CompaniesListPage() {
 
   useEffect(() => {
     if (editingTenant) {
-      // Load currencies and gateways only when editing
       const fetchData = async () => {
         try {
           const [currRes, gateRes] = await Promise.all([
@@ -149,38 +147,34 @@ export default function CompaniesListPage() {
   };
 
   const handleEditTenant = (tenant: Tenant) => {
-  // Ensure currency is an object
-  // const currencyObject = typeof tenant.currency === 'number' 
-  //   ? currencies.find(c => c.currencyId === tenant.currency) || tenant.currency
-  //   : tenant.currency;
+    const currencyObject =
+      tenant.currency && typeof tenant.currency === "object"
+        ? tenant.currency
+        : currencies.find((c) => c.currencyId === Number(tenant.currency)) || {
+            currencyId: 1,
+            currencyName: "Naira",
+            currencyCode: "NGN",
+            currencySymbol: "₦",
+            country: "Nigeria",
+          };
 
-  const currencyObject = tenant.currency && typeof tenant.currency === 'object'
-  ? tenant.currency
-  : currencies.find(c => c.currencyId === Number(tenant.currency)) || {
-      currencyId: 1,
-      currencyName: "Naira",
-      currencyCode: "NGN",
-      currencySymbol: "₦",
-      country: "Nigeria"
-    };
+    setEditingTenant({
+      ...tenant,
+      currency: currencyObject,
+    });
 
-  setEditingTenant({
-    ...tenant,
-    currency: currencyObject
-  });
-  
-  setLogoPreview(
-    tenant.tenantLogo
-      ? `${process.env.NEXT_PUBLIC_FILE_URL}${tenant.tenantLogo}`
-      : null
-  );
-  setSignaturePreview(
-    tenant.authorizedSignature
-      ? `${process.env.NEXT_PUBLIC_FILE_URL}${tenant.authorizedSignature}`
-      : null
-  );
-  openModal();
-};
+    setLogoPreview(
+      tenant.tenantLogo
+        ? `${process.env.NEXT_PUBLIC_FILE_URL}${tenant.tenantLogo}`
+        : null
+    );
+    setSignaturePreview(
+      tenant.authorizedSignature
+        ? `${process.env.NEXT_PUBLIC_FILE_URL}${tenant.authorizedSignature}`
+        : null
+    );
+    openModal();
+  };
 
   const handleCloseModal = () => {
     closeModal();
@@ -192,87 +186,77 @@ export default function CompaniesListPage() {
     setStatusError(null);
   };
 
-const handleStatusToggle = async (tenant: Tenant) => {
-  const newStatus = tenant.status === "active" ? "inactive" : "active";
-  setUpdatingStatus(tenant.tenantId);
+  const handleStatusToggle = async (tenant: Tenant) => {
+    const newStatus = tenant.status === "active" ? "inactive" : "active";
+    setUpdatingStatus(tenant.tenantId);
 
-  try {
-    await api.patch(`/tenants/${tenant.tenantId}/status`, { status: newStatus });
-    setTenants((prev) =>
-      prev.map((t) =>
-        t.tenantId === tenant.tenantId ? { ...t, status: newStatus } : t
-      )
-    );
-    setStatusError(null);
-  } catch (error: any) {
-    console.error("Failed to update status:", error);
-    const message =
-      error?.response?.data?.message ||
-      error?.message ||
-      "Failed to update company status.";
-    
-    setStatusError(message); // This will show your local error modal
-    // REMOVE THIS LINE: openModal({ title: "Action Not Allowed" });
-  } finally {
-    setUpdatingStatus(null);
-  }
-};
-
-  const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
-  if (!editingTenant) return;
-
-  setIsSubmitting(true);
-  
-  try {
-    const form = e.currentTarget;
-    const formData = new FormData();
-    
-    // Append all form fields
-    formData.append('tenantName', (form.elements.namedItem('tenantName') as HTMLInputElement).value);
-    formData.append('tenantEmail', (form.elements.namedItem('tenantEmail') as HTMLInputElement).value);
-    formData.append('tenantPhone', (form.elements.namedItem('tenantPhone') as HTMLInputElement).value);
-    formData.append('timezone', (form.elements.namedItem('timezone') as HTMLSelectElement).value);
-    formData.append('currency', (form.elements.namedItem('currency') as HTMLSelectElement).value);
-    formData.append('gatewayPreference', (form.elements.namedItem('gatewayPreference') as HTMLSelectElement).value);
-    
-    // Append files
-    if (logoInputRef.current?.files?.[0]) {
-      formData.append('tenantLogo', logoInputRef.current.files[0]);
-    }
-    if (signatureInputRef.current?.files?.[0]) {
-      formData.append('authorizedSignature', signatureInputRef.current.files[0]);
-    }
-    
-    // Append required fields
-    // formData.append('currency', editingTenant.currencyId || "NGN");
-    formData.append('_method', 'PUT');
-
-    // Send request
-    const response = await api.post(`/tenants/${editingTenant.tenantId}`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-
-    // Update with response data if available
-    if (response.data?.tenant) {
+    try {
+      await api.patch(`/tenants/${tenant.tenantId}/status`, { status: newStatus });
       setTenants((prev) =>
         prev.map((t) =>
-          t.tenantId === editingTenant.tenantId ? response.data.tenant : t
+          t.tenantId === tenant.tenantId ? { ...t, status: newStatus } : t
         )
       );
+      setStatusError(null);
+    } catch (error: any) {
+      console.error("Failed to update status:", error);
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to update company status.";
+      setStatusError(message);
+    } finally {
+      setUpdatingStatus(null);
     }
+  };
 
-    setSuccessMessage('Business updated successfully!');
-    setTimeout(() => handleCloseModal(), 1500);
-  } catch (error: any) {
-    console.error('Update error:', error);
-    alert(error?.response?.data?.message || 'Failed to update business.');
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  const handleEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingTenant) return;
+
+    setIsSubmitting(true);
+
+    try {
+      const form = e.currentTarget;
+      const formData = new FormData();
+
+      formData.append("tenantName", (form.elements.namedItem("tenantName") as HTMLInputElement).value);
+      formData.append("tenantEmail", (form.elements.namedItem("tenantEmail") as HTMLInputElement).value);
+      formData.append("tenantPhone", (form.elements.namedItem("tenantPhone") as HTMLInputElement).value);
+      formData.append("timezone", (form.elements.namedItem("timezone") as HTMLSelectElement).value);
+      formData.append("currency", (form.elements.namedItem("currency") as HTMLSelectElement).value);
+      formData.append("gatewayPreference", (form.elements.namedItem("gatewayPreference") as HTMLSelectElement).value);
+
+      if (logoInputRef.current?.files?.[0]) {
+        formData.append("tenantLogo", logoInputRef.current.files[0]);
+      }
+      if (signatureInputRef.current?.files?.[0]) {
+        formData.append("authorizedSignature", signatureInputRef.current.files[0]);
+      }
+
+      formData.append("_method", "PUT");
+
+      const response = await api.post(`/tenants/${editingTenant.tenantId}`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      if (response.data?.tenant) {
+        setTenants((prev) =>
+          prev.map((t) =>
+            t.tenantId === editingTenant.tenantId ? response.data.tenant : t
+          )
+        );
+      }
+
+      setSuccessMessage("Business updated successfully!");
+      setTimeout(() => handleCloseModal(), 1500);
+    } catch (error: any) {
+      console.error("Update error:", error);
+      alert(error?.response?.data?.message || "Failed to update business.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -300,19 +284,144 @@ const handleStatusToggle = async (tenant: Tenant) => {
         }`}
       >
         <div className="space-y-6 py-6 px-4 md:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
+          {/* Header - Responsive */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
               My Businesses
             </h1>
             <Link
               href="/dashboard/tenants/create"
-              className="inline-flex items-center gap-2 rounded-lg !bg-[#0A66C2] hover:!bg-[#084d93] px-4 py-2 text-sm font-medium text-white"
+              className="inline-flex items-center justify-center gap-2 rounded-lg !bg-[#0A66C2] hover:!bg-[#084d93] px-4 py-2 text-sm font-medium text-white w-full sm:w-auto"
             >
               Add Business
             </Link>
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+          {/* Mobile Card View */}
+          <div className="block md:hidden space-y-4">
+            {loading ? (
+              <div className="text-center py-12 text-gray-500">Loading businesses...</div>
+            ) : tenants.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                No businesses found.{" "}
+                <Link href="/dashboard/tenants/create" className="text-brand-600 hover:underline font-medium">
+                  Add your first business
+                </Link>
+              </div>
+            ) : (
+              tenants.map((tenant) => (
+                <div
+                  key={tenant.tenantId}
+                  className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] p-5 shadow-sm"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full overflow-hidden border flex-shrink-0">
+                        {tenant.tenantLogo ? (
+                          <Image
+                            width={48}
+                            height={48}
+                            src={`${process.env.NEXT_PUBLIC_FILE_URL}${tenant.tenantLogo}`}
+                            alt={tenant.tenantName}
+                            unoptimized
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-lg font-bold text-gray-600 dark:text-gray-400">
+                            {tenant.tenantName[0].toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900 dark:text-white">
+                          {tenant.tenantName}
+                        </h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          {tenant.tenantEmail}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 text-sm mb-5">
+                    <div>
+                      <span className="text-gray-500">Status</span>
+                      <div className="mt-1">
+                        <Badge color={tenant.status === "active" ? "success" : "error"} size="sm">
+                          {tenant.status.charAt(0).toUpperCase() + tenant.status.slice(1)}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Currency</span>
+                      <p className="font-medium">
+                        {tenant.currency && typeof tenant.currency === "object"
+                          ? `${tenant.currency.currencySymbol} ${tenant.currency.currencyCode}`
+                          : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Created</span>
+                      <p className="font-medium text-xs">{formatDate(tenant.created_at)}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Active</span>
+                      <div className="mt-1">
+                        {tenant.isDefault === 1 ? (
+                          <Badge size="sm" color="info">Current</Badge>
+                        ) : (
+                          <span className="text-gray-400 text-sm">—</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-white/[0.08]">
+                    <button
+                      onClick={() => handleStatusToggle(tenant)}
+                      disabled={updatingStatus === tenant.tenantId}
+                      className="flex items-center gap-2 text-sm"
+                    >
+                      <div
+                        className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors"
+                        style={{
+                          backgroundColor: tenant.status === "active" ? "#10b981" : "#6b7280",
+                        }}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
+                            tenant.status === "active" ? "translate-x-6" : "translate-x-1"
+                          }`}
+                        />
+                      </div>
+                      <span className="text-gray-600 dark:text-gray-400">
+                        {tenant.status === "active" ? "Active" : "Inactive"}
+                      </span>
+                    </button>
+
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => handleViewTenant(tenant)}
+                        className="p-2 text-gray-600 hover:text-brand-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                        title="View"
+                      >
+                        <Icon src={EyeIcon} className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleEditTenant(tenant)}
+                        className="text-brand-600 hover:text-brand-700 font-medium text-sm"
+                      >
+                        Edit
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop Table View (hidden on mobile) */}
+          <div className="hidden md:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
             <div className="max-w-full overflow-x-auto">
               <div className="min-w-[900px]">
                 <Table>
@@ -384,7 +493,9 @@ const handleStatusToggle = async (tenant: Tenant) => {
                           </TableCell>
 
                           <TableCell>
-                            {tenant.currency?.currencySymbol} {tenant.currency?.currencyCode}
+                            {tenant.currency && typeof tenant.currency === "object"
+                              ? `${tenant.currency.currencySymbol} ${tenant.currency.currencyCode}`
+                              : "—"}
                           </TableCell>
 
                           <TableCell>
@@ -437,6 +548,8 @@ const handleStatusToggle = async (tenant: Tenant) => {
           </div>
         </div>
       </div>
+
+ 
 
       {/* View Details Modal */}
       {/* View Details Modal */}

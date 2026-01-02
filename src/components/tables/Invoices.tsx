@@ -104,8 +104,8 @@ export default function InvoicesPage() {
   return (
     <div className="relative min-h-screen">
       <div className="space-y-6 py-6 px-4 md:px-6 lg:px-8">
-        {/* Page Header */}
-        <div className="flex items-center justify-between">
+        {/* Page Header - Responsive */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
             <button
               onClick={() => window.history.back()}
@@ -121,15 +121,100 @@ export default function InvoicesPage() {
 
           <Link
             href="/dashboard/invoices/create"
-            className="inline-flex items-center gap-2 rounded-lg !bg-[#0A66C2] hover:!bg-[#084d93] px-4 py-2 text-sm font-medium text-white transition"
+            className="inline-flex items-center justify-center gap-2 rounded-lg !bg-[#0A66C2] hover:!bg-[#084d93] px-4 py-2 text-sm font-medium text-white transition w-full sm:w-auto"
           >
             Create Invoice
           </Link>
         </div>
 
-        {/* Table */}
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-          <div className="max-w-full overflow-x-auto">
+        {/* Mobile Card View */}
+        <div className="block md:hidden space-y-4">
+          {loading ? (
+            <div className="text-center py-10 text-gray-500 dark:text-gray-400">
+              Loading invoices...
+            </div>
+          ) : error ? (
+            <div className="text-center py-10 text-red-600">{error}</div>
+          ) : invoices.length === 0 ? (
+            <div className="text-center py-10 text-gray-500 dark:text-gray-400">
+              No invoices found.
+              <div className="mt-6">
+                <Button onClick={() => router.push("/dashboard/invoices/create")}>
+                  Create Invoice
+                </Button>
+              </div>
+            </div>
+          ) : (
+            invoices.map((inv) => (
+              <div
+                key={inv.invoiceId}
+                onClick={() => navigateToInvoice(inv.invoiceId)}
+                className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] p-5 shadow-sm cursor-pointer transition hover:shadow-md"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <p className="font-semibold text-gray-900 dark:text-white text-lg">
+                      {inv.userGeneratedInvoiceId || inv.invoiceId}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      {inv.projectName || "No project"}
+                    </p>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigateToInvoice(inv.invoiceId);
+                    }}
+                    className="p-2 text-gray-600 hover:text-brand-600 transition rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                    title="View invoice"
+                  >
+                    <Icon src={EyeIcon} className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-sm border-t pt-4 border-gray-100 dark:border-white/[0.08]">
+                  <div>
+                    <span className="text-gray-500">Date</span>
+                    <p className="font-medium">{formatDate(inv.invoiceDate)}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Total</span>
+                    <p className="font-medium">
+                      {formatMoney(inv.totalAmount, inv.currency_detail?.currencySymbol || inv.currencySymbol)}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Balance Due</span>
+                    <p className="font-medium">
+                      {formatMoney(inv.balanceDue, inv.currency_detail?.currencySymbol || inv.currencySymbol)}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Status</span>
+                    <div className="mt-1">
+                      <span
+                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
+                          {
+                            success: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+                            error: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+                            info: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+                            secondary: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300",
+                          }[statusBadgeColor(inv.status)]
+                        }`}
+                      >
+                        {inv.status.toUpperCase()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Table View (hidden on mobile) */}
+        <div className="hidden md:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+          <div className="overflow-x-auto">
             <div className="min-w-[900px]">
               <Table>
                 <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
@@ -188,7 +273,6 @@ export default function InvoicesPage() {
                         key={inv.invoiceId}
                         className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
                       >
-                        {/* Clickable area covering all columns except Actions */}
                         <TableCell
                           className="px-5 py-4 text-start"
                           onClick={() => navigateToInvoice(inv.invoiceId)}
@@ -244,7 +328,6 @@ export default function InvoicesPage() {
                           </span>
                         </TableCell>
 
-                        {/* Actions column - NOT clickable to avoid conflict */}
                         <TableCell className="px-5 py-4 text-start">
                           <button
                             onClick={() => navigateToInvoice(inv.invoiceId)}

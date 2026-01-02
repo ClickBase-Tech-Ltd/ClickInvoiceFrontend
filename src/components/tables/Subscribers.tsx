@@ -117,8 +117,8 @@ export default function AdminSubscriptionsPage() {
   return (
     <div className="relative min-h-screen">
       <div className="space-y-6 py-6 px-4 md:px-6 lg:px-8">
-        {/* Page Header - Matches Invoices Page */}
-        <div className="flex items-center justify-between">
+        {/* Responsive Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
             <button
               onClick={() => window.history.back()}
@@ -133,12 +133,96 @@ export default function AdminSubscriptionsPage() {
           </div>
 
           <div className="text-sm text-gray-600 dark:text-gray-400">
-            Total: <span className="font-medium">{subscriptions.length}</span>
+            Total: <span className="font-medium">{subscriptions.length}</span> subscription{subscriptions.length !== 1 ? "s" : ""}
           </div>
         </div>
 
-        {/* Table - EXACTLY like Invoices Page */}
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+        {/* Mobile Card View */}
+        <div className="block md:hidden space-y-4">
+          {loading ? (
+            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+              Loading subscriptions...
+            </div>
+          ) : error ? (
+            <div className="text-center py-12 text-red-600">{error}</div>
+          ) : subscriptions.length === 0 ? (
+            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+              No subscriptions found.
+            </div>
+          ) : (
+            subscriptions.map((sub) => (
+              <div
+                key={sub.subscriptionId}
+                onClick={() => openModal(sub)}
+                className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] p-5 shadow-sm cursor-pointer transition hover:shadow-md"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center text-xl font-bold text-[#0A66C2] flex-shrink-0">
+                      {sub.user.firstName[0].toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900 dark:text-white">
+                        {sub.user.firstName} {sub.user.lastName}
+                        {sub.user.otherNames && (
+                          <span className="text-sm text-gray-500"> ({sub.user.otherNames})</span>
+                        )}
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        {sub.user.email}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openModal(sub);
+                    }}
+                    className="p-2 text-gray-600 hover:text-brand-600 transition rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                    title="View details"
+                  >
+                    <Icon src={EyeIcon} className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-sm border-t pt-4 border-gray-100 dark:border-white/[0.08]">
+                  <div>
+                    <span className="text-gray-500">Plan</span>
+                    <p className="font-medium">{sub.plan.planName}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Amount</span>
+                    <p className="font-medium">{formatMoney(sub.plan.price)}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Status</span>
+                    <div className="mt-1">
+                      <span
+                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
+                          {
+                            success: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+                            error: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+                            secondary: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300",
+                          }[statusBadgeColor(sub.status)]
+                        }`}
+                      >
+                        {sub.status.toUpperCase()}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Next Billing</span>
+                    <p className="font-medium">{formatDate(sub.nextBillingDate)}</p>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Table View (hidden on mobile) */}
+        <div className="hidden md:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
           <div className="max-w-full overflow-x-auto">
             <div className="min-w-[900px]">
               <Table>
@@ -196,7 +280,6 @@ export default function AdminSubscriptionsPage() {
                         key={sub.subscriptionId}
                         className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
                       >
-                        {/* Clickable cells */}
                         <TableCell className="px-5 py-4 text-start">
                           <span className="font-medium text-gray-800 dark:text-white/90">
                             {sub.user.firstName} {sub.user.lastName}
@@ -241,7 +324,6 @@ export default function AdminSubscriptionsPage() {
                           {formatDate(sub.nextBillingDate)}
                         </TableCell>
 
-                        {/* Actions - NOT clickable to avoid conflict */}
                         <TableCell className="px-5 py-4 text-start">
                           <button
                             onClick={(e) => {
@@ -264,7 +346,7 @@ export default function AdminSubscriptionsPage() {
         </div>
       </div>
 
-      {/* Custom Modal - Clean & Matches Your App Style */}
+      {/* Modal remains unchanged - already responsive */}
       {isModalOpen && selectedSub && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-gray-900 p-6 shadow-2xl">

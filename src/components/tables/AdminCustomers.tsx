@@ -1,6 +1,7 @@
+// app/admin/customers/page.tsx
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -50,10 +51,14 @@ export default function AdminCustomers() {
   const [searchTerm, setSearchTerm] = useState("");
   const [tenantFilter, setTenantFilter] = useState<string>("all");
 
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
   useEffect(() => {
     const fetchCustomers = async () => {
       try {
-        const res = await api.get("/customers/admin"); // Adjust endpoint as needed
+        const res = await api.get("/customers/admin");
         setCustomers(res.data || []);
       } catch (err: any) {
         setError(err?.response?.data?.message || "Failed to load customers");
@@ -79,26 +84,42 @@ export default function AdminCustomers() {
   const formatAddress = (address: string | null) =>
     address ? address.replace(/\n/g, ", ") : "No address provided";
 
-  // Get unique tenants for filter dropdown
-  const uniqueTenants = Array.from(
-    new Map(customers.map((c) => [c.tenant.tenantId, c.tenant])).values()
-  );
+  // Unique tenants for filter
+  const uniqueTenants = useMemo(() => {
+    return Array.from(
+      new Map(customers.map((c) => [c.tenant.tenantId, c.tenant])).values()
+    );
+  }, [customers]);
 
-  // Filter customers
-  const filteredCustomers = customers.filter((customer) => {
-    const matchesSearch =
-      searchTerm === "" ||
-      customer.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (customer.customerEmail &&
-        customer.customerEmail.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (customer.customerPhone && customer.customerPhone.includes(searchTerm)) ||
-      customer.tenant.tenantName.toLowerCase().includes(searchTerm.toLowerCase());
+  // Filtered customers
+  const filteredCustomers = useMemo(() => {
+    return customers.filter((customer) => {
+      const matchesSearch =
+        searchTerm === "" ||
+        customer.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (customer.customerEmail &&
+          customer.customerEmail.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (customer.customerPhone && customer.customerPhone.includes(searchTerm)) ||
+        customer.tenant.tenantName.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesTenant =
-      tenantFilter === "all" || customer.tenant.tenantId === Number(tenantFilter);
+      const matchesTenant =
+        tenantFilter === "all" || customer.tenant.tenantId === Number(tenantFilter);
 
-    return matchesSearch && matchesTenant;
-  });
+      return matchesSearch && matchesTenant;
+    });
+  }, [customers, searchTerm, tenantFilter]);
+
+  // Paginated results
+  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
+  const paginatedCustomers = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredCustomers.slice(start, start + itemsPerPage);
+  }, [filteredCustomers, currentPage]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, tenantFilter]);
 
   const openModal = (customer: Customer) => {
     setSelectedCustomer(customer);
@@ -115,8 +136,8 @@ export default function AdminCustomers() {
   return (
     <div className="relative min-h-screen">
       <div className="space-y-6 py-6 px-4 md:px-6 lg:px-8">
-        {/* Page Header */}
-        <div className="flex items-center justify-between">
+        {/* Responsive Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
             <button
               onClick={() => window.history.back()}
@@ -134,7 +155,7 @@ export default function AdminCustomers() {
             Total: <span className="font-medium">{customers.length}</span>
             {filteredCustomers.length !== customers.length && (
               <span className="ml-2">
-                (Filtered: {filteredCustomers.length})
+                (Showing: {filteredCustomers.length})
               </span>
             )}
           </div>
@@ -145,30 +166,109 @@ export default function AdminCustomers() {
           <div className="flex-1">
             <input
               type="text"
-              placeholder="Search by name, email, phone, or tenant..."
+              placeholder="Search by name, email, phone, or business..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
             />
           </div>
-          <div className="flex gap-4">
-            <select
-              value={tenantFilter}
-              onChange={(e) => setTenantFilter(e.target.value)}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
-            >
-              <option value="all">All Tenants</option>
-              {uniqueTenants.map((tenant) => (
-                <option key={tenant.tenantId} value={tenant.tenantId}>
-                  {tenant.tenantName}
-                </option>
-              ))}
-            </select>
-          </div>
+          <select
+            value={tenantFilter}
+            onChange={(e) => setTenantFilter(e.target.value)}
+            className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
+          >
+            <option value="all">All Businesses</option>
+            {uniqueTenants.map((tenant) => (
+              <option key={tenant.tenantId} value={tenant.tenantId}>
+                {tenant.tenantName}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {/* Table */}
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+        {/* Mobile Card View */}
+        <div className="block md:hidden space-y-4">
+          {loading ? (
+            <div className="text-center py-12 text-gray-500">Loading customers...</div>
+          ) : error ? (
+            <div className="text-center py-12 text-red-600">{error}</div>
+          ) : paginatedCustomers.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              {searchTerm || tenantFilter !== "all"
+                ? "No customers match your filters."
+                : "No customers found."}
+            </div>
+          ) : (
+            paginatedCustomers.map((customer) => (
+              <div
+                key={customer.customerId}
+                onClick={() => openModal(customer)}
+                className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] p-5 shadow-sm cursor-pointer transition hover:shadow-md"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center text-xl font-bold text-[#0A66C2]">
+                      {customer.customerName.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900 dark:text-white">
+                        {customer.customerName}
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        ID: #{customer.customerId}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openModal(customer);
+                    }}
+                    className="p-2 text-gray-600 hover:text-brand-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                    title="View details"
+                  >
+                    <Icon src={EyeIcon} className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <span className="text-gray-500">Contact</span>
+                    <div className="mt-1">
+                      {customer.customerEmail ? (
+                        <p className="font-medium break-all">{customer.customerEmail}</p>
+                      ) : (
+                        <p className="text-gray-400">No email</p>
+                      )}
+                      {customer.customerPhone && (
+                        <p className="text-gray-600 mt-1">{customer.customerPhone}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-gray-500">Business</span>
+                    <div className="mt-1 flex items-center gap-2">
+                      <Icon src={InfoIcon} className="w-4 h-4 text-gray-500" />
+                      <div>
+                        <p className="font-medium">{customer.tenant.tenantName}</p>
+                        <p className="text-xs text-gray-500">{customer.tenant.tenantEmail}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-gray-500">Created</span>
+                    <p className="font-medium text-sm mt-1">{formatDate(customer.created_at)}</p>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
           <div className="max-w-full overflow-x-auto">
             <Table>
               <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
@@ -213,7 +313,7 @@ export default function AdminCustomers() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredCustomers.map((customer) => (
+                  paginatedCustomers.map((customer) => (
                     <TableRow
                       key={customer.customerId}
                       className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
@@ -285,9 +385,44 @@ export default function AdminCustomers() {
             </Table>
           </div>
         </div>
+
+        {/* Pagination Controls */}
+        {filteredCustomers.length > itemsPerPage && (
+          <div className="flex justify-center items-center gap-2 mt-6">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+            >
+              Prev
+            </button>
+
+            {Array.from({ length: totalPages }, (_, i) => (
+              <button
+                key={i + 1}
+                onClick={() => setCurrentPage(i + 1)}
+                className={`px-3 py-1 rounded-md text-sm transition ${
+                  currentPage === i + 1
+                    ? "bg-[#0A66C2] text-white"
+                    : "bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
+                }`}
+              >
+                {i + 1}
+              </button>
+            ))}
+
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Customer Details Modal */}
+    {/* Customer Details Modal */}
       {isModalOpen && selectedCustomer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-gray-900 p-6 shadow-2xl">
