@@ -456,7 +456,7 @@ export default function SupportPage() {
                           <div className="flex items-end">
                             <Button
                               onClick={() => handleReplySubmit(ticket.ticketId)}
-                              className="px-6 py-3 bg-[#0A66C2] hover:bg-[#084d93] rounded-xl"
+                              className="px-6 py-3 !bg-[#0A66C2] !hover:bg-[#084d93] rounded-xl"
                             >
                               Send
                             </Button>

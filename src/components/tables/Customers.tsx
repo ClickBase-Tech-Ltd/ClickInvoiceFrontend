@@ -123,8 +123,7 @@ export default function CustomersPage() {
   const [sendingSingle, setSendingSingle] = useState(false);
   const [sendingBulk, setSendingBulk] = useState(false);
 
-  // Assume user is premium (you can fetch this from auth context or API in real app)
-  const isPremiumUser = true; // Set to false if not premium
+  const isPremiumUser = true;
 
   useEffect(() => {
     const fetchCustomers = async () => {
@@ -156,7 +155,7 @@ export default function CustomersPage() {
 
   const selectAll = () => {
     setSelectedCustomers(
-      selectedCustomers.size === customers.length
+      selectedCustomers.size === customers.length && customers.length > 0
         ? new Set()
         : new Set(customers.map(c => c.customerId))
     );
@@ -167,7 +166,6 @@ export default function CustomersPage() {
     setViewModalOpen(true);
   };
 
-  // Single Email
   const openSingleEmailModal = (customer: Customer) => {
     setSingleEmailCustomer(customer);
     setSingleSubject(`Hello ${customer.customerName}`);
@@ -175,6 +173,22 @@ export default function CustomersPage() {
     setUseAlternateEmail(false);
     setAlternateEmail("");
     setIsSingleEmailModalOpen(true);
+  };
+
+  const openBulkEmailModal = () => {
+    const ids = selectedCustomers.size > 0
+      ? Array.from(selectedCustomers)
+      : customers.map(c => c.customerId);
+
+    if (ids.length === 0) {
+      setEmailErrorMessage("No customers available to email.");
+      setShowEmailError(true);
+      return;
+    }
+
+    setBulkSubject("");
+    setBulkMessage("Dear Customers,\n\n");
+    setIsBulkEmailModalOpen(true);
   };
 
   const handleSendSingleEmail = async () => {
@@ -219,23 +233,6 @@ export default function CustomersPage() {
     }
   };
 
-  // Bulk Email
-  const openBulkEmailModal = () => {
-    const ids = selectedCustomers.size > 0
-      ? Array.from(selectedCustomers)
-      : customers.map(c => c.customerId);
-
-    if (ids.length === 0) {
-      setEmailErrorMessage("No customers available to email.");
-      setShowEmailError(true);
-      return;
-    }
-
-    setBulkSubject("");
-    setBulkMessage("Dear Customers,\n\n");
-    setIsBulkEmailModalOpen(true);
-  };
-
   const handleSendBulkEmail = async () => {
     if (!bulkSubject.trim() || !bulkMessage.trim()) {
       setEmailErrorMessage("Please provide subject and message.");
@@ -272,8 +269,8 @@ export default function CustomersPage() {
   return (
     <div className="relative min-h-screen">
       <div className="space-y-6 py-6 px-4 md:px-6 lg:px-8">
-        {/* Page Header */}
-        <div className="flex items-center justify-between">
+        {/* Page Header - Responsive */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
             <button
               onClick={() => window.history.back()}
@@ -291,25 +288,97 @@ export default function CustomersPage() {
             <Button
               onClick={openBulkEmailModal}
               disabled={customers.length === 0}
-              className="!bg-[#0A66C2] hover:!bg-[#084d93] flex items-center gap-2"
+              className="!bg-[#0A66C2] hover:!bg-[#084d93] flex items-center gap-2 w-full sm:w-auto"
             >
-              {selectedCustomers.size > 0 ? "Email Selected" : "Broadcast Email"}
+              <Icon src={MailIcon} className="w-4 h-4" />
+              {selectedCustomers.size > 0 ? `Email Selected (${selectedCustomers.size})` : "Broadcast Email"}
             </Button>
           )}
         </div>
 
         {/* Selection Info */}
         {customers.length > 0 && (
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
             {selectedCustomers.size > 0
-              ? `${selectedCustomers.size} selected`
-              : `${customers.length} total customers`}
+              ? `${selectedCustomers.size} customer${selectedCustomers.size > 1 ? 's' : ''} selected`
+              : `${customers.length} total customer${customers.length > 1 ? 's' : ''}`}
           </div>
         )}
 
-        {/* Table */}
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
-          <div className="max-w-full overflow-x-auto">
+        {/* Mobile Card View */}
+        <div className="block md:hidden space-y-4">
+          {loading ? (
+            <div className="text-center py-10 text-gray-500">Loading customers...</div>
+          ) : error ? (
+            <div className="text-center py-10 text-red-600">{error}</div>
+          ) : customers.length === 0 ? (
+            <div className="text-center py-10 text-gray-500">
+              No customers found.{" "}
+              <Button onClick={() => router.push("/customers/create")} variant="outline" className="mt-4">
+                Add Customer
+              </Button>
+            </div>
+          ) : (
+            customers.map((customer) => (
+              <div
+                key={customer.customerId}
+                className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] p-5 shadow-sm"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedCustomers.has(customer.customerId)}
+                      onChange={() => toggleCustomerSelection(customer.customerId)}
+                      className="rounded mt-1"
+                    />
+                    <div>
+                      <p className="font-semibold text-gray-900 dark:text-white">
+                        {customer.customerName}
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {customer.customerEmail || "No email"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => openViewModal(customer)}
+                      className="p-2 text-gray-600 hover:text-brand-600 transition rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                      title="View details"
+                    >
+                      <Icon src={EyeIcon} className="w-5 h-5" />
+                    </button>
+                    {customer.customerEmail && (
+                      <button
+                        onClick={() => openSingleEmailModal(customer)}
+                        className="p-2 text-gray-600 hover:text-brand-600 transition rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                        title="Send email"
+                      >
+                        <Icon src={MailIcon} className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-sm border-t pt-4 border-gray-100 dark:border-white/[0.08]">
+                  <div>
+                    <span className="text-gray-500">Phone</span>
+                    <p className="font-medium">{customer.customerPhone || "—"}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Added</span>
+                    <p className="font-medium">{formatDate(customer.created_at)}</p>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop Table View (hidden on mobile) */}
+        <div className="hidden md:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+          <div className="overflow-x-auto">
             <div className="min-w-[800px]">
               <Table>
                 <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
@@ -419,7 +488,7 @@ export default function CustomersPage() {
         </div>
       </div>
 
-      {/* Existing View Modal */}
+      {/* Modals remain unchanged */}
       {viewModalOpen && selectedCustomer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-gray-900 p-8 shadow-2xl">
@@ -475,7 +544,7 @@ export default function CustomersPage() {
         </div>
       )}
 
-      {/* Single Email Modal */}
+      {/* Single & Bulk Email Modals + Success/Error Modals remain exactly the same */}
       {isSingleEmailModalOpen && singleEmailCustomer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div className="w-full max-w-lg rounded-xl bg-white dark:bg-gray-900 p-6 shadow-2xl">
@@ -500,7 +569,6 @@ export default function CustomersPage() {
                 />
               </div>
 
-              {/* Premium Feature: Alternate Email */}
               {isPremiumUser && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
@@ -543,7 +611,6 @@ export default function CustomersPage() {
         </div>
       )}
 
-      {/* Bulk Email Modal */}
       {isBulkEmailModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div className="w-full max-w-lg rounded-xl bg-white dark:bg-gray-900 p-6 shadow-2xl">
@@ -587,7 +654,6 @@ export default function CustomersPage() {
         </div>
       )}
 
-      {/* Success & Error Modals for Email Actions */}
       <EmailSuccessModal
         isOpen={showEmailSuccess}
         message={successMessage}

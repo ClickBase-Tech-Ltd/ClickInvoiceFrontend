@@ -58,7 +58,7 @@ export default function OutstandingAndCollected({
               Outstanding
             </p>
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {currency} {data.outstanding.toLocaleString()}
+              {data.currency_symbol} {data.outstanding.toLocaleString()}
             </h3>
             <p className="text-sm text-[#0A66C2] dark:text-gray-400">
               Amount yet to receive
@@ -79,7 +79,7 @@ export default function OutstandingAndCollected({
               Collected
             </p>
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {currency} {data.collected.toLocaleString()}
+              {data.currency_symbol} {data.collected.toLocaleString()}
             </h3>
             <p className="text-sm text-[#0A66C2] dark:text-gray-400">
               Total payments received

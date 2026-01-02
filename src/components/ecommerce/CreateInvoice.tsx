@@ -385,6 +385,7 @@ export default function CreateInvoicePage() {
                     updateItem(i, "amount", e.target.value)
                   }
                   required
+                  placeholder="Amount"
                 />
                 {items.length > 1 && (
                   <button

@@ -405,7 +405,7 @@ export default function AdminSupportPage() {
                             <Button
                               onClick={() => handleReplySubmit(ticket.ticketId)}
                               disabled={!replyMessages[ticket.ticketId]?.trim()}
-                              className="px-8 py-4 bg-[#0A66C2] hover:bg-[#084d93] rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="px-8 py-4 !bg-[#0A66C2] !hover:bg-[#084d93] rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                               Send Reply
                             </Button>
