@@ -152,9 +152,13 @@ export default function RecentInvoices() {
                 </td>
 
                 <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                  {inv.currency_detail.currencySymbol}{" "}
-                  {Number(inv.totalAmount || inv.balanceDue || 0).toLocaleString()}
-                </td>
+  {inv.currency_detail.currencySymbol}{" "}
+  {Number(
+    Number(inv.balanceDue) === 0 || inv.balanceDue == null
+      ? inv.amountPaid
+      : inv.balanceDue
+  ).toLocaleString()}
+</td>
 
                 <td className="px-4 py-3 whitespace-nowrap">
                   <span

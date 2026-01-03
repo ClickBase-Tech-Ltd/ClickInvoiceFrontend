@@ -22,10 +22,10 @@ export default function BasicDashboard() {
   }, [router]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2">
       {/* Welcome Header */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center overflow-hidden">
               <img src="/images/avatar.png" alt="Logo" className="w-full h-full object-cover" />

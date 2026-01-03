@@ -54,7 +54,7 @@ export default function AdminOutstandingAndCollected() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
         {visibleData.map((item) => (
           <React.Fragment key={item.currency_code}>
             {/* Outstanding */}
@@ -69,7 +69,8 @@ export default function AdminOutstandingAndCollected() {
                     {item.outstanding.toLocaleString()}
                   </h3>
                   <p className="text-sm text-[#0A66C2] dark:text-gray-400">
-                    Currency ID: {item.currency_code}
+                                        Currency Code: {item.currency_code} | Country: {item.country}
+
                   </p>
                 </div>
 
@@ -94,7 +95,7 @@ export default function AdminOutstandingAndCollected() {
                     {item.collected.toLocaleString()}
                   </h3>
                   <p className="text-sm text-[#0A66C2] dark:text-gray-400">
-                    Currency ID: {item.currency_code}
+                    Currency Code: {item.currency_code} | Country: {item.country}
                   </p>
                 </div>
 

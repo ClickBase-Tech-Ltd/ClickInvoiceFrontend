@@ -20,6 +20,7 @@ import {
   PlugInIcon,
   ChatIcon,
   UserIcon,
+  LockIcon,
 } from "../icons/index";
 import SidebarWidget from "./SidebarWidget";
 import { faCog } from "@fortawesome/free-solid-svg-icons";
@@ -95,9 +96,9 @@ const getMenuItems = (role: UserRole) => {
       },
     // {
     //   // icon: <BoxIconLine />,
-    //   icon: <Icon src={BoxIconLine} />,
-    //   name: "Customers",
-    //   path: "/dashboard/customers",
+    //   icon: <Icon src={LockIcon} />,
+    //   name: "Settings",
+    //   path: "/dashboard/admin/settings",
     // },
     {
       // icon: <UserCircleIcon />,

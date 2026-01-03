@@ -79,7 +79,7 @@ export default function SuperAdminDashboard() {
   }, [router]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2">
       {/* Welcome Header */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -105,13 +105,38 @@ export default function SuperAdminDashboard() {
       </div>
 
       {/* KPIs: Outstanding & Collected */}
-      <AdminOutstandingAndCollected currency={currency} />
+      {/* <AdminOutstandingAndCollected currency={currency} />
       <InvoiceStatusChart />
       <OverdueInvoicesChart/>
       <CurrencyDistributionChart/>
       <RevenueTrendsChart/>
-      <TopTenantsChart/>
-      {/* <PaymentMethodChart/> */}
+      <TopTenantsChart/> */}
+
+    <AdminOutstandingAndCollected currency={currency} />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+  {/* Row 1 */}
+  <div className="w-full">
+    <InvoiceStatusChart />
+  </div>
+  <div className="w-full">
+    <OverdueInvoicesChart />
+  </div>
+
+  {/* Row 2 */}
+  <div className="w-full">
+    <CurrencyDistributionChart />
+  </div>
+  <div className="w-full">
+    <RevenueTrendsChart />
+  </div>
+
+  {/* Row 3 */}
+  <div className="w-full">
+    <TopTenantsChart />
+  </div>
+  <div className="w-full">
+  </div>
+</div>
 
       {/* Admin-specific Widgets */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

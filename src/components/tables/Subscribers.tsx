@@ -81,8 +81,8 @@ export default function AdminSubscriptionsPage() {
     const num = parseFloat(price);
     if (isNaN(num)) return "₦0.00";
     return new Intl.NumberFormat("en-NG", {
-      style: "currency",
-      currency: "NGN",
+      // style: "currency",
+      // currency: "NGN",
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(num);
@@ -193,7 +193,7 @@ export default function AdminSubscriptionsPage() {
                   </div>
                   <div>
                     <span className="text-gray-500">Amount</span>
-                    <p className="font-medium">{formatMoney(sub.plan.price)}</p>
+                    <p className="font-medium">{sub?.plan?.currency_detail?.currencySymbol} {formatMoney(sub.plan.price)}</p>
                   </div>
                   <div>
                     <span className="text-gray-500">Status</span>

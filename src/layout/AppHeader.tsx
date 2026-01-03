@@ -190,7 +190,7 @@ const showTenantSwitcher = !isAdmin && tenants.length > 0;
 
   return (
     <header
-      className={`sticky top-0 z-50 flex w-full border-b bg-white dark:border-gray-800 dark:bg-gray-900 ${
+      className={`pb-1 sticky top-0 z-50 flex w-full border-b bg-white dark:border-gray-800 dark:bg-gray-900 ${
         isAnyModalOpen ? "blur-md pointer-events-none" : ""
       }`}
     >
