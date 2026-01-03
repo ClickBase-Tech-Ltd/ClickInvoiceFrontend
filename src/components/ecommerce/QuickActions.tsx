@@ -7,6 +7,7 @@ import {
   faTags,
   faComments,
   faBuilding,
+  faUser,
 } from "@fortawesome/free-solid-svg-icons";
 
 export default function QuickActions() {
@@ -16,7 +17,7 @@ export default function QuickActions() {
     { href: "/dashboard/invoices", label: "Billing", icon: faReceipt },
     { href: "/dashboard/plans", label: "Pricing", icon: faTags },
     { href: "/dashboard/support", label: "Support", icon: faComments },
-    { href: "/dashboard/profile", label: "Settings", icon: faGear },
+    { href: "/dashboard/profile", label: "Profile", icon: faUser },
   ];
 
   return (

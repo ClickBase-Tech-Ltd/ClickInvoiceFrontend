@@ -57,6 +57,12 @@ import OutstandingAndCollected from "@/components/ecommerce/OutstandingAndCollec
 import RevenueByCurrency from "@/components/ecommerce/RevenueByCurrency"; // Admin-specific widget
 import AdminOutstandingAndCollected from "./AdminOutstandingAndCollected";
 import AdminQuickActions from "./AdminQuickActions";
+import InvoiceStatusChart from "../admin/InvoiceStatusChart";
+import OverdueInvoicesChart from "../admin/OverdueInvoicesChart";
+import CurrencyDistributionChart from "../admin/CurrencyDistributionChart";
+import PaymentMethodChart from "../admin/PaymentMethodChart";
+import RevenueTrendsChart from "../admin/RevenueTrendsChart";
+import TopTenantsChart from "../admin/TopTenantsChart";
 
 export default function SuperAdminDashboard() {
   const router = useRouter();
@@ -100,6 +106,12 @@ export default function SuperAdminDashboard() {
 
       {/* KPIs: Outstanding & Collected */}
       <AdminOutstandingAndCollected currency={currency} />
+      <InvoiceStatusChart />
+      <OverdueInvoicesChart/>
+      <CurrencyDistributionChart/>
+      <RevenueTrendsChart/>
+      <TopTenantsChart/>
+      {/* <PaymentMethodChart/> */}
 
       {/* Admin-specific Widgets */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

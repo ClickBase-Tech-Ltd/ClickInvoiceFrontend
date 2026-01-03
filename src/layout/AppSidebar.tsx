@@ -164,12 +164,12 @@ const getMenuItems = (role: UserRole) => {
         name: "Profile",
         path: "/dashboard/profile",
       },
-      {
-        // icon: <UserCircleIcon />,
-        icon: <Icon src={PlugInIcon} />,
-        name: "Settings",
-        path: "/dashboard/profile",
-      },
+      // {
+      //   // icon: <UserCircleIcon />,
+      //   icon: <Icon src={PlugInIcon} />,
+      //   name: "Settings",
+      //   path: "/dashboard/profile",
+      // },
 
       {
         // icon: <UserCircleIcon />,
