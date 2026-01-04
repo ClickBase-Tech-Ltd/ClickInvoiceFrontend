@@ -1,7 +1,6 @@
 "use client";
 import React, { useEffect, useState, useMemo } from "react";
 import Button from "../ui/button/Button";
-import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import api from "../../../lib/api";
 
@@ -111,7 +110,7 @@ function Pagination({
   );
 }
 
-// Modal Component (same as before)
+// Modal Component
 function Modal({
   isOpen,
   onClose,
@@ -143,6 +142,89 @@ function Modal({
   );
 }
 
+
+// Success Modal Component
+function SuccessModal({
+  isOpen,
+  message,
+  onClose,
+}: {
+  isOpen: boolean;
+  message: string;
+  onClose: () => void;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-white/40 dark:bg-black/40 backdrop-blur-md">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6 ring-1 ring-black/5 dark:ring-white/10">
+        <div className="flex flex-col items-center text-center">
+          <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mb-4">
+            <svg
+              className="w-8 h-8 text-green-600 dark:text-green-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            Success
+          </h3>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">{message}</p>
+
+          <Button onClick={onClose} className="w-full">
+            OK
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Error Modal Component
+function ErrorModal({ 
+  isOpen, 
+  message, 
+  onClose 
+}: { 
+  isOpen: boolean; 
+  message: string; 
+  onClose: () => void 
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-white/40 dark:bg-black/40 backdrop-blur-md">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6 ring-1 ring-black/5 dark:ring-white/10">
+        <div className="flex flex-col items-center text-center">
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center mb-4">
+            <svg
+              className="w-8 h-8 text-red-600 dark:text-red-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            Error
+          </h3>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">{message}</p>
+
+          <Button onClick={onClose} variant="outline" className="w-full">
+            Close
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const ITEMS_PER_PAGE = 10;
 
 export default function AdminSettingsPage() {
@@ -158,10 +240,17 @@ export default function AdminSettingsPage() {
   const [planPage, setPlanPage] = useState(1);
   const [gatewayPage, setGatewayPage] = useState(1);
 
-  // Modals & forms (unchanged from previous version)
+  // Modals & forms
   const [currencyModalOpen, setCurrencyModalOpen] = useState(false);
   const [planModalOpen, setPlanModalOpen] = useState(false);
   const [gatewayModalOpen, setGatewayModalOpen] = useState(false);
+
+
+  // Notification modals
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState("");
+
 
   const [editingCurrency, setEditingCurrency] = useState<Currency | null>(null);
   const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null);
@@ -239,7 +328,19 @@ export default function AdminSettingsPage() {
     setGatewayPage(1);
   }, [currencies.length, plans.length, gateways.length]);
 
-  // Modal handlers remain the same (save functions refresh data and reset pages)
+   // Show success notification
+  const showSuccess = (message: string) => {
+    setNotificationMessage(message);
+    setShowSuccessModal(true);
+  };
+
+  // Show error notification
+  const showError = (message: string) => {
+    setNotificationMessage(message);
+    setShowErrorModal(true);
+  };
+  
+  // Currency Modal Handler
   const openCurrencyModal = (currency?: Currency) => {
     if (currency) {
       setEditingCurrency(currency);
@@ -266,12 +367,13 @@ export default function AdminSettingsPage() {
       setCurrencyModalOpen(false);
       const res = await api.get("/currencies");
       setCurrencies(res.data);
-      alert("Currency saved successfully!");
+      showSuccess("Currency saved successfully!");
     } catch (err: any) {
-      alert(err?.response?.data?.message || "Failed to save currency");
+      showError(err?.response?.data?.message || "Failed to save currency");
     }
   };
 
+  // Plan Modal Handler
   const openPlanModal = (plan?: SubscriptionPlan) => {
     if (plan) {
       setEditingPlan(plan);
@@ -311,12 +413,13 @@ export default function AdminSettingsPage() {
       setPlanModalOpen(false);
       const res = await api.get("/subscription-plans");
       setPlans(res.data);
-      alert("Plan saved successfully!");
+      showSuccess("Subscription plan saved successfully!");
     } catch (err: any) {
-      alert(err?.response?.data?.message || "Failed to save plan");
+      showError(err?.response?.data?.message || "Failed to save plan");
     }
   };
 
+  // Gateway Modal Handler
   const openGatewayModal = (gateway?: PaymentGateway) => {
     if (gateway) {
       setEditingGateway(gateway);
@@ -341,9 +444,9 @@ export default function AdminSettingsPage() {
       setGatewayModalOpen(false);
       const res = await api.get("/payment-gateways");
       setGateways(res.data);
-      alert("Gateway saved successfully!");
+      showSuccess("Payment gateway saved successfully!");
     } catch (err: any) {
-      alert(err?.response?.data?.message || "Failed to save gateway");
+      showError(err?.response?.data?.message || "Failed to save gateway");
     }
   };
 
@@ -495,14 +598,45 @@ export default function AdminSettingsPage() {
         </section>
       </div>
 
-      {/* Modals remain exactly the same as in previous version */}
-      {/* Currency Modal */}
+      {/* Currency Modal with plain HTML inputs */}
       <Modal isOpen={currencyModalOpen} onClose={() => setCurrencyModalOpen(false)} title={editingCurrency ? "Edit Currency" : "Add Currency"}>
         <div className="space-y-4">
-          <div><Label>Currency Name</Label><Input value={currencyForm.currencyName} onChange={(e) => setCurrencyForm({ ...currencyForm, currencyName: e.target.value })} /></div>
-          <div><Label>Currency Code</Label><Input value={currencyForm.currencyCode} onChange={(e) => setCurrencyForm({ ...currencyForm, currencyCode: e.target.value.toUpperCase() })} /></div>
-          <div><Label>Currency Symbol</Label><Input value={currencyForm.currencySymbol} onChange={(e) => setCurrencyForm({ ...currencyForm, currencySymbol: e.target.value })} /></div>
-          <div><Label>Country</Label><Input value={currencyForm.country} onChange={(e) => setCurrencyForm({ ...currencyForm, country: e.target.value })} /></div>
+          <div>
+            <Label>Currency Name</Label>
+            <input
+              type="text"
+              value={currencyForm.currencyName}
+              onChange={(e) => setCurrencyForm({ ...currencyForm, currencyName: e.target.value })}
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            />
+          </div>
+          <div>
+            <Label>Currency Code</Label>
+            <input
+              type="text"
+              value={currencyForm.currencyCode}
+              onChange={(e) => setCurrencyForm({ ...currencyForm, currencyCode: e.target.value.toUpperCase() })}
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            />
+          </div>
+          <div>
+            <Label>Currency Symbol</Label>
+            <input
+              type="text"
+              value={currencyForm.currencySymbol}
+              onChange={(e) => setCurrencyForm({ ...currencyForm, currencySymbol: e.target.value })}
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            />
+          </div>
+          <div>
+            <Label>Country</Label>
+            <input
+              type="text"
+              value={currencyForm.country}
+              onChange={(e) => setCurrencyForm({ ...currencyForm, country: e.target.value })}
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            />
+          </div>
           <div className="flex justify-end gap-3 pt-4">
             <Button variant="secondary" onClick={() => setCurrencyModalOpen(false)}>Cancel</Button>
             <Button onClick={saveCurrency}>Save</Button>
@@ -510,29 +644,88 @@ export default function AdminSettingsPage() {
         </div>
       </Modal>
 
-      {/* Plan Modal */}
+      {/* Plan Modal with plain HTML inputs */}
       <Modal isOpen={planModalOpen} onClose={() => setPlanModalOpen(false)} title={editingPlan ? "Edit Plan" : "Add Plan"}>
         <div className="space-y-4">
-          <div><Label>Plan Name</Label><Input value={planForm.planName} onChange={(e) => setPlanForm({ ...planForm, planName: e.target.value })} /></div>
+          <div>
+            <Label>Plan Name</Label>
+            <input
+              type="text"
+              value={planForm.planName}
+              onChange={(e) => setPlanForm({ ...planForm, planName: e.target.value })}
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            />
+          </div>
           <div className="grid grid-cols-2 gap-4">
-            <div><Label>Price</Label><Input type="number" step="0.01" value={planForm.price} onChange={(e) => setPlanForm({ ...planForm, price: e.target.value })} /></div>
+            <div>
+              <Label>Price</Label>
+              <input
+                type="number"
+                step="0.01"
+                value={planForm.price}
+                onChange={(e) => setPlanForm({ ...planForm, price: e.target.value })}
+                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              />
+            </div>
             <div>
               <Label>Currency</Label>
-              <select value={planForm.currency} onChange={(e) => setPlanForm({ ...planForm, currency: Number(e.target.value) })} className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm">
+              <select
+                value={planForm.currency}
+                onChange={(e) => setPlanForm({ ...planForm, currency: Number(e.target.value) })}
+                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              >
                 {currencies.map((c) => (
                   <option key={c.currencyId} value={c.currencyId}>{c.currencyCode} - {c.currencyName}</option>
                 ))}
               </select>
             </div>
           </div>
-          <div><Label>Features (one per line)</Label><textarea rows={5} value={planForm.features} onChange={(e) => setPlanForm({ ...planForm, features: e.target.value })} className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm" /></div>
-          <div className="grid grid-cols-2 gap-4">
-            <div><Label>Tenant Limit</Label><Input type="number" value={planForm.tenantLimit} onChange={(e) => setPlanForm({ ...planForm, tenantLimit: Number(e.target.value) })} /></div>
-            <div><Label>Invoice Limit</Label><Input type="number" value={planForm.invoiceLimit} onChange={(e) => setPlanForm({ ...planForm, invoiceLimit: Number(e.target.value) })} /></div>
+          <div>
+            <Label>Features (one per line)</Label>
+            <textarea
+              rows={5}
+              value={planForm.features}
+              onChange={(e) => setPlanForm({ ...planForm, features: e.target.value })}
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            />
           </div>
-          <div><Label>Flutterwave Plan ID (optional)</Label><Input value={planForm.flutterwavePlanId} onChange={(e) => setPlanForm({ ...planForm, flutterwavePlanId: e.target.value })} /></div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Tenant Limit</Label>
+              <input
+                type="number"
+                value={planForm.tenantLimit}
+                onChange={(e) => setPlanForm({ ...planForm, tenantLimit: Number(e.target.value) })}
+                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              />
+            </div>
+            <div>
+              <Label>Invoice Limit</Label>
+              <input
+                type="number"
+                value={planForm.invoiceLimit}
+                onChange={(e) => setPlanForm({ ...planForm, invoiceLimit: Number(e.target.value) })}
+                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              />
+            </div>
+          </div>
+          <div>
+            <Label>Flutterwave Plan ID (optional)</Label>
+            <input
+              type="text"
+              value={planForm.flutterwavePlanId}
+              onChange={(e) => setPlanForm({ ...planForm, flutterwavePlanId: e.target.value })}
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            />
+          </div>
           <div className="flex items-center gap-3">
-            <input type="checkbox" id="popular" checked={planForm.isPopular === 1} onChange={(e) => setPlanForm({ ...planForm, isPopular: e.target.checked ? 1 : 0 })} />
+            <input
+              type="checkbox"
+              id="popular"
+              checked={planForm.isPopular === 1}
+              onChange={(e) => setPlanForm({ ...planForm, isPopular: e.target.checked ? 1 : 0 })}
+              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
             <Label htmlFor="popular" className="!mb-0">Mark as Popular</Label>
           </div>
           <div className="flex justify-end gap-3 pt-4">
@@ -542,17 +735,47 @@ export default function AdminSettingsPage() {
         </div>
       </Modal>
 
-      {/* Gateway Modal */}
+      {/* Gateway Modal with plain HTML inputs */}
       <Modal isOpen={gatewayModalOpen} onClose={() => setGatewayModalOpen(false)} title={editingGateway ? "Edit Gateway" : "Add Gateway"}>
         <div className="space-y-4">
-          <div><Label>Gateway Name</Label><Input value={gatewayForm.paymentGatewayName} onChange={(e) => setGatewayForm({ ...gatewayForm, paymentGatewayName: e.target.value })} /></div>
-          <div><Label>URL (optional)</Label><Input value={gatewayForm.url} onChange={(e) => setGatewayForm({ ...gatewayForm, url: e.target.value })} /></div>
+          <div>
+            <Label>Gateway Name</Label>
+            <input
+              type="text"
+              value={gatewayForm.paymentGatewayName}
+              onChange={(e) => setGatewayForm({ ...gatewayForm, paymentGatewayName: e.target.value })}
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            />
+          </div>
+          <div>
+            <Label>URL (optional)</Label>
+            <input
+              type="text"
+              value={gatewayForm.url}
+              onChange={(e) => setGatewayForm({ ...gatewayForm, url: e.target.value })}
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+            />
+          </div>
           <div className="flex justify-end gap-3 pt-4">
             <Button variant="secondary" onClick={() => setGatewayModalOpen(false)}>Cancel</Button>
             <Button onClick={saveGateway}>Save Gateway</Button>
           </div>
         </div>
       </Modal>
+
+       {/* Success Notification Modal */}
+      <SuccessModal
+        isOpen={showSuccessModal}
+        message={notificationMessage}
+        onClose={() => setShowSuccessModal(false)}
+      />
+
+      {/* Error Notification Modal */}
+      <ErrorModal
+        isOpen={showErrorModal}
+        message={notificationMessage}
+        onClose={() => setShowErrorModal(false)}
+      />
     </div>
   );
 }
