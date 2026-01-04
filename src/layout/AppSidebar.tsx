@@ -94,12 +94,12 @@ const getMenuItems = (role: UserRole) => {
         name: "Support",
         path: "/dashboard/admin/support",
       },
-    // {
-    //   // icon: <BoxIconLine />,
-    //   icon: <Icon src={LockIcon} />,
-    //   name: "Settings",
-    //   path: "/dashboard/admin/settings",
-    // },
+    {
+      // icon: <BoxIconLine />,
+      icon: <Icon src={LockIcon} />,
+      name: "Settings",
+      path: "/dashboard/admin/settings",
+    },
     {
       // icon: <UserCircleIcon />,
       icon: <Icon src={UserCircleIcon} />,

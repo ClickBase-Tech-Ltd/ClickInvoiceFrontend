@@ -1,82 +1,209 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import Button from "../ui/button/Button";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import api from "../../../lib/api";
 
-interface PaymentGateway {
-  id: string;
-  name: string;
-  // Add other fields if needed
-}
-
+// Types
 interface Currency {
-  code: string;
-  name: string;
-  symbol: string;
+  currencyId: number;
+  currencyName: string;
+  currencyCode: string;
+  currencySymbol: string;
+  country: string;
 }
 
-interface PlanPrices {
-  basic: number;
-  premium: number;
+interface SubscriptionPlan {
+  planId: number;
+  planName: string;
+  price: string;
+  currency: number;
+  features: string;
+  isPopular: number;
+  tenantLimit: number;
+  invoiceLimit: number;
+  flutterwavePlanId: string | null;
+  currency_detail: Currency;
 }
 
-interface SettingsData {
-  defaultGateway: string;
-  gatewayKeys: {
-    [gatewayId: string]: {
-      publicKey: string;
-      secretKey: string;
-    };
-  };
-  planPrices: PlanPrices;
-  supportedCurrencies: string[]; // array of currency codes
+interface PaymentGateway {
+  gatewayId: number;
+  paymentGatewayName: string;
+  url: string | null;
 }
+
+// Pagination Component
+function Pagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+
+  const pageNumbers = [];
+  const maxVisible = 5;
+  let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+  let end = Math.min(totalPages, start + maxVisible - 1);
+  if (end - start + 1 < maxVisible) {
+    start = Math.max(1, end - maxVisible + 1);
+  }
+
+  for (let i = start; i <= end; i++) {
+    pageNumbers.push(i);
+  }
+
+  return (
+    <div className="mt-6 flex items-center justify-between">
+      <div className="text-sm text-gray-600 dark:text-gray-400">
+        Page {currentPage} of {totalPages}
+      </div>
+      <div className="flex gap-2">
+        <Button
+          variant="secondary"
+          disabled={currentPage === 1}
+          onClick={() => onPageChange(currentPage - 1)}
+        >
+          Previous
+        </Button>
+
+        {start > 1 && (
+          <>
+            <Button variant="secondary" onClick={() => onPageChange(1)}>
+              1
+            </Button>
+            {start > 2 && <span className="px-3 py-2 text-gray-500">...</span>}
+          </>
+        )}
+
+        {pageNumbers.map((page) => (
+          <Button
+            key={page}
+            variant={page === currentPage ? "primary" : "secondary"}
+            onClick={() => onPageChange(page)}
+          >
+            {page}
+          </Button>
+        ))}
+
+        {end < totalPages && (
+          <>
+            {end < totalPages - 1 && <span className="px-3 py-2 text-gray-500">...</span>}
+            <Button variant="secondary" onClick={() => onPageChange(totalPages)}>
+              {totalPages}
+            </Button>
+          </>
+        )}
+
+        <Button
+          variant="secondary"
+          disabled={currentPage === totalPages}
+          onClick={() => onPageChange(currentPage + 1)}
+        >
+          Next
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// Modal Component (same as before)
+function Modal({
+  isOpen,
+  onClose,
+  title,
+  children,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
+        <div className="mb-6 flex items-center justify-between">
+          <h3 className="text-xl font-bold text-gray-800 dark:text-white">{title}</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400"
+          >
+            ✕
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+const ITEMS_PER_PAGE = 10;
 
 export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [gateways, setGateways] = useState<PaymentGateway[]>([]);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [gateways, setGateways] = useState<PaymentGateway[]>([]);
 
-  const [settings, setSettings] = useState<SettingsData>({
-    defaultGateway: "",
-    gatewayKeys: {},
-    planPrices: { basic: 0, premium: 0 },
-    supportedCurrencies: [],
+  // Pagination states
+  const [currencyPage, setCurrencyPage] = useState(1);
+  const [planPage, setPlanPage] = useState(1);
+  const [gatewayPage, setGatewayPage] = useState(1);
+
+  // Modals & forms (unchanged from previous version)
+  const [currencyModalOpen, setCurrencyModalOpen] = useState(false);
+  const [planModalOpen, setPlanModalOpen] = useState(false);
+  const [gatewayModalOpen, setGatewayModalOpen] = useState(false);
+
+  const [editingCurrency, setEditingCurrency] = useState<Currency | null>(null);
+  const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null);
+  const [editingGateway, setEditingGateway] = useState<PaymentGateway | null>(null);
+
+  const [currencyForm, setCurrencyForm] = useState({
+    currencyName: "",
+    currencyCode: "",
+    currencySymbol: "",
+    country: "",
   });
 
-  const [selectedGateway, setSelectedGateway] = useState<string>("");
+  const [planForm, setPlanForm] = useState({
+    planName: "",
+    price: "",
+    currency: 16,
+    features: "",
+    isPopular: 0,
+    tenantLimit: 1,
+    invoiceLimit: 10,
+    flutterwavePlanId: "",
+  });
 
-  // Fetch all required data on mount
+  const [gatewayForm, setGatewayForm] = useState({
+    paymentGatewayName: "",
+    url: "",
+  });
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [gatewaysRes, currenciesRes, settingsRes] = await Promise.all([
-          api.get("/payment-gateways"), // Endpoint to get list of gateways
-          api.get("/currencies"),             // Endpoint for currencies
-          api.get("/admin/settings"),         // Current settings + default prices
+        const [currRes, plansRes, gwRes] = await Promise.all([
+          api.get("/currencies"),
+          api.get("/subscription-plans"),
+          api.get("/payment-gateways"),
         ]);
 
-        const gatewaysData: PaymentGateway[] = gatewaysRes.data;
-        const currenciesData: Currency[] = currenciesRes.data;
-        const currentSettings: SettingsData = settingsRes.data;
-
-        setGateways(gatewaysData);
-        setCurrencies(currenciesData);
-        setSettings(currentSettings);
-
-        // Set initial selected gateway
-        if (currentSettings.defaultGateway && gatewaysData.length > 0) {
-          setSelectedGateway(currentSettings.defaultGateway);
-        } else if (gatewaysData.length > 0) {
-          setSelectedGateway(gatewaysData[0].id);
-        }
+        setCurrencies(currRes.data);
+        setPlans(plansRes.data);
+        setGateways(gwRes.data);
       } catch (err: any) {
-        setError(err?.response?.data?.message || "Failed to load settings");
+        setError(err?.response?.data?.message || "Failed to load data");
       } finally {
         setLoading(false);
       }
@@ -85,217 +212,347 @@ export default function AdminSettingsPage() {
     fetchData();
   }, []);
 
-  const handleGatewayChange = (gatewayId: string) => {
-    setSettings((prev) => ({ ...prev, defaultGateway: gatewayId }));
-    setSelectedGateway(gatewayId);
+  // Paginated data using useMemo for performance
+  const paginatedCurrencies = useMemo(() => {
+    const start = (currencyPage - 1) * ITEMS_PER_PAGE;
+    return currencies.slice(start, start + ITEMS_PER_PAGE);
+  }, [currencies, currencyPage]);
+
+  const paginatedPlans = useMemo(() => {
+    const start = (planPage - 1) * ITEMS_PER_PAGE;
+    return plans.slice(start, start + ITEMS_PER_PAGE);
+  }, [plans, planPage]);
+
+  const paginatedGateways = useMemo(() => {
+    const start = (gatewayPage - 1) * ITEMS_PER_PAGE;
+    return gateways.slice(start, start + ITEMS_PER_PAGE);
+  }, [gateways, gatewayPage]);
+
+  const currencyTotalPages = Math.ceil(currencies.length / ITEMS_PER_PAGE);
+  const planTotalPages = Math.ceil(plans.length / ITEMS_PER_PAGE);
+  const gatewayTotalPages = Math.ceil(gateways.length / ITEMS_PER_PAGE);
+
+  // Reset page to 1 when data changes (after add/edit/delete)
+  useEffect(() => {
+    setCurrencyPage(1);
+    setPlanPage(1);
+    setGatewayPage(1);
+  }, [currencies.length, plans.length, gateways.length]);
+
+  // Modal handlers remain the same (save functions refresh data and reset pages)
+  const openCurrencyModal = (currency?: Currency) => {
+    if (currency) {
+      setEditingCurrency(currency);
+      setCurrencyForm({
+        currencyName: currency.currencyName,
+        currencyCode: currency.currencyCode,
+        currencySymbol: currency.currencySymbol,
+        country: currency.country,
+      });
+    } else {
+      setEditingCurrency(null);
+      setCurrencyForm({ currencyName: "", currencyCode: "", currencySymbol: "", country: "" });
+    }
+    setCurrencyModalOpen(true);
   };
 
-  const handleKeyChange = (gatewayId: string, field: "publicKey" | "secretKey", value: string) => {
-    setSettings((prev) => ({
-      ...prev,
-      gatewayKeys: {
-        ...prev.gatewayKeys,
-        [gatewayId]: {
-          ... (prev.gatewayKeys[gatewayId] || { publicKey: "", secretKey: "" }),
-          [field]: value,
-        },
-      },
-    }));
-  };
-
-  const handlePriceChange = (plan: "basic" | "premium", value: string) => {
-    const numValue = parseFloat(value) || 0;
-    setSettings((prev) => ({
-      ...prev,
-      planPrices: {
-        ...prev.planPrices,
-        [plan]: numValue,
-      },
-    }));
-  };
-
-  const handleCurrencyToggle = (code: string) => {
-    setSettings((prev) => ({
-      ...prev,
-      supportedCurrencies: prev.supportedCurrencies.includes(code)
-        ? prev.supportedCurrencies.filter((c) => c !== code)
-        : [...prev.supportedCurrencies, code],
-    }));
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
+  const saveCurrency = async () => {
     try {
-      await api.patch("/admin/settings", settings);
-      alert("Settings saved successfully!");
+      if (editingCurrency) {
+        await api.patch(`/currencies/${editingCurrency.currencyId}`, currencyForm);
+      } else {
+        await api.post("/currencies", currencyForm);
+      }
+      setCurrencyModalOpen(false);
+      const res = await api.get("/currencies");
+      setCurrencies(res.data);
+      alert("Currency saved successfully!");
     } catch (err: any) {
-      alert(err?.response?.data?.message || "Failed to save settings");
-    } finally {
-      setSaving(false);
+      alert(err?.response?.data?.message || "Failed to save currency");
     }
   };
 
-  if (loading) {
-    return (
-      <div className="p-8 text-center">
-        <p className="text-gray-500">Loading settings...</p>
-      </div>
-    );
-  }
+  const openPlanModal = (plan?: SubscriptionPlan) => {
+    if (plan) {
+      setEditingPlan(plan);
+      setPlanForm({
+        planName: plan.planName,
+        price: plan.price,
+        currency: plan.currency,
+        features: plan.features.replace(/"/g, "").replace(/\\u2717/g, "✗"),
+        isPopular: plan.isPopular,
+        tenantLimit: plan.tenantLimit,
+        invoiceLimit: plan.invoiceLimit,
+        flutterwavePlanId: plan.flutterwavePlanId || "",
+      });
+    } else {
+      setEditingPlan(null);
+      setPlanForm({
+        planName: "",
+        price: "",
+        currency: 16,
+        features: "",
+        isPopular: 0,
+        tenantLimit: 1,
+        invoiceLimit: 10,
+        flutterwavePlanId: "",
+      });
+    }
+    setPlanModalOpen(true);
+  };
 
-  if (error) {
-    return (
-      <div className="p-8 text-center">
-        <p className="text-red-600">{error}</p>
-      </div>
-    );
-  }
+  const savePlan = async () => {
+    try {
+      if (editingPlan) {
+        await api.patch(`/subscription-plans/${editingPlan.planId}`, planForm);
+      } else {
+        await api.post("/subscription-plans", planForm);
+      }
+      setPlanModalOpen(false);
+      const res = await api.get("/subscription-plans");
+      setPlans(res.data);
+      alert("Plan saved successfully!");
+    } catch (err: any) {
+      alert(err?.response?.data?.message || "Failed to save plan");
+    }
+  };
 
-  const currentKeys = settings.gatewayKeys[selectedGateway] || { publicKey: "", secretKey: "" };
+  const openGatewayModal = (gateway?: PaymentGateway) => {
+    if (gateway) {
+      setEditingGateway(gateway);
+      setGatewayForm({
+        paymentGatewayName: gateway.paymentGatewayName,
+        url: gateway.url || "",
+      });
+    } else {
+      setEditingGateway(null);
+      setGatewayForm({ paymentGatewayName: "", url: "" });
+    }
+    setGatewayModalOpen(true);
+  };
+
+  const saveGateway = async () => {
+    try {
+      if (editingGateway) {
+        await api.patch(`/payment-gateways/${editingGateway.gatewayId}`, gatewayForm);
+      } else {
+        await api.post("/payment-gateways", gatewayForm);
+      }
+      setGatewayModalOpen(false);
+      const res = await api.get("/payment-gateways");
+      setGateways(res.data);
+      alert("Gateway saved successfully!");
+    } catch (err: any) {
+      alert(err?.response?.data?.message || "Failed to save gateway");
+    }
+  };
+
+  if (loading) return <div className="p-8 text-center text-gray-500">Loading...</div>;
+  if (error) return <div className="p-8 text-center text-red-600">{error}</div>;
 
   return (
-    <div className="mx-auto max-w-5xl p-6">
-      <h2 className="mb-8 text-2xl font-bold text-gray-800 dark:text-white/90">
+    <div className="mx-auto max-w-7xl p-6">
+      <h2 className="mb-10 text-3xl font-bold text-gray-800 dark:text-white">
         Admin Settings
       </h2>
 
-      <div className="space-y-10">
-        {/* Payment Gateway Settings */}
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
-          <h3 className="mb-6 text-lg font-semibold text-gray-800 dark:text-white/90">
-            Payment Gateway Configuration
-          </h3>
+      <div className="space-y-12">
+        {/* Currencies Table */}
+        <section>
+          <div className="mb-6 flex items-center justify-between">
+            <h3 className="text-2xl font-semibold text-gray-800 dark:text-white">Currencies</h3>
+            <Button onClick={() => openCurrencyModal()} className="!bg-[#0A66C2]">
+              Add Currency
+            </Button>
+          </div>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
+            <table className="w-full table-auto">
+              <thead className="bg-gray-50 dark:bg-gray-800">
+                <tr>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Name</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Code</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Symbol</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Country</th>
+                  <th className="px-6 py-4 text-right text-sm font-medium text-gray-700 dark:text-gray-300">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                {paginatedCurrencies.map((c) => (
+                  <tr key={c.currencyId}>
+                    <td className="px-6 py-4 text-sm">{c.currencyName}</td>
+                    <td className="px-6 py-4 text-sm font-mono">{c.currencyCode}</td>
+                    <td className="px-6 py-4 text-sm">{c.currencySymbol}</td>
+                    <td className="px-6 py-4 text-sm">{c.country}</td>
+                    <td className="px-6 py-4 text-right">
+                      <button onClick={() => openCurrencyModal(c)} className="text-blue-600 hover:underline">
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <Pagination
+            currentPage={currencyPage}
+            totalPages={currencyTotalPages}
+            onPageChange={setCurrencyPage}
+          />
+        </section>
+
+        {/* Plans Table */}
+        <section>
+          <div className="mb-6 flex items-center justify-between">
+            <h3 className="text-2xl font-semibold text-gray-800 dark:text-white">Subscription Plans</h3>
+            <Button onClick={() => openPlanModal()} className="!bg-[#0A66C2]">
+              Add Plan
+            </Button>
+          </div>
+
+          <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
+            <table className="w-full table-auto">
+              <thead className="bg-gray-50 dark:bg-gray-800">
+                <tr>
+                  <th className="px-6 py-4 text-left">Name</th>
+                  <th className="px-6 py-4 text-left">Price</th>
+                  <th className="px-6 py-4 text-left">Currency</th>
+                  <th className="px-6 py-4 text-left">Tenants</th>
+                  <th className="px-6 py-4 text-left">Invoices</th>
+                  <th className="px-6 py-4 text-left">Popular</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                {paginatedPlans.map((p) => (
+                  <tr key={p.planId}>
+                    <td className="px-6 py-4 font-medium">{p.planName}</td>
+                    <td className="px-6 py-4">{p.currency_detail.currencySymbol}{p.price}</td>
+                    <td className="px-6 py-4">{p.currency_detail.currencyCode}</td>
+                    <td className="px-6 py-4">{p.tenantLimit === -1 ? "Unlimited" : p.tenantLimit}</td>
+                    <td className="px-6 py-4">{p.invoiceLimit === -1 ? "Unlimited" : p.invoiceLimit}</td>
+                    <td className="px-6 py-4">{p.isPopular ? "Yes" : "No"}</td>
+                    <td className="px-6 py-4 text-right">
+                      <button onClick={() => openPlanModal(p)} className="text-blue-600 hover:underline">
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <Pagination
+            currentPage={planPage}
+            totalPages={planTotalPages}
+            onPageChange={setPlanPage}
+          />
+        </section>
+
+        {/* Payment Gateways Table */}
+        <section>
+          <div className="mb-6 flex items-center justify-between">
+            <h3 className="text-2xl font-semibold text-gray-800 dark:text-white">Payment Gateways</h3>
+            <Button onClick={() => openGatewayModal()} className="!bg-[#0A66C2]">
+              Add Gateway
+            </Button>
+          </div>
+
+          <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
+            <table className="w-full table-auto">
+              <thead className="bg-gray-50 dark:bg-gray-800">
+                <tr>
+                  <th className="px-6 py-4 text-left">Name</th>
+                  <th className="px-6 py-4 text-left">URL</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                {paginatedGateways.map((g) => (
+                  <tr key={g.gatewayId}>
+                    <td className="px-6 py-4 font-medium">{g.paymentGatewayName}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {g.url || "—"}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button onClick={() => openGatewayModal(g)} className="text-blue-600 hover:underline">
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <Pagination
+            currentPage={gatewayPage}
+            totalPages={gatewayTotalPages}
+            onPageChange={setGatewayPage}
+          />
+        </section>
+      </div>
+
+      {/* Modals remain exactly the same as in previous version */}
+      {/* Currency Modal */}
+      <Modal isOpen={currencyModalOpen} onClose={() => setCurrencyModalOpen(false)} title={editingCurrency ? "Edit Currency" : "Add Currency"}>
+        <div className="space-y-4">
+          <div><Label>Currency Name</Label><Input value={currencyForm.currencyName} onChange={(e) => setCurrencyForm({ ...currencyForm, currencyName: e.target.value })} /></div>
+          <div><Label>Currency Code</Label><Input value={currencyForm.currencyCode} onChange={(e) => setCurrencyForm({ ...currencyForm, currencyCode: e.target.value.toUpperCase() })} /></div>
+          <div><Label>Currency Symbol</Label><Input value={currencyForm.currencySymbol} onChange={(e) => setCurrencyForm({ ...currencyForm, currencySymbol: e.target.value })} /></div>
+          <div><Label>Country</Label><Input value={currencyForm.country} onChange={(e) => setCurrencyForm({ ...currencyForm, country: e.target.value })} /></div>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="secondary" onClick={() => setCurrencyModalOpen(false)}>Cancel</Button>
+            <Button onClick={saveCurrency}>Save</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Plan Modal */}
+      <Modal isOpen={planModalOpen} onClose={() => setPlanModalOpen(false)} title={editingPlan ? "Edit Plan" : "Add Plan"}>
+        <div className="space-y-4">
+          <div><Label>Plan Name</Label><Input value={planForm.planName} onChange={(e) => setPlanForm({ ...planForm, planName: e.target.value })} /></div>
+          <div className="grid grid-cols-2 gap-4">
+            <div><Label>Price</Label><Input type="number" step="0.01" value={planForm.price} onChange={(e) => setPlanForm({ ...planForm, price: e.target.value })} /></div>
             <div>
-              <Label>Default Payment Gateway</Label>
-              <select
-                value={settings.defaultGateway}
-                onChange={(e) => handleGatewayChange(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-              >
-                <option value="">Select a gateway</option>
-                {gateways.map((gw) => (
-                  <option key={gw.id} value={gw.id}>
-                    {gw.name}
-                  </option>
+              <Label>Currency</Label>
+              <select value={planForm.currency} onChange={(e) => setPlanForm({ ...planForm, currency: Number(e.target.value) })} className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm">
+                {currencies.map((c) => (
+                  <option key={c.currencyId} value={c.currencyId}>{c.currencyCode} - {c.currencyName}</option>
                 ))}
               </select>
             </div>
-
-            <div /> {/* Spacer */}
           </div>
-
-          {selectedGateway && (
-            <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <div>
-                <Label>Public Key</Label>
-                <input
-                  type="text"
-                  value={currentKeys.publicKey}
-                  onChange={(e) => handleKeyChange(selectedGateway, "publicKey", e.target.value)}
-                  placeholder="pk_live_xxxxxxxxxxxxxxxx"
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <Label>Secret Key</Label>
-                <input
-                  type="password"
-                  value={currentKeys.secretKey}
-                  onChange={(e) => handleKeyChange(selectedGateway, "secretKey", e.target.value)}
-                  placeholder="sk_live_xxxxxxxxxxxxxxxx"
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                />
-              </div>
-            </div>
-          )}
-        </section>
-
-        {/* Plan Pricing */}
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
-          <h3 className="mb-6 text-lg font-semibold text-gray-800 dark:text-white/90">
-            Subscription Plan Pricing
-          </h3>
-
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
-            <div>
-              <Label>Basic Plan Price (per month)</Label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={settings.planPrices.basic}
-                  onChange={(e) => handlePriceChange("basic", e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 pl-10 pr-4 py-3 text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label>Premium Plan Price (per month)</Label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={settings.planPrices.premium}
-                  onChange={(e) => handlePriceChange("premium", e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 pl-10 pr-4 py-3 text-sm font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                />
-              </div>
-            </div>
+          <div><Label>Features (one per line)</Label><textarea rows={5} value={planForm.features} onChange={(e) => setPlanForm({ ...planForm, features: e.target.value })} className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm" /></div>
+          <div className="grid grid-cols-2 gap-4">
+            <div><Label>Tenant Limit</Label><Input type="number" value={planForm.tenantLimit} onChange={(e) => setPlanForm({ ...planForm, tenantLimit: Number(e.target.value) })} /></div>
+            <div><Label>Invoice Limit</Label><Input type="number" value={planForm.invoiceLimit} onChange={(e) => setPlanForm({ ...planForm, invoiceLimit: Number(e.target.value) })} /></div>
           </div>
-        </section>
-
-        {/* Supported Currencies */}
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
-          <h3 className="mb-6 text-lg font-semibold text-gray-800 dark:text-white/90">
-            Supported Currencies
-          </h3>
-
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            {currencies.map((currency) => {
-              const isSelected = settings.supportedCurrencies.includes(currency.code);
-              return (
-                <label
-                  key={currency.code}
-                  className={`flex cursor-pointer items-center justify-center gap-3 rounded-lg border px-4 py-3 text-sm font-medium transition-colors ${
-                    isSelected
-                      ? "border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400"
-                      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => handleCurrencyToggle(currency.code)}
-                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span>
-                    {currency.symbol} {currency.code}
-                  </span>
-                </label>
-              );
-            })}
+          <div><Label>Flutterwave Plan ID (optional)</Label><Input value={planForm.flutterwavePlanId} onChange={(e) => setPlanForm({ ...planForm, flutterwavePlanId: e.target.value })} /></div>
+          <div className="flex items-center gap-3">
+            <input type="checkbox" id="popular" checked={planForm.isPopular === 1} onChange={(e) => setPlanForm({ ...planForm, isPopular: e.target.checked ? 1 : 0 })} />
+            <Label htmlFor="popular" className="!mb-0">Mark as Popular</Label>
           </div>
-        </section>
-
-        {/* Save Button */}
-        <div className="flex justify-end">
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-            className="!bg-[#0A66C2] hover:!bg-[#084d93] px-8 py-3 text-base"
-          >
-            {saving ? "Saving..." : "Save Settings"}
-          </Button>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="secondary" onClick={() => setPlanModalOpen(false)}>Cancel</Button>
+            <Button onClick={savePlan}>Save Plan</Button>
+          </div>
         </div>
-      </div>
+      </Modal>
+
+      {/* Gateway Modal */}
+      <Modal isOpen={gatewayModalOpen} onClose={() => setGatewayModalOpen(false)} title={editingGateway ? "Edit Gateway" : "Add Gateway"}>
+        <div className="space-y-4">
+          <div><Label>Gateway Name</Label><Input value={gatewayForm.paymentGatewayName} onChange={(e) => setGatewayForm({ ...gatewayForm, paymentGatewayName: e.target.value })} /></div>
+          <div><Label>URL (optional)</Label><Input value={gatewayForm.url} onChange={(e) => setGatewayForm({ ...gatewayForm, url: e.target.value })} /></div>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button variant="secondary" onClick={() => setGatewayModalOpen(false)}>Cancel</Button>
+            <Button onClick={saveGateway}>Save Gateway</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
