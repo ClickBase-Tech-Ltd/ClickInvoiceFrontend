@@ -202,7 +202,7 @@ export default function ReceiptsPage() {
                   <th className="py-4 font-medium">Receipt</th>
                   <th className="py-4 font-medium">Project</th>
                   <th className="py-4 font-medium">Date</th>
-                  <th className="py-4 font-medium">Amount</th>
+                  <th className="py-4 font-medium">Balance Due</th>
                   <th className="py-4 font-medium">Paid</th>
                   <th className="py-4 font-medium">Status</th>
                   <th className="py-4 text-right font-medium">Actions</th>

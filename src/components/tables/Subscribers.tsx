@@ -231,9 +231,9 @@ export default function AdminSubscriptionsPage() {
                     <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
                       Subscriber
                     </TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    {/* <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
                       Email
-                    </TableCell>
+                    </TableCell> */}
                     <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
                       Plan
                     </TableCell>
@@ -284,21 +284,22 @@ export default function AdminSubscriptionsPage() {
                           <span className="font-medium text-gray-800 dark:text-white/90">
                             {sub.user.firstName} {sub.user.lastName}
                           </span>
-                          {sub.user.otherNames && (
-                            <span className="block text-xs text-gray-500">({sub.user.otherNames})</span>
-                          )}
+
+                            <span className="block text-xs text-gray-500">({sub?.user.email})</span>
+
                         </TableCell>
 
-                        <TableCell className="px-5 py-4 text-start text-theme-sm text-gray-600 dark:text-gray-400">
+                        {/* <TableCell className="px-5 py-4 text-start text-theme-sm text-gray-600 dark:text-gray-400">
                           {sub.user.email}
-                        </TableCell>
+                        </TableCell> */}
 
                         <TableCell className="px-5 py-4 text-start text-theme-sm text-gray-600 dark:text-gray-400">
                           {sub.plan.planName}
                         </TableCell>
 
                         <TableCell className="px-5 py-4 text-start font-medium text-gray-800 dark:text-white/90">
-                          {formatMoney(sub.plan.price)}
+                          {/* {formatMoney(sub.plan.price)} */}
+                          {sub?.plan?.currency_detail?.currencySymbol} {formatMoney(sub.plan.price)}
                         </TableCell>
 
                         <TableCell className="px-5 py-4 text-start">
@@ -393,7 +394,7 @@ export default function AdminSubscriptionsPage() {
                 <div>
                   <h4 className="font-medium text-gray-900 dark:text-white mb-3">Plan</h4>
                   <p><strong>Name:</strong> {selectedSub.plan.planName}</p>
-                  <p className="mt-2 text-xl font-semibold">{formatMoney(selectedSub.plan.price)}</p>
+                  <p className="mt-2 text-xl font-semibold">{selectedSub?.plan?.currency_detail?.currencySymbol} {formatMoney(selectedSub.plan.price)}</p>
                 </div>
               </div>
 

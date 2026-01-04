@@ -180,9 +180,9 @@ export default function AdminInvoices() {
                     <p className="font-medium">{formatDate(inv.invoiceDate)}</p>
                   </div>
                   <div>
-                    <span className="text-gray-500">Total</span>
+                    <span className="text-gray-500">Amount Paid</span>
                     <p className="font-medium">
-                      {formatMoney(inv.totalAmount, inv.currency_detail?.currencySymbol || inv.currencySymbol)}
+                      {formatMoney(inv.amountPaid, inv.currency_detail?.currencySymbol || inv.currencySymbol)}
                     </p>
                   </div>
                   <div>
@@ -231,7 +231,7 @@ export default function AdminInvoices() {
                       Date
                     </TableCell>
                     <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                      Total
+                      Amount Paid
                     </TableCell>
                     <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
                       Balance Due
@@ -297,7 +297,7 @@ export default function AdminInvoices() {
                           className="px-5 py-4 text-start font-medium text-gray-800 dark:text-white/90"
                           onClick={() => navigateToInvoice(inv.invoiceId)}
                         >
-                          {formatMoney(inv.totalAmount, inv.currency_detail?.currencySymbol || inv.currencySymbol)}
+                          {formatMoney(inv.amountPaid, inv.currency_detail?.currencySymbol || inv.currencySymbol)}
                         </TableCell>
 
                         <TableCell

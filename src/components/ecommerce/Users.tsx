@@ -445,7 +445,7 @@ export default function AdminUsersPage() {
                         className="rounded mt-1"
                       />
                       <div className="w-12 h-12 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center font-semibold text-[#0A66C2]">
-                        {user.firstName[0].toUpperCase()}
+                        {user.firstName ? user.firstName[0].toUpperCase() : "?"}
                       </div>
                       <div>
                         <p className="font-semibold text-gray-900 dark:text-white">
@@ -574,7 +574,7 @@ export default function AdminUsersPage() {
                       <TableCell className="px-5 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center font-semibold text-[#0A66C2]">
-                            {user.firstName[0].toUpperCase()}
+                            {user.firstName ? user.firstName[0].toUpperCase() : "?"}
                           </div>
                           <div>
                             <span className="font-medium block">
@@ -679,11 +679,11 @@ export default function AdminUsersPage() {
               {/* User Header */}
               <div className="flex flex-col sm:flex-row items-start gap-6">
                 <div className="w-24 h-24 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center text-3xl font-bold text-[#0A66C2]">
-                  {selectedUser.firstName[0].toUpperCase()}
+                  {selectedUser.firstName ? selectedUser.firstName[0].toUpperCase() : "?"}
                 </div>
                 <div className="flex-1">
                   <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {selectedUser.firstName} {selectedUser.lastName}
+                    {selectedUser.firstName ? selectedUser.firstName[0].toUpperCase() : "?"} {selectedUser.lastName ? selectedUser.lastName[0].toUpperCase() : "?"}
                   </h3>
                   {selectedUser.otherNames && (
                     <p className="text-sm text-gray-500 mt-1">({selectedUser.otherNames})</p>
