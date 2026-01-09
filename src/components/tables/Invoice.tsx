@@ -1,25 +1,16 @@
 // app/invoice/page.tsx
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import {
-  Document,
-  Page,
-  Text,
-  View,
-  StyleSheet,
-  Image,
-  pdf,
-} from "@react-pdf/renderer";
+import html2pdf from 'html2pdf.js';
 import ComponentCard from "../../components/common/ComponentCard";
 import Button from "../../components/ui/button/Button";
 import api from "../../../lib/api";
 import { ChevronLeftIcon } from "@/icons";
 import Icon from "@/components/Icons";
 
-
-// Add this Success Modal near the top (after imports)
+// Success Modal
 function EmailSuccessModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   if (!isOpen) return null;
 
@@ -64,7 +55,7 @@ const ShareIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-// ==================== TYPES ====================
+// TYPES
 interface FullInvoice {
   invoiceId: string;
   userGeneratedInvoiceId?: string | null;
@@ -99,191 +90,11 @@ interface FullInvoice {
     signatureUrl: string;
   };
   user: {
-    currentPlan: number | string; // 1 = free, 2 = premium, 3 = pro, etc.
+    currentPlan: number | string;
   };
 }
 
-// ==================== PDF STYLES (unchanged) ====================
-const pdfStyles = StyleSheet.create({
-  page: { padding: 50, fontSize: 11, fontFamily: "Helvetica", color: "#333" },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 40,
-    borderBottom: "2 solid #e0e0e0",
-    paddingBottom: 20,
-  },
-  logo: { width: 150, height: "auto", objectFit: "contain" },
-  companyInfo: { textAlign: "right", maxWidth: 200 },
-  companyName: {
-    fontSize: 22,
-    fontFamily: "Helvetica-Bold",
-    marginBottom: 8,
-    color: "#0A66C2",
-  },
-  title: {
-    fontSize: 30,
-    fontFamily: "Helvetica-Bold",
-    marginBottom: 10,
-    textAlign: "center",
-    color: "#0A66C2",
-  },
-  invoiceNumber: { textAlign: "center", marginBottom: 30, fontSize: 16 },
-  section: { marginBottom: 25 },
-  row: { flexDirection: "row", justifyContent: "space-between", marginBottom: 10 },
-  label: { color: "#666", fontSize: 10 },
-  value: { fontSize: 11, fontFamily: "Helvetica-Bold" },
-  customerAddress: { fontSize: 10, marginTop: 4, color: "#666", maxWidth: 200 },
-  table: { width: "100%", marginVertical: 20, border: "1px solid #e5e7eb" },
-  tableHeader: {
-    backgroundColor: "#f3f4f6",
-    flexDirection: "row",
-    borderBottom: "1px solid #e5e7eb",
-  },
-  tableRow: { flexDirection: "row", borderBottom: "1px solid #e5e7eb" },
-  cell: { padding: 12, flex: 1 },
-  cellRight: { textAlign: "right" },
-  totalRow: { backgroundColor: "#eff6ff", fontFamily: "Helvetica-Bold", fontSize: 12 },
-  balanceRow: { backgroundColor: "#fffbeb", fontFamily: "Helvetica-Bold", fontSize: 15 },
-  paymentSection: { marginTop: 30, padding: 15, backgroundColor: "#f0fdf4", borderRadius: 6 },
-  notes: {
-    marginTop: 40,
-    fontSize: 11,
-    backgroundColor: "#f9fafb",
-    padding: 15,
-    borderRadius: 6,
-  },
-  signatureSection: { marginTop: 50, flexDirection: "row", justifyContent: "flex-end" },
-  signatureImage: { width: 180, height: 80, objectFit: "contain" },
-  signatureLabel: { marginTop: 10, textAlign: "center", fontSize: 10 },
-});
-
-// ==================== PDF COMPONENT ====================
-const InvoicePDF = ({ invoice }: { invoice: FullInvoice }) => {
-  const formatMoney = (value: number) =>
-    new Intl.NumberFormat("en-NG", { minimumFractionDigits: 2 }).format(value);
-
-  return (
-    <Document>
-      <Page size="A4" style={pdfStyles.page}>
-        <View style={pdfStyles.header}>
-          {invoice.company.logoUrl ? (
-            <Image style={pdfStyles.logo} src={invoice.company.logoUrl} />
-          ) : (
-            <View style={{ width: 150 }} />
-          )}
-          <View style={pdfStyles.companyInfo}>
-            <Text style={pdfStyles.companyName}>{invoice.company.name}</Text>
-            <Text>{invoice.company.email}</Text>
-            <Text>{invoice.company.phone}</Text>
-          </View>
-        </View>
-
-        <Text style={pdfStyles.title}>INVOICE</Text>
-        <Text style={pdfStyles.invoiceNumber}>
-          {invoice.userGeneratedInvoiceId || invoice.invoiceId}
-        </Text>
-
-        <View style={pdfStyles.section}>
-          <View style={pdfStyles.row}>
-            <View>
-              <Text style={pdfStyles.label}>Bill To</Text>
-              <Text style={pdfStyles.value}>{invoice.customerName}</Text>
-              {invoice.customerAddress && (
-                <Text style={pdfStyles.customerAddress}>{invoice.customerAddress}</Text>
-              )}
-              {invoice.customerEmail && <Text>{invoice.customerEmail}</Text>}
-              {invoice.customerPhone && <Text>{invoice.customerPhone}</Text>}
-            </View>
-            <View>
-              <Text style={pdfStyles.label}>Invoice Date</Text>
-              <Text>{new Date(invoice.invoiceDate).toLocaleDateString("en-GB")}</Text>
-              {invoice.dueDate && (
-                <>
-                  <Text style={pdfStyles.label}>Due Date</Text>
-                  <Text>{new Date(invoice.dueDate).toLocaleDateString("en-GB")}</Text>
-                </>
-              )}
-              <Text style={pdfStyles.label}>Status</Text>
-              <Text style={pdfStyles.value}>{invoice.status}</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={pdfStyles.table}>
-          <View style={pdfStyles.tableHeader}>
-            <Text style={pdfStyles.cell}>Description</Text>
-            <Text style={[pdfStyles.cell, pdfStyles.cellRight]}>Amount</Text>
-          </View>
-          {invoice.items.map((item, idx) => (
-            <View key={idx} style={pdfStyles.tableRow} wrap={false}>
-              <Text style={pdfStyles.cell}>{item.description}</Text>
-              <Text style={[pdfStyles.cell, pdfStyles.cellRight]}>
-                {invoice.currencySymbol} {formatMoney(item.amount)}
-              </Text>
-            </View>
-          ))}
-          <View style={[pdfStyles.tableRow, pdfStyles.totalRow]}>
-            <Text style={[pdfStyles.cell, { textAlign: "right" }]}>Subtotal</Text>
-            <Text style={[pdfStyles.cell, pdfStyles.cellRight]}>
-              {invoice.currencySymbol} {formatMoney(invoice.subtotal)}
-            </Text>
-          </View>
-          <View style={[pdfStyles.tableRow, pdfStyles.totalRow]}>
-            <Text style={[pdfStyles.cell, { textAlign: "right" }]}>
-              Tax ({invoice.taxPercentage}%)
-            </Text>
-            <Text style={[pdfStyles.cell, pdfStyles.cellRight]}>
-              {invoice.currencySymbol} {formatMoney(invoice.taxAmount)}
-            </Text>
-          </View>
-          <View style={[pdfStyles.tableRow, pdfStyles.totalRow]}>
-            <Text style={[pdfStyles.cell, { textAlign: "right" }]}>Total</Text>
-            <Text style={[pdfStyles.cell, pdfStyles.cellRight]}>
-              {invoice.currencySymbol} {formatMoney(invoice.totalAmount)}
-            </Text>
-          </View>
-          <View style={[pdfStyles.tableRow, pdfStyles.balanceRow]}>
-            <Text style={[pdfStyles.cell, { textAlign: "right", color: "#d97706" }]}>
-              Balance Due
-            </Text>
-            <Text style={[pdfStyles.cell, pdfStyles.cellRight, { color: "#d97706" }]}>
-              {invoice.currencySymbol} {formatMoney(invoice.balanceDue)}
-            </Text>
-          </View>
-        </View>
-
-        <View style={pdfStyles.paymentSection}>
-          <Text style={{ fontFamily: "Helvetica-Bold", marginBottom: 10, fontSize: 12 }}>
-            Payment Details
-          </Text>
-          <Text>Account Name: {invoice.accountName}</Text>
-          <Text>Account Number: {invoice.accountNumber}</Text>
-          <Text>Bank: {invoice.bank}</Text>
-        </View>
-
-        {invoice.notes && (
-          <View style={pdfStyles.notes}>
-            <Text style={{ fontFamily: "Helvetica-Bold", marginBottom: 8 }}>
-              Notes
-            </Text>
-            <Text>{invoice.notes}</Text>
-          </View>
-        )}
-
-        {invoice.company.signatureUrl && (
-          <View style={pdfStyles.signatureSection}>
-            <View>
-              <Image style={pdfStyles.signatureImage} src={invoice.company.signatureUrl} />
-              <Text style={pdfStyles.signatureLabel}>Authorized Signature</Text>
-            </View>
-          </View>
-        )}
-      </Page>
-    </Document>
-  );
-};
-
+// Status Badge
 const StatusBadge = ({ status }: { status: string }) => {
   const statusColors: Record<string, string> = {
     UNPAID: "bg-red-100 text-red-800 border-red-200",
@@ -303,30 +114,23 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
-const ShareButtons = ({ invoice, pdfBlob }: { invoice: FullInvoice, pdfBlob: Blob | null }) => {
+// Share Buttons (kept almost original, removed pdfBlob dependency for simplicity)
+const ShareButtons = ({ invoice }: { invoice: FullInvoice }) => {
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [shareableLink, setShareableLink] = useState<string>("");
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const currentUrl = window.location.href;
-      setShareableLink(currentUrl);
+      setShareableLink(window.location.href);
     }
   }, []);
 
   const formatMoney = (value: number, symbol: string = "₦") => {
-    return `${symbol} ${new Intl.NumberFormat("en-NG", {
-      minimumFractionDigits: 2,
-    }).format(value)}`;
+    return `${symbol} ${new Intl.NumberFormat("en-NG", { minimumFractionDigits: 2 }).format(value)}`;
   };
 
   const getShareMessage = () => {
-    return `Invoice ${invoice.userGeneratedInvoiceId || invoice.invoiceId}
-From: ${invoice.company.name}
-To: ${invoice.customerName}
-Amount: ${formatMoney(invoice.totalAmount, invoice.currencySymbol)}
-Status: ${invoice.status}
-View Invoice: ${shareableLink}`;
+    return `Invoice ${invoice.userGeneratedInvoiceId || invoice.invoiceId}\nFrom: ${invoice.company.name}\nTo: ${invoice.customerName}\nAmount: ${formatMoney(invoice.totalAmount, invoice.currencySymbol)}\nStatus: ${invoice.status}\nView: ${shareableLink}`;
   };
 
   const shareOnWhatsApp = () => {
@@ -334,50 +138,12 @@ View Invoice: ${shareableLink}`;
     window.open(`https://wa.me/?text=${message}`, '_blank');
   };
 
-  const shareOnTelegram = () => {
-    const message = encodeURIComponent(getShareMessage());
-    window.open(`https://t.me/share/url?url=${encodeURIComponent(shareableLink)}&text=${message}`, '_blank');
-  };
-
-  const shareOnLinkedIn = () => {
-    const title = encodeURIComponent(`Invoice: ${invoice.projectName}`);
-    const summary = encodeURIComponent(`Invoice ${invoice.userGeneratedInvoiceId || invoice.invoiceId} from ${invoice.company.name}`);
-    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareableLink)}&title=${title}&summary=${summary}`, '_blank');
-  };
-
-  const shareOnFacebook = () => {
-    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareableLink)}&quote=${encodeURIComponent(getShareMessage())}`, '_blank');
-  };
-
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(shareableLink);
-      alert('Link copied to clipboard!');
-    } catch (err) {
-      alert('Failed to copy link');
-    }
-  };
-
-  const sharePDF = async () => {
-    if (!pdfBlob) {
-      alert('Please generate PDF first');
-      return;
-    }
-
-    try {
-      const file = new File([pdfBlob], `Invoice_${invoice.userGeneratedInvoiceId || invoice.invoiceId}.pdf`, { type: 'application/pdf' });
-      
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({
-          title: `Invoice ${invoice.userGeneratedInvoiceId || invoice.invoiceId}`,
-          text: getShareMessage(),
-          files: [file],
-        });
-      } else {
-        alert('Web Share API not supported. Download and share manually.');
-      }
-    } catch (err) {
-      console.error('Error sharing:', err);
+      alert('Link copied!');
+    } catch {
+      alert('Failed to copy');
     }
   };
 
@@ -404,41 +170,20 @@ View Invoice: ${shareableLink}`;
                 ×
               </button>
             </div>
-            
-            <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => { shareOnWhatsApp(); setShowShareMenu(false); }} className="flex items-center justify-center gap-2 p-3 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg">
-                WhatsApp
-              </button>
-              <button onClick={() => { shareOnTelegram(); setShowShareMenu(false); }} className="flex items-center justify-center gap-2 p-3 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg">
-                Telegram
-              </button>
-              <button onClick={() => { shareOnLinkedIn(); setShowShareMenu(false); }} className="flex items-center justify-center gap-2 p-3 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-lg">
-                LinkedIn
-              </button>
-              <button onClick={() => { shareOnFacebook(); setShowShareMenu(false); }} className="flex items-center justify-center gap-2 p-3 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg">
-                Facebook
-              </button>
-            </div>
-
-            <div className="pt-3 border-t">
-              <button onClick={copyToClipboard} className="w-full p-3 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg">
-                Copy Link
-              </button>
-            </div>
-
-            {pdfBlob && (
-              <div className="pt-2 border-t">
-                <button onClick={sharePDF} className="w-full p-3 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg">
-                  Share PDF File
-                </button>
-              </div>
-            )}
+            <button onClick={() => { shareOnWhatsApp(); setShowShareMenu(false); }} className="w-full p-3 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg">
+              WhatsApp
+            </button>
+            <button onClick={copyToClipboard} className="w-full p-3 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg">
+              Copy Link
+            </button>
           </div>
         </div>
       )}
     </div>
   );
 };
+
+// ────────────────────────────────────────────────────────────────
 
 export default function InvoiceViewPage() {
   const router = useRouter();
@@ -448,7 +193,6 @@ export default function InvoiceViewPage() {
   const [invoice, setInvoice] = useState<FullInvoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState("");
@@ -456,15 +200,54 @@ export default function InvoiceViewPage() {
   const [showAmountInput, setShowAmountInput] = useState(false);
   const [alternateEmail, setAlternateEmail] = useState("");
   const [useAlternateEmail, setUseAlternateEmail] = useState(false);
-  
-  const [isSendingEmail, setIsSendingEmail] = useState(false); // New state for email sending
-  const [showSuccessModal, setShowSuccessModal] = useState(false); // For success modal
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  const [logoBase64, setLogoBase64] = useState<string>("");
+const [signatureBase64, setSignatureBase64] = useState<string>("");
+
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Add this helper function near the top of the file
+const getBase64Image = async (url: string): Promise<string> => {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (err) {
+    console.error("Failed to load image as base64:", err);
+    return ""; // fallback to empty
+  }
+};
 
   const formatMoney = (value: number, symbol: string = "₦") => {
-    return `${symbol} ${new Intl.NumberFormat("en-NG", {
-      minimumFractionDigits: 2,
-    }).format(value)}`;
+    return `${symbol} ${new Intl.NumberFormat("en-NG", { minimumFractionDigits: 2 }).format(value)}`;
   };
+
+  // In fetchInvoice, after setting invoice:
+useEffect(() => {
+  if (!invoice) return;
+
+  const loadImages = async () => {
+  if (invoice.company.logoUrl) {
+    try {
+      const base64 = await getBase64Image(invoice.company.logoUrl);
+      console.log("Logo base64:", base64.substring(0, 50) + "..."); // check if real data
+      setLogoBase64(base64);
+    } catch (err) {
+      console.error("Logo base64 failed:", err);
+    }
+  }
+  // same for signature
+};
+
+  loadImages();
+}, [invoice]);
 
   useEffect(() => {
     if (!invoiceId) {
@@ -478,9 +261,7 @@ export default function InvoiceViewPage() {
         const res = await api.get(`/invoices/${invoiceId}`);
         const raw = Array.isArray(res.data) ? res.data[0] : res.data;
 
-        if (!raw || !raw.tenant) {
-          throw new Error("Invoice or company data not found");
-        }
+        if (!raw || !raw.tenant) throw new Error("Invoice or company data not found");
 
         const items = raw.items.map((item: any) => ({
           description: item.itemDescription,
@@ -491,8 +272,8 @@ export default function InvoiceViewPage() {
         const taxPercentage = parseFloat(raw.taxPercentage || "0");
         const taxAmount = subtotal * (taxPercentage / 100);
         const totalAmount = subtotal + taxAmount;
-        const amountPaid = parseFloat(raw.amountPaid || "0");
-        const balanceDue = totalAmount - amountPaid;
+        const amountPaidVal = parseFloat(raw.amountPaid || "0");
+        const balanceDue = totalAmount - amountPaidVal;
 
         const logoUrl = raw.tenant.tenantLogo
           ? `${process.env.NEXT_PUBLIC_FILE_URL}${raw.tenant.tenantLogo}`
@@ -509,9 +290,9 @@ export default function InvoiceViewPage() {
           taxPercentage,
           taxAmount,
           totalAmount,
-          amountPaid,
+          amountPaid: amountPaidVal,
           balanceDue,
-          currencySymbol: raw.currency_detail.currencySymbol || "₦",
+          currencySymbol: raw.currency_detail?.currencySymbol || "₦",
           status: raw.status.toUpperCase(),
           invoiceDate: raw.invoiceDate,
           dueDate: raw.dueDate,
@@ -551,8 +332,8 @@ export default function InvoiceViewPage() {
 
   const handleStatusUpdate = async () => {
     if (!invoiceId || !selectedStatus) return;
-
     setIsUpdatingStatus(true);
+
     try {
       const payload: any = {
         status: selectedStatus.toLowerCase().replace("_payment", ""),
@@ -565,16 +346,14 @@ export default function InvoiceViewPage() {
       await api.patch(`/invoices/${invoiceId}/status`, payload);
 
       if (invoice) {
-        const updatedInvoice = { ...invoice };
-        updatedInvoice.status = selectedStatus;
-        
+        const updated = { ...invoice };
+        updated.status = selectedStatus;
         if (selectedStatus === "PARTIAL_PAYMENT" && amountPaid) {
-          const paidAmount = parseFloat(amountPaid);
-          updatedInvoice.amountPaid = paidAmount;
-          updatedInvoice.balanceDue = updatedInvoice.totalAmount - paidAmount;
+          const paid = parseFloat(amountPaid);
+          updated.amountPaid = paid;
+          updated.balanceDue = updated.totalAmount - paid;
         }
-        
-        setInvoice(updatedInvoice);
+        setInvoice(updated);
       }
 
       alert("Status updated successfully!");
@@ -593,94 +372,86 @@ export default function InvoiceViewPage() {
 
   const handleAmountPaidChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    if (/^\d*\.?\d*$/.test(value)) {
-      setAmountPaid(value);
-    }
+    if (/^\d*\.?\d*$/.test(value)) setAmountPaid(value);
   };
 
-  const generatePDF = async () => {
-    if (!invoice) return;
+  const handleDownloadPDF = async () => {
+    if (!contentRef.current || !invoice) return;
+
     setIsGeneratingPdf(true);
+
+    const element = contentRef.current;
+
+    const opt = {
+      margin:       [1, 1, 1, 1],
+      filename:     `Invoice_${invoice.userGeneratedInvoiceId || invoice.invoiceId}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+    html2canvas: {
+    scale: 1,                         // ← reduced from 2 → better fit, less cutoff
+    useCORS: true,
+    logging: false, 
+    windowWidth: 794,                    // keep true for now to debug
+    backgroundColor: null,                 // ← A4 at 96dpi (very important!)
+    // This helps force content to respect page width
+    width: 794,
+    height: 1723,
+    
+    ignoreElements: (el) => {
+      // Hide elements with lab colors (extreme measure)
+      if (getComputedStyle(el).backgroundColor.includes('lab(')) {
+        return true;
+      }
+      return false;
+    }
+  },
+      jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
+  pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+
     try {
-      const blob = await pdf(<InvoicePDF invoice={invoice} />).toBlob();
-      setPdfBlob(blob);
+      await html2pdf()
+        .from(element)
+        .set(opt)
+        .save();
     } catch (err) {
       console.error("PDF generation failed:", err);
-      alert("Failed to generate PDF");
+      alert("Failed to generate PDF. Please try again.");
     } finally {
       setIsGeneratingPdf(false);
     }
   };
 
-  const handleDownloadPDF = async () => {
+  const handleSendEmail = async (sendToAlternate: boolean = false) => {
     if (!invoiceId) return;
 
     try {
-      setLoading(true);
-      const response = await api.get(`/invoices/${invoiceId}/pdf`, {
-        responseType: "blob",
-      });
+      setIsSendingEmail(true);
 
-      const blob = new Blob([response.data], { type: "application/pdf" });
-      const url = window.URL.createObjectURL(blob);
+      let targetEmail = invoice?.customerEmail;
 
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `Invoice_${invoice?.userGeneratedInvoiceId || invoiceId}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      if (sendToAlternate && alternateEmail.trim()) {
+        targetEmail = alternateEmail.trim();
+      }
 
-      window.URL.revokeObjectURL(url);
+      if (!targetEmail) throw new Error("No email address available");
+
+      const payload = { email: targetEmail };
+
+      await api.post(`/invoices/${invoiceId}/send-email`, payload);
+
+      setShowSuccessModal(true);
+      setUseAlternateEmail(false);
+      setAlternateEmail("");
     } catch (err: any) {
-      alert(err?.response?.data?.message || "Failed to download PDF");
+      alert(err?.response?.data?.message || "Failed to send email");
     } finally {
-      setLoading(false);
+      setIsSendingEmail(false);
     }
   };
 
-const handleSendEmail = async (sendToAlternate: boolean = false) => {
-  if (!invoiceId) return;
+  const isPremium = ["2", "3", 2, 3].includes(invoice?.user.currentPlan ?? "");
 
-  try {
-    setIsSendingEmail(true);
-
-    let targetEmail = invoice.customerEmail;
-
-    if (sendToAlternate && alternateEmail.trim()) {
-      targetEmail = alternateEmail.trim();
-    }
-
-    const payload = { email: targetEmail };
-
-    await api.post(`/invoices/${invoiceId}/send-email`, payload);
-
-    setShowSuccessModal(true);
-    setUseAlternateEmail(false);
-    setAlternateEmail("");
-  } catch (err: any) {
-    alert(err?.response?.data?.message || "Failed to send email");
-  } finally {
-    setIsSendingEmail(false);
-  }
-};
-
-  const LoadingSkeleton = () => (
-    <div className="max-w-4xl mx-auto py-8 px-4 animate-pulse">
-      <div className="h-6 w-32 bg-gray-200 rounded mb-8" />
-      <div className="bg-white rounded-xl shadow-sm p-6 space-y-8">
-        <div className="flex flex-col sm:flex-row justify-between gap-6">
-          <div className="space-y-3">
-            <div className="h-10 w-48 bg-gray-200 rounded" />
-            <div className="h-5 w-64 bg-gray-200 rounded" />
-          </div>
-          <div className="h-32 w-32 bg-gray-200 rounded mx-auto sm:mx-0" />
-        </div>
-      </div>
-    </div>
-  );
-
-  if (loading) return <LoadingSkeleton />;
+  if (loading) return <div className="text-center py-12">Loading invoice...</div>;
 
   if (error || !invoice) {
     return (
@@ -693,11 +464,6 @@ const handleSendEmail = async (sendToAlternate: boolean = false) => {
     );
   }
 
-// const isPremium = invoice.user.currentPlan === 2 || invoice.user.currentPlan === 3;
-// Safely check if user is on a premium plan (plan 2 or 3)
-// Recommended: Explicit and safe comparison
-const isPremium = ["2", "3", 2, 3].includes(invoice.user.currentPlan);
-
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <button
@@ -709,7 +475,22 @@ const isPremium = ["2", "3", 2, 3].includes(invoice.user.currentPlan);
       </button>
 
       <ComponentCard title={`Invoice ${invoice.userGeneratedInvoiceId || invoice.invoiceId}`}>
-        <div className="space-y-8">
+        {/* This div is what will be converted to PDF */}
+       <div
+  ref={contentRef}
+  // className="bg-white p-8 md:p-10 print:p-8"
+  className="bg-white p-8 md:p-10 print:p-8 text-base"
+  style={{
+    width: '210mm',                     // ← exact A4 width
+    minHeight: '297mm',                 // ← minimum A4 height
+    maxWidth: '210mm',                  // ← prevent overflow
+    boxSizing: 'border-box',
+    margin: '0 auto',
+    backgroundColor: '#ffffff',
+    position: 'relative',
+    overflow: 'hidden',                 // ← helps contain overflowing elements
+  }}
+>
           {/* Company Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start gap-6 border-b pb-8">
             <div className="text-center sm:text-left">
@@ -718,16 +499,16 @@ const isPremium = ["2", "3", 2, 3].includes(invoice.user.currentPlan);
               <p className="text-gray-600">{invoice.company.phone}</p>
             </div>
             {invoice.company.logoUrl && (
-              <img
-                src={invoice.company.logoUrl}
-                alt="Company Logo"
-                className="h-24 sm:h-32 object-contain mx-auto sm:mx-0"
-              />
-            )}
+  <img
+    src={logoBase64 || invoice.company.logoUrl}
+    alt="Company Logo"
+    className="h-24 sm:h-32 object-contain mx-auto sm:mx-0"
+  />
+)}
           </div>
 
           {/* Project & Amount */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
             <div>
               <h2 className="text-xl sm:text-2xl font-bold">{invoice.projectName}</h2>
               <div className="mt-4 space-y-1">
@@ -753,7 +534,7 @@ const isPremium = ["2", "3", 2, 3].includes(invoice.user.currentPlan);
           </div>
 
           {/* Status Section */}
-          <div className="bg-gray-50 p-4 rounded-lg">
+          <div className="bg-gray-50 p-4 rounded-lg mt-8">
             <div className="flex flex-col gap-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3 justify-center sm:justify-start">
@@ -817,8 +598,8 @@ const isPremium = ["2", "3", 2, 3].includes(invoice.user.currentPlan);
             </div>
           </div>
 
-          {/* Dates Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm">
+          {/* Dates */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm mt-8">
             <div>
               <p className="text-gray-500">Invoice Date</p>
               <p className="font-medium">{new Date(invoice.invoiceDate).toLocaleDateString()}</p>
@@ -836,7 +617,7 @@ const isPremium = ["2", "3", 2, 3].includes(invoice.user.currentPlan);
           </div>
 
           {/* Items Table */}
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto mt-8">
             <table className="w-full border-collapse min-w-full sm:min-w-0">
               <thead>
                 <tr className="border-b text-left text-gray-600 bg-gray-50">
@@ -871,136 +652,145 @@ const isPremium = ["2", "3", 2, 3].includes(invoice.user.currentPlan);
             </table>
           </div>
 
-          {/* Payment Details */}
-          <div className="bg-green-50 p-6 rounded-lg">
-            <h3 className="font-semibold mb-3">Payment Details</h3>
-            <div className="space-y-2">
-              <p><strong>Account Name:</strong> {invoice.accountName}</p>
-              <p><strong>Account Number:</strong> {invoice.accountNumber}</p>
-              <p><strong>Bank:</strong> {invoice.bank}</p>
-            </div>
-          </div>
+{/* Payment Details - inline critical styles */}
+<div 
+  style={{
+    backgroundColor: '#f0fdf4',        // exact bg-green-50
+    padding: '24px',
+    borderRadius: '8px',
+    marginTop: '32px',
+    minHeight: '140px',
+    pageBreakBefore: 'always',
+  }}
+>
+  <h3 style={{ fontWeight: '600', marginBottom: '12px', fontSize: '18px' }}>
+    Payment Details
+  </h3>
+  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', color: '#1f2937' }}>
+    <p><strong>Account Name:</strong> {invoice.accountName}</p>
+    <p><strong>Account Number:</strong> {invoice.accountNumber}</p>
+    <p><strong>Bank:</strong> {invoice.bank}</p>
+  </div>
+</div>
 
+          {/* Notes */}
           {invoice.notes && (
-            <div>
+            <div className="mt-8">
               <h3 className="font-semibold text-lg mb-2">Notes</h3>
               <p className="text-gray-700 bg-gray-50 p-4 rounded">{invoice.notes}</p>
             </div>
           )}
 
           {/* Signature */}
-          {invoice.company.signatureUrl && (
-            <div className="mt-12 flex justify-center sm:justify-end">
-              <div className="text-center">
-                <img
-                  src={invoice.company.signatureUrl}
-                  alt="Authorized Signature"
-                  className="h-20 object-contain"
-                />
-                <p className="text-sm text-gray-600 mt-2">Authorized Signature</p>
-              </div>
-            </div>
-          )}
+        {invoice.company.signatureUrl && (
+  <div className="mt-12 flex justify-center sm:justify-end">
+    <div className="text-center">
+      <img
+        src={signatureBase64 || invoice.company.signatureUrl}
+        alt="Authorized Signature"
+        className="h-20 object-contain"
+      />
+      <p className="text-sm text-gray-600 mt-2">Authorized Signature</p>
+    </div>
+  </div>
+)}
+        </div>
 
-         {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row flex-wrap gap-4 pt-8 border-t">
-            <div className="flex flex-col gap-4 w-full">
-              {/* Primary Send Button */}
-              <button
-                onClick={() => handleSendEmail(false)}
-                disabled={isSendingEmail || !invoice.customerEmail}
-                className={`
-                  w-full px-6 py-3 rounded-md text-white transition flex items-center justify-center gap-2
-                  bg-[#0A66C2] hover:bg-[#084e96]
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                `}
-              >
-                {isSendingEmail && !useAlternateEmail ? (
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row flex-wrap gap-4 pt-8 border-t">
+          <div className="flex flex-col gap-4 w-full">
+            <button
+              onClick={() => handleSendEmail(false)}
+              disabled={isSendingEmail || !invoice.customerEmail}
+              className={`
+                w-full px-6 py-3 rounded-md text-white transition flex items-center justify-center gap-2
+                bg-[#0A66C2] hover:bg-[#084e96]
+                disabled:opacity-50 disabled:cursor-not-allowed
+              `}
+            >
+              {isSendingEmail && !useAlternateEmail ? (
+                <>
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Sending...
+                </>
+              ) : (
+                `Send to ${invoice.customerEmail ?? "Customer Email"}`
+              )}
+            </button>
+
+            {isPremium && (
+              <div className="flex flex-col gap-3 bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="useAlternate"
+                    checked={useAlternateEmail}
+                    onChange={(e) => setUseAlternateEmail(e.target.checked)}
+                    className="rounded"
+                    disabled={isSendingEmail}
+                  />
+                  <label htmlFor="useAlternate" className="text-sm font-medium cursor-pointer">
+                    Send to alternate email (Premium Feature)
+                  </label>
+                </div>
+
+                {useAlternateEmail && (
                   <>
-                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    Sending Invoice...
-                  </>
-                ) : (
-                  `Send to ${invoice.customerEmail ?? "Customer Email"}`
-                )}
-              </button>
-
-              {/* Premium: Alternate Email */}
-              {isPremium && (
-                <div className="flex flex-col gap-3 bg-blue-50 p-4 rounded-lg border border-blue-200">
-                  <div className="flex items-center gap-2">
                     <input
-                      type="checkbox"
-                      id="useAlternate"
-                      checked={useAlternateEmail}
-                      onChange={(e) => setUseAlternateEmail(e.target.checked)}
-                      className="rounded"
+                      type="email"
+                      value={alternateEmail}
+                      onChange={(e) => setAlternateEmail(e.target.value)}
+                      placeholder="alternate@example.com"
+                      className="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       disabled={isSendingEmail}
                     />
-                    <label htmlFor="useAlternate" className="text-sm font-medium cursor-pointer">
-                      Send to alternate email (Premium Feature)
-                    </label>
-                  </div>
 
-                  {useAlternateEmail && (
-                    <>
-                      <input
-                        type="email"
-                        value={alternateEmail}
-                        onChange={(e) => setAlternateEmail(e.target.value)}
-                        placeholder="alternate@example.com"
-                        className="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        disabled={isSendingEmail}
-                      />
-
-                      <button
-                        onClick={() => handleSendEmail(true)}
-                        disabled={isSendingEmail || !alternateEmail.trim()}
-                        className={`
-                          w-full px-6 py-3 rounded-md text-white transition flex items-center justify-center gap-2
-                          bg-green-600 hover:bg-green-700
-                          disabled:opacity-50 disabled:cursor-not-allowed
-                        `}
-                      >
-                        {isSendingEmail && useAlternateEmail ? (
-                          <>
-                            <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                            </svg>
-                            Sending Invoice...
-                          </>
-                        ) : (
-                          "Send to Alternate Email"
-                        )}
-                      </button>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {invoice && <ShareButtons invoice={invoice} pdfBlob={pdfBlob} />}
-
-            {!pdfBlob ? (
-              <Button variant="outline" onClick={generatePDF} disabled={isGeneratingPdf} className="w-full sm:w-auto">
-                {isGeneratingPdf ? "Generating..." : "Download PDF"}
-              </Button>
-            ) : (
-              <Button variant="outline" onClick={handleDownloadPDF} className="w-full sm:w-auto">
-                Download PDF
-              </Button>
+                    <button
+                      onClick={() => handleSendEmail(true)}
+                      disabled={isSendingEmail || !alternateEmail.trim()}
+                      className={`
+                        w-full px-6 py-3 rounded-md text-white transition flex items-center justify-center gap-2
+                        bg-green-600 hover:bg-green-700
+                        disabled:opacity-50 disabled:cursor-not-allowed
+                      `}
+                    >
+                      {isSendingEmail && useAlternateEmail ? (
+                        <>
+                          <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          Sending...
+                        </>
+                      ) : (
+                        "Send to Alternate Email"
+                      )}
+                    </button>
+                  </>
+                )}
+              </div>
             )}
           </div>
 
-          <EmailSuccessModal
-            isOpen={showSuccessModal}
-            onClose={() => setShowSuccessModal(false)}
-          />
+          <ShareButtons invoice={invoice} />
+
+          <Button
+            variant="outline"
+            onClick={handleDownloadPDF}
+            disabled={isGeneratingPdf}
+            className="w-full sm:w-auto"
+          >
+            {isGeneratingPdf ? "Generating PDF..." : "Download PDF"}
+          </Button>
         </div>
+
+        <EmailSuccessModal
+          isOpen={showSuccessModal}
+          onClose={() => setShowSuccessModal(false)}
+        />
       </ComponentCard>
     </div>
   );

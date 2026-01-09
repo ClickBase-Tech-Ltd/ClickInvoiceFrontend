@@ -709,7 +709,7 @@ export default function AdminSettingsPage() {
               />
             </div>
           </div>
-          <div>
+          {/* <div>
             <Label>Flutterwave Plan ID (optional)</Label>
             <input
               type="text"
@@ -717,7 +717,7 @@ export default function AdminSettingsPage() {
               onChange={(e) => setPlanForm({ ...planForm, flutterwavePlanId: e.target.value })}
               className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
             />
-          </div>
+          </div> */}
           <div className="flex items-center gap-3">
             <input
               type="checkbox"

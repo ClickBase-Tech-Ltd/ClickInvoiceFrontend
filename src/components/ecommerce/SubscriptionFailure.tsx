@@ -114,7 +114,7 @@ export default function SubscriptionFailed() {
                   Try Again
                 </Button>
               </Link>
-
+<br/><br/>
               <Link href="/dashboard">
                 <Button variant="outline" className="w-full">
                   Back to Dashboard
