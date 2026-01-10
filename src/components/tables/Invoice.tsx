@@ -201,6 +201,7 @@ export default function InvoiceViewPage() {
   const [alternateEmail, setAlternateEmail] = useState("");
   const [useAlternateEmail, setUseAlternateEmail] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [isPdf, setIsPdf] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const [logoBase64, setLogoBase64] = useState<string>("");
@@ -375,51 +376,65 @@ useEffect(() => {
     if (/^\d*\.?\d*$/.test(value)) setAmountPaid(value);
   };
 
-  const handleDownloadPDF = async () => {
-    if (!contentRef.current || !invoice) return;
+const handleDownloadPDF = async () => {
+  if (!contentRef.current || !invoice) return;
 
-    setIsGeneratingPdf(true);
+  setIsGeneratingPdf(true);
+  setIsPdf(true); // switch to PDF layout
 
-    const element = contentRef.current;
+  const element = contentRef.current;
 
+  try {
+    // Ensure all images are fully loaded
+    const images = element.querySelectorAll('img');
+    await Promise.all(
+      Array.from(images).map(
+        (img) =>
+          new Promise<void>((resolve) => {
+            if (img.complete) resolve();
+            else {
+              img.onload = () => resolve();
+              img.onerror = () => resolve(); // continue even if broken
+            }
+          })
+      )
+    );
+
+    // Force Total row to avoid page break
+    const totalRow = element.querySelector('tr.bg-blue-50');
+    if (totalRow) (totalRow as HTMLElement).style.pageBreakInside = 'avoid';
+
+    // PDF options
     const opt = {
-      margin:       [1, 1, 1, 1],
-      filename:     `Invoice_${invoice.userGeneratedInvoiceId || invoice.invoiceId}.pdf`,
-      image:        { type: 'jpeg', quality: 0.98 },
-    html2canvas: {
-    scale: 1,                         // ← reduced from 2 → better fit, less cutoff
-    useCORS: true,
-    logging: false, 
-    windowWidth: 794,                    // keep true for now to debug
-    backgroundColor: null,                 // ← A4 at 96dpi (very important!)
-    // This helps force content to respect page width
-    width: 794,
-    height: 1723,
-    
-    ignoreElements: (el) => {
-      // Hide elements with lab colors (extreme measure)
-      if (getComputedStyle(el).backgroundColor.includes('lab(')) {
-        return true;
-      }
-      return false;
-    }
-  },
-      jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
-  pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      margin: 10,
+      filename: `Invoice_${invoice.userGeneratedInvoiceId || invoice.invoiceId}.pdf`,
+      image: { type: 'jpeg', quality: 1 },
+      html2canvas: {
+        scale: 2, // higher scale for clarity
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        scrollY: -window.scrollY,
+        width: element.scrollWidth,
+        ignoreElements: (el) => {
+          const bg = window.getComputedStyle(el).backgroundColor;
+          return bg.includes('lab(');
+        },
+      },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['css', 'legacy'] },
     };
 
-    try {
-      await html2pdf()
-        .from(element)
-        .set(opt)
-        .save();
-    } catch (err) {
-      console.error("PDF generation failed:", err);
-      alert("Failed to generate PDF. Please try again.");
-    } finally {
-      setIsGeneratingPdf(false);
-    }
-  };
+    await html2pdf().from(element).set(opt).save();
+  } catch (err) {
+    console.error('PDF generation failed:', err);
+    alert('Failed to generate PDF. Please try again.');
+  } finally {
+    setIsGeneratingPdf(false);
+    setIsPdf(false); // reset back to web layout
+  }
+};
+
 
   const handleSendEmail = async (sendToAlternate: boolean = false) => {
     if (!invoiceId) return;
@@ -476,35 +491,39 @@ useEffect(() => {
 
       <ComponentCard title={`Invoice ${invoice.userGeneratedInvoiceId || invoice.invoiceId}`}>
         {/* This div is what will be converted to PDF */}
-       <div
-  ref={contentRef}
-  // className="bg-white p-8 md:p-10 print:p-8"
-  className="bg-white p-8 md:p-10 print:p-8 text-base"
-  style={{
-    width: '210mm',                     // ← exact A4 width
-    minHeight: '297mm',                 // ← minimum A4 height
-    maxWidth: '210mm',                  // ← prevent overflow
-    boxSizing: 'border-box',
-    margin: '0 auto',
-    backgroundColor: '#ffffff',
-    position: 'relative',
-    overflow: 'hidden',                 // ← helps contain overflowing elements
-  }}
->
+          <div
+            ref={contentRef}
+            style={{
+              width: '210mm',                  // exact A4 width
+              minHeight: 'auto',              // minimum A4 height
+              maxWidth: '210mm',
+              margin: '0 auto',
+              backgroundColor: '#ffffff',
+              boxSizing: 'border-box',
+              position: 'relative',
+              overflow: 'visible',
+              color: '#111827',                // dark text for brighter, crisp font
+              fontSize: '12pt',                // slightly smaller for tighter layout
+              lineHeight: 1.2,                 // reduces vertical gaps between lines
+              padding: '24px',                 // reduced padding for tighter spacing
+              fontFamily: 'Arial, sans-serif', // ensures clear, readable text in PDF
+            }}
+          >
+
           {/* Company Header */}
-          <div className="flex flex-col sm:flex-row justify-between items-start gap-6 border-b pb-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-2 border-b pb-2">
             <div className="text-center sm:text-left">
               <h1 className="text-2xl sm:text-3xl font-bold text-[#0A66C2]">{invoice.company.name}</h1>
-              <p className="text-gray-600">{invoice.company.email}</p>
-              <p className="text-gray-600">{invoice.company.phone}</p>
+              <p className="text-gray-800">{invoice.company.email}</p> {/* darker text for PDF */}
+              <p className="text-gray-800">{invoice.company.phone}</p>
             </div>
             {invoice.company.logoUrl && (
-  <img
-    src={logoBase64 || invoice.company.logoUrl}
-    alt="Company Logo"
-    className="h-24 sm:h-32 object-contain mx-auto sm:mx-0"
-  />
-)}
+              <img
+                src={logoBase64 || invoice.company.logoUrl}
+                alt="Company Logo"
+                className="h-20 sm:h-28 object-contain mx-auto sm:mx-0"
+              />
+            )}
           </div>
 
           {/* Project & Amount */}
@@ -537,37 +556,48 @@ useEffect(() => {
           <div className="bg-gray-50 p-4 rounded-lg mt-8">
             <div className="flex flex-col gap-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                {/* Left side: Current Status */}
                 <div className="flex items-center gap-3 justify-center sm:justify-start">
-                  <span className="text-gray-700 font-medium">Current Status:</span>
+                  <span className="text-gray-700 font-medium">Status:</span>
                   <StatusBadge status={invoice.status} />
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                    <label htmlFor="status" className="text-gray-700 font-medium whitespace-nowrap">
-                      Change Status:
-                    </label>
-                    <select
-                      id="status"
-                      value={selectedStatus}
-                      onChange={handleStatusChange}
-                      className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-auto"
-                    >
-                      <option value="UNPAID">UNPAID</option>
-                      <option value="PAID">PAID</option>
-                      <option value="OVERDUE">OVERDUE</option>
-                      <option value="PARTIAL_PAYMENT">PARTIAL PAYMENT</option>
-                    </select>
+                {/* Right side: PDF label / Invoice number */}
+                {isPdf ? (
+                  <div className="text-right">
+                    <p className="text-2xl sm:text-3xl font-bold text-[#0A66C2]">INVOICE</p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      #{invoice.userGeneratedInvoiceId || invoice.invoiceId}
+                    </p>
                   </div>
+                ) : (
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                      <label htmlFor="status" className="text-gray-700 font-medium whitespace-nowrap">
+                        Change Status:
+                      </label>
+                      <select
+                        id="status"
+                        value={selectedStatus}
+                        onChange={handleStatusChange}
+                        className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-auto"
+                      >
+                        <option value="UNPAID">UNPAID</option>
+                        <option value="PAID">PAID</option>
+                        <option value="OVERDUE">OVERDUE</option>
+                        <option value="PARTIAL_PAYMENT">PARTIAL PAYMENT</option>
+                      </select>
+                    </div>
 
-                  <Button
-                    onClick={handleStatusUpdate}
-                    disabled={isUpdatingStatus || selectedStatus === invoice.status}
-                    className="w-full sm:w-auto"
-                  >
-                    {isUpdatingStatus ? "Updating..." : "Update"}
-                  </Button>
-                </div>
+                    <Button
+                      onClick={handleStatusUpdate}
+                      disabled={isUpdatingStatus || selectedStatus === invoice.status}
+                      className="w-full sm:w-auto"
+                    >
+                      {isUpdatingStatus ? "Updating..." : "Update"}
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {showAmountInput && (
@@ -617,83 +647,108 @@ useEffect(() => {
           </div>
 
           {/* Items Table */}
-          <div className="overflow-x-auto mt-8">
+          <div className="overflow-x-auto mt-4"> {/* reduced mt from 8 → 4 */}
             <table className="w-full border-collapse min-w-full sm:min-w-0">
               <thead>
                 <tr className="border-b text-left text-gray-600 bg-gray-50">
-                  <th className="py-3 px-2">Description</th>
-                  <th className="py-3 px-2 text-right">Amount</th>
+                  <th className="py-2 px-2">Description</th>
+                  <th className="py-2 px-2 text-right">Amount</th>
                 </tr>
               </thead>
-              <tbody>
-                {invoice.items.map((item, idx) => (
-                  <tr key={idx} className="border-b">
-                    <td className="py-4 px-2">{item.description}</td>
-                    <td className="py-4 px-2 text-right font-medium">
-                      {formatMoney(item.amount, invoice.currencySymbol)}
+                <tbody>
+                  {invoice.items.map((item, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #E5E7EB' }}>
+                      <td style={{ padding: '8px' }}>{item.description}</td>
+                      <td style={{ padding: '8px', textAlign: 'right', fontWeight: 500 }}>
+                        {formatMoney(item.amount, invoice.currencySymbol)}
+                      </td>
+                    </tr>
+                  ))}
+                  <tr>
+                    <td style={{ padding: '8px', textAlign: 'right', fontWeight: 500 }}>Subtotal</td>
+                    <td style={{ padding: '8px', textAlign: 'right' }}>
+                      {formatMoney(invoice.subtotal, invoice.currencySymbol)}
                     </td>
                   </tr>
-                ))}
-                <tr>
-                  <td className="py-3 px-2 text-right font-medium">Subtotal</td>
-                  <td className="py-3 px-2 text-right">{formatMoney(invoice.subtotal, invoice.currencySymbol)}</td>
-                </tr>
-                <tr>
-                  <td className="py-3 px-2 text-right font-medium">Tax ({invoice.taxPercentage}%)</td>
-                  <td className="py-3 px-2 text-right">{formatMoney(invoice.taxAmount, invoice.currencySymbol)}</td>
-                </tr>
-                <tr className="bg-blue-50">
-                  <td className="py-4 px-2 text-right font-bold text-lg">Total</td>
-                  <td className="py-4 px-2 text-right font-bold text-xl">
-                    {formatMoney(invoice.totalAmount, invoice.currencySymbol)}
-                  </td>
-                </tr>
-              </tbody>
+                  <tr>
+                    <td style={{ padding: '8px', textAlign: 'right', fontWeight: 500 }}>Tax ({invoice.taxPercentage}%)</td>
+                    <td style={{ padding: '8px', textAlign: 'right' }}>
+                      {formatMoney(invoice.taxAmount, invoice.currencySymbol)}
+                    </td>
+                  </tr>
+                  <tr style={{ backgroundColor: '#DBEAFE' }}>
+                    <td style={{ padding: '6px', textAlign: 'right', fontWeight: 700, fontSize: '14pt' }}>Total</td>
+                    <td style={{ padding: '6px', textAlign: 'right', fontWeight: 700, fontSize: '15pt' }}>
+                      {formatMoney(invoice.totalAmount, invoice.currencySymbol)}
+                    </td>
+                  </tr>
+                </tbody>
             </table>
           </div>
 
-{/* Payment Details - inline critical styles */}
-<div 
-  style={{
-    backgroundColor: '#f0fdf4',        // exact bg-green-50
-    padding: '24px',
-    borderRadius: '8px',
-    marginTop: '32px',
-    minHeight: '140px',
-    pageBreakBefore: 'always',
-  }}
->
-  <h3 style={{ fontWeight: '600', marginBottom: '12px', fontSize: '18px' }}>
-    Payment Details
-  </h3>
-  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', color: '#1f2937' }}>
-    <p><strong>Account Name:</strong> {invoice.accountName}</p>
-    <p><strong>Account Number:</strong> {invoice.accountNumber}</p>
-    <p><strong>Bank:</strong> {invoice.bank}</p>
-  </div>
-</div>
-
-          {/* Notes */}
-          {invoice.notes && (
-            <div className="mt-8">
-              <h3 className="font-semibold text-lg mb-2">Notes</h3>
-              <p className="text-gray-700 bg-gray-50 p-4 rounded">{invoice.notes}</p>
+          {/* Payment Details */}
+          <div 
+            style={{
+              backgroundColor: '#f0fdf4',
+              padding: '12px',
+              borderRadius: '8px',
+              boxSizing: 'border-box',
+              marginTop: '8px',
+              pageBreakInside: 'avoid', 
+            }}
+          >
+            <h3 style={{ fontWeight: 600, marginBottom: '8px', fontSize: '18px' }}>
+              Payment Details
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', color: '#1f2937' }}>
+              <p><strong>Account Name:</strong> {invoice.accountName}</p>
+              <p><strong>Account Number:</strong> {invoice.accountNumber}</p>
+              <p><strong>Bank:</strong> {invoice.bank}</p>
             </div>
-          )}
+          </div>
 
-          {/* Signature */}
-        {invoice.company.signatureUrl && (
-  <div className="mt-12 flex justify-center sm:justify-end">
-    <div className="text-center">
-      <img
-        src={signatureBase64 || invoice.company.signatureUrl}
-        alt="Authorized Signature"
-        className="h-20 object-contain"
-      />
-      <p className="text-sm text-gray-600 mt-2">Authorized Signature</p>
-    </div>
-  </div>
-)}
+          {/* Notes + Signature Block */}
+          <div style={{ marginTop: '12px', pageBreakInside: 'avoid' }}>
+            {invoice.notes && (
+              <div style={{ marginBottom: '12px', pageBreakInside: 'avoid' }}>
+                <h3 style={{ fontWeight: 600, fontSize: '16px', marginBottom: '6px' }}>
+                  Notes
+                </h3>
+                <p
+                  style={{
+                    backgroundColor: '#f9fafb',
+                    padding: '10px',
+                    borderRadius: '6px',
+                    color: '#374151',
+                    lineHeight: 1.3,
+                  }}
+                >
+                  {invoice.notes}
+                </p>
+              </div>
+            )}
+
+            {invoice.company.signatureUrl && (
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  pageBreakInside: 'avoid',
+                }}
+              >
+                <div style={{ textAlign: 'center' }}>
+                  <img
+                    src={signatureBase64 || invoice.company.signatureUrl}
+                    alt="Authorized Signature"
+                    style={{ height: '60px', objectFit: 'contain' }}
+                  />
+                  <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                    Authorized Signature
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Action Buttons */}
