@@ -10,6 +10,8 @@ import api from "../../../lib/api";
 import { ChevronLeftIcon } from "@/icons";
 import Icon from "@/components/Icons";
 
+
+
 // Success Modal
 function EmailSuccessModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   if (!isOpen) return null;
@@ -233,20 +235,16 @@ const getBase64Image = async (url: string): Promise<string> => {
   // In fetchInvoice, after setting invoice:
 useEffect(() => {
   if (!invoice) return;
-
   const loadImages = async () => {
-  if (invoice.company.logoUrl) {
-    try {
+    if (invoice.company.logoUrl) {
       const base64 = await getBase64Image(invoice.company.logoUrl);
-      console.log("Logo base64:", base64.substring(0, 50) + "..."); // check if real data
       setLogoBase64(base64);
-    } catch (err) {
-      console.error("Logo base64 failed:", err);
     }
-  }
-  // same for signature
-};
-
+    if (invoice.company.signatureUrl) {
+      const base64 = await getBase64Image(invoice.company.signatureUrl);
+      setSignatureBase64(base64);
+    }
+  };
   loadImages();
 }, [invoice]);
 
@@ -377,64 +375,33 @@ useEffect(() => {
   };
 
 const handleDownloadPDF = async () => {
-  if (!contentRef.current || !invoice) return;
-
-  setIsGeneratingPdf(true);
-  setIsPdf(true); // switch to PDF layout
-
-  const element = contentRef.current;
+  if (!invoiceId) return;
 
   try {
-    // Ensure all images are fully loaded
-    const images = element.querySelectorAll('img');
-    await Promise.all(
-      Array.from(images).map(
-        (img) =>
-          new Promise<void>((resolve) => {
-            if (img.complete) resolve();
-            else {
-              img.onload = () => resolve();
-              img.onerror = () => resolve(); // continue even if broken
-            }
-          })
-      )
-    );
+    setIsGeneratingPdf(true);
 
-    // Force Total row to avoid page break
-    const totalRow = element.querySelector('tr.bg-blue-50');
-    if (totalRow) (totalRow as HTMLElement).style.pageBreakInside = 'avoid';
+    const response = await api.get(`/invoices/${invoiceId}/pdf`, {
+      responseType: "blob",
+    });
 
-    // PDF options
-    const opt = {
-      margin: 10,
-      filename: `Invoice_${invoice.userGeneratedInvoiceId || invoice.invoiceId}.pdf`,
-      image: { type: 'jpeg', quality: 1 },
-      html2canvas: {
-        scale: 2, // higher scale for clarity
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff',
-        scrollY: -window.scrollY,
-        width: element.scrollWidth,
-        ignoreElements: (el) => {
-          const bg = window.getComputedStyle(el).backgroundColor;
-          return bg.includes('lab(');
-        },
-      },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak: { mode: ['css', 'legacy'] },
-    };
+    const blob = new Blob([response.data], { type: "application/pdf" });
+    const url = window.URL.createObjectURL(blob);
 
-    await html2pdf().from(element).set(opt).save();
-  } catch (err) {
-    console.error('PDF generation failed:', err);
-    alert('Failed to generate PDF. Please try again.');
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Invoice_${invoice?.userGeneratedInvoiceId || invoiceId}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    window.URL.revokeObjectURL(url);
+  } catch (err: any) {
+    console.error(err);
+    alert(err?.response?.data?.message || "Failed to download PDF");
   } finally {
     setIsGeneratingPdf(false);
-    setIsPdf(false); // reset back to web layout
   }
 };
-
 
   const handleSendEmail = async (sendToAlternate: boolean = false) => {
     if (!invoiceId) return;
@@ -493,20 +460,13 @@ const handleDownloadPDF = async () => {
         {/* This div is what will be converted to PDF */}
           <div
             ref={contentRef}
+            className="max-w-full mx-auto p-6 bg-white text-gray-900"
             style={{
-              width: '210mm',                  // exact A4 width
-              minHeight: 'auto',              // minimum A4 height
-              maxWidth: '210mm',
-              margin: '0 auto',
-              backgroundColor: '#ffffff',
+              width: '210mm', // keeps PDF layout
               boxSizing: 'border-box',
-              position: 'relative',
-              overflow: 'visible',
-              color: '#111827',                // dark text for brighter, crisp font
-              fontSize: '12pt',                // slightly smaller for tighter layout
-              lineHeight: 1.2,                 // reduces vertical gaps between lines
-              padding: '24px',                 // reduced padding for tighter spacing
-              fontFamily: 'Arial, sans-serif', // ensures clear, readable text in PDF
+              fontSize: '12pt',
+              lineHeight: 1.2,
+              fontFamily: 'Arial, sans-serif',
             }}
           >
 
@@ -555,47 +515,49 @@ const handleDownloadPDF = async () => {
           {/* Status Section */}
           <div className="bg-gray-50 p-4 rounded-lg mt-8">
             <div className="flex flex-col gap-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                {/* Left side: Current Status */}
-                <div className="flex items-center gap-3 justify-center sm:justify-start">
-                  <span className="text-gray-700 font-medium">Status:</span>
-                  <StatusBadge status={invoice.status} />
-                </div>
-
-                {/* Right side: PDF label / Invoice number */}
+              <div className={isPdf ? "text-center my-0" : "flex flex-col sm:flex-row sm:items-center justify-between gap-4"}>
                 {isPdf ? (
-                  <div className="text-right">
-                    <p className="text-2xl sm:text-3xl font-bold text-[#0A66C2]">INVOICE</p>
+                  // PDF view: centered "INVOICE" and invoice number
+                  <>
+                    <p className="text-3xl sm:text-4xl font-bold text-[#0A66C2]">INVOICE</p>
                     <p className="text-sm text-gray-600 mt-1">
                       #{invoice.userGeneratedInvoiceId || invoice.invoiceId}
                     </p>
-                  </div>
+                  </>
                 ) : (
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                      <label htmlFor="status" className="text-gray-700 font-medium whitespace-nowrap">
-                        Change Status:
-                      </label>
-                      <select
-                        id="status"
-                        value={selectedStatus}
-                        onChange={handleStatusChange}
-                        className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-auto"
-                      >
-                        <option value="UNPAID">UNPAID</option>
-                        <option value="PAID">PAID</option>
-                        <option value="OVERDUE">OVERDUE</option>
-                        <option value="PARTIAL_PAYMENT">PARTIAL PAYMENT</option>
-                      </select>
+                  // Web view: interactive status change UI
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full">
+                    <div className="flex items-center gap-3 justify-center sm:justify-start">
+                      <span className="text-gray-700 font-medium">Current Status:</span>
+                      <StatusBadge status={invoice.status} />
                     </div>
 
-                    <Button
-                      onClick={handleStatusUpdate}
-                      disabled={isUpdatingStatus || selectedStatus === invoice.status}
-                      className="w-full sm:w-auto"
-                    >
-                      {isUpdatingStatus ? "Updating..." : "Update"}
-                    </Button>
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                        <label htmlFor="status" className="text-gray-700 font-medium whitespace-nowrap">
+                          Change Status:
+                        </label>
+                        <select
+                          id="status"
+                          value={selectedStatus}
+                          onChange={handleStatusChange}
+                          className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-auto"
+                        >
+                          <option value="UNPAID">UNPAID</option>
+                          <option value="PAID">PAID</option>
+                          <option value="OVERDUE">OVERDUE</option>
+                          <option value="PARTIAL_PAYMENT">PARTIAL PAYMENT</option>
+                        </select>
+                      </div>
+
+                      <Button
+                        onClick={handleStatusUpdate}
+                        disabled={isUpdatingStatus || selectedStatus === invoice.status}
+                        className="w-full sm:w-auto"
+                      >
+                        {isUpdatingStatus ? "Updating..." : "Update"}
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -708,47 +670,47 @@ const handleDownloadPDF = async () => {
           </div>
 
           {/* Notes + Signature Block */}
-          <div style={{ marginTop: '12px', pageBreakInside: 'avoid' }}>
-            {invoice.notes && (
-              <div style={{ marginBottom: '12px', pageBreakInside: 'avoid' }}>
-                <h3 style={{ fontWeight: 600, fontSize: '16px', marginBottom: '6px' }}>
-                  Notes
-                </h3>
-                <p
-                  style={{
-                    backgroundColor: '#f9fafb',
-                    padding: '10px',
-                    borderRadius: '6px',
-                    color: '#374151',
-                    lineHeight: 1.3,
-                  }}
-                >
-                  {invoice.notes}
-                </p>
-              </div>
-            )}
+<div style={{ marginTop: '12px', pageBreakInside: 'avoid' }}>
+  {/* Notes */}
+  {invoice.notes && (
+    <div style={{ marginBottom: '12px', pageBreakInside: 'avoid' }}>
+      <h3 style={{ fontWeight: 600, fontSize: '16px', marginBottom: '6px' }}>
+        Notes
+      </h3>
+      <p
+        style={{
+          backgroundColor: '#f9fafb',
+          padding: '10px',
+          borderRadius: '6px',
+          color: '#374151',
+          lineHeight: 1.3,
+          margin: 0,
+        }}
+      >
+        {invoice.notes}
+      </p>
+    </div>
+  )}
 
-            {invoice.company.signatureUrl && (
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  pageBreakInside: 'avoid',
-                }}
-              >
-                <div style={{ textAlign: 'center' }}>
-                  <img
-                    src={signatureBase64 || invoice.company.signatureUrl}
-                    alt="Authorized Signature"
-                    style={{ height: '60px', objectFit: 'contain' }}
-                  />
-                  <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                    Authorized Signature
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
+  {/* Signature only */}
+{invoice.company.signatureUrl && (
+  <div style={{ textAlign: 'center' }}>
+    <img
+      src={signatureBase64 || invoice.company.signatureUrl}
+      alt="Authorized Signature"
+      style={{
+        height: '60px',
+        objectFit: 'contain',
+        display: 'inline-block',
+      }}
+    />
+    <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+      Authorized Signature
+    </p>
+  </div>
+)}
+</div>
+
         </div>
 
         {/* Action Buttons */}
