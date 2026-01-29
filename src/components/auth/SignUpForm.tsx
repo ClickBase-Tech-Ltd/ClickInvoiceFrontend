@@ -78,6 +78,35 @@ export default function SignUpForm() {
     e.preventDefault();
     if (!isChecked) return;
 
+    if (!formData.companyName.trim()) {
+    alert("Company name is required!");
+    // or set error state
+    return;
+  }
+
+  if (!formData.yourName.trim()) {
+    alert("Your name is required!");
+    // or set error state
+    return;
+  }
+
+  if (!formData.email.trim()) {
+    alert("Email is required!");
+    // or set error state
+    return;
+  }
+
+  if (!formData.phoneNumber.trim()) {
+    alert("Phone number is required!");
+    // or set error state
+    return;
+  }
+
+  if (!formData.currency.trim()) {
+    alert("Currency is required!");
+    // or set error state
+    return;
+  }
     setIsLoading(true);
 
     const payload = {
@@ -102,7 +131,12 @@ export default function SignUpForm() {
 
       if (response.ok) {
         setUserEmail(formData.email);
-        setShowOtpModal(true);
+        // setShowOtpModal(true);
+        if (response.ok) {
+  localStorage.setItem("pending_user_email", formData.email);
+  router.push("/verify-email");
+}
+
         setFormData({
           companyName: "",
           yourName: "",

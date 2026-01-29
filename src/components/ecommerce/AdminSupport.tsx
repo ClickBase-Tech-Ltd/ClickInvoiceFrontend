@@ -1,3 +1,4 @@
+// app/support/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -23,6 +24,8 @@ interface SupportTicket {
   user?: {
     name?: string;
     email?: string;
+    firstName?: string;
+    lastName?: string;
   };
 }
 
@@ -33,24 +36,32 @@ export default function AdminSupportPage() {
   const [replyMessages, setReplyMessages] = useState<{ [key: number]: string }>({});
   const [statuses, setStatuses] = useState<{ [key: number]: SupportTicket["status"] }>({});
 
-// Helper to display full name correctly
-const getFullName = (user: SupportTicket["user"]) => {
-  if (!user) return "Unknown Customer";
+  // Helper to display full name safely
+  const getFullName = (user: SupportTicket["user"]) => {
+    if (!user) return "Unknown Customer";
+    if (user.name) return user.name;
+    const first = user.firstName?.trim() || "";
+    const last = user.lastName?.trim() || "";
+    const fullName = [first, last].filter(Boolean).join(" ");
+    return fullName || "Unknown Customer";
+  };
 
-  // Prefer 'name' if provided
-  if (user.name) return user.name;
-
-  // Otherwise, construct from firstName + lastName (avoid duplicates)
-  // @ts-ignore
-  const first = user.firstName?.trim() || "";
-  // @ts-ignore
-  const last = user.lastName?.trim() || "";
-
-  const fullName = [first, last].filter(Boolean).join(" ");
-  return fullName || "Unknown Customer";
-};
-
-
+  // Fetch tickets
+  const fetchTickets = async () => {
+    setLoadingTickets(true);
+    try {
+      const res = await api.get("/support/tickets/all");
+      const fetchedTickets: SupportTicket[] = res.data?.tickets || [];
+      setTickets(fetchedTickets);
+      if (!selectedTicketId && fetchedTickets.length > 0) {
+        setSelectedTicketId(fetchedTickets[0].ticketId);
+      }
+    } catch (err) {
+      console.error("Failed to fetch tickets:", err);
+    } finally {
+      setLoadingTickets(false);
+    }
+  };
 
   useEffect(() => {
     fetchTickets();
@@ -80,7 +91,6 @@ const getFullName = (user: SupportTicket["user"]) => {
   };
 
   const handleTicketSelect = (ticketId: number) => setSelectedTicketId(ticketId);
-
   const handleReplyChange = (ticketId: number, value: string) =>
     setReplyMessages((prev) => ({ ...prev, [ticketId]: value }));
 
@@ -111,6 +121,7 @@ const getFullName = (user: SupportTicket["user"]) => {
 
   return (
     <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+      {/* Header */}
       <div className="mb-12">
         <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
           Admin Support Dashboard

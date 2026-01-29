@@ -63,11 +63,14 @@ function Pagination({
       </div>
       <div className="flex gap-2">
         <Button
-          variant="secondary"
-          disabled={currentPage === 1}
-          onClick={() => onPageChange(currentPage - 1)}
-        >
-          Previous
+            variant="secondary"
+            disabled={currentPage === 1}
+            onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+            className="rounded-xl px-4 py-2 text-sm font-medium transition
+                      disabled:cursor-not-allowed disabled:opacity-40
+                      hover:bg-gray-100 dark:hover:bg-gray-800"
+          >
+            Previous
         </Button>
 
         {start > 1 && (
@@ -80,13 +83,18 @@ function Pagination({
         )}
 
         {pageNumbers.map((page) => (
-          <Button
-            key={page}
-            variant={page === currentPage ? "primary" : "secondary"}
-            onClick={() => onPageChange(page)}
-          >
-            {page}
-          </Button>
+        <Button
+          key={page}
+          variant="secondary"
+          onClick={() => onPageChange(page)}
+          className={
+            page === currentPage
+              ? "!bg-[#0A66C2] !text-white shadow-sm"
+              : "hover:bg-gray-100 dark:hover:bg-gray-800"
+          }
+        >
+          {page}
+        </Button>
         ))}
 
         {end < totalPages && (
@@ -100,8 +108,17 @@ function Pagination({
 
         <Button
           variant="secondary"
-          disabled={currentPage === totalPages}
-          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage >= totalPages}
+          onClick={() => {
+            if (currentPage < totalPages) {
+              onPageChange(currentPage + 1);
+            }
+          }}
+          className={`min-w-[90px] transition
+            ${currentPage >= totalPages
+              ? "cursor-not-allowed opacity-40"
+              : "hover:bg-gray-100 dark:hover:bg-gray-800"
+            }`}
         >
           Next
         </Button>
@@ -126,7 +143,7 @@ function Modal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
+      <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-2xl ring-1 ring-black/5 dark:bg-gray-900 dark:ring-white/10">
         <div className="mb-6 flex items-center justify-between">
           <h3 className="text-xl font-bold text-gray-800 dark:text-white">{title}</h3>
           <button
@@ -170,7 +187,7 @@ function SuccessModal({
             </svg>
           </div>
 
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+          <h3 className="text-2xl font-semibold tracking-tight text-gray-900 dark:text-white">
             Success
           </h3>
           <p className="text-gray-600 dark:text-gray-300 mb-6">{message}</p>
@@ -211,7 +228,7 @@ function ErrorModal({
             </svg>
           </div>
 
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+          <h3 className="text-2xl font-semibold tracking-tight text-gray-900 dark:text-white">
             Error
           </h3>
           <p className="text-gray-600 dark:text-gray-300 mb-6">{message}</p>
@@ -454,311 +471,506 @@ export default function AdminSettingsPage() {
   if (error) return <div className="p-8 text-center text-red-600">{error}</div>;
 
   return (
-    <div className="mx-auto max-w-7xl p-6">
-      <h2 className="mb-10 text-3xl font-bold text-gray-800 dark:text-white">
-        Admin Settings
-      </h2>
+    <div className="w-full">
+      <div className="mb-5">
+        <h2 className="text-4xl font-semibold tracking-tight text-gray-900 dark:text-white">
+          Platform Configuration
+        </h2>
+        <p className="mt-2 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
+          Manage currencies, pricing architecture, and payment infrastructure that power your billing engine.
+        </p>
+      </div>
 
       <div className="space-y-12">
         {/* Currencies Table */}
-        <section>
-          <div className="mb-6 flex items-center justify-between">
-            <h3 className="text-2xl font-semibold text-gray-800 dark:text-white">Currencies</h3>
-            <Button onClick={() => openCurrencyModal()} className="!bg-[#0A66C2]">
-              Add Currency
-            </Button>
-          </div>
+        {/* ===================== CURRENCIES ===================== */}
+      <section>
+        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+          <div className="p-6">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-semibold tracking-tight text-gray-900 dark:text-white">
+                  Currencies
+                </h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Define supported billing currencies across regions.
+                </p>
+              </div>
 
-          <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
-            <table className="w-full table-auto">
-              <thead className="bg-gray-50 dark:bg-gray-800">
-                <tr>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Name</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Code</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Symbol</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Country</th>
-                  <th className="px-6 py-4 text-right text-sm font-medium text-gray-700 dark:text-gray-300">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {paginatedCurrencies.map((c) => (
-                  <tr key={c.currencyId}>
-                    <td className="px-6 py-4 text-sm">{c.currencyName}</td>
-                    <td className="px-6 py-4 text-sm font-mono">{c.currencyCode}</td>
-                    <td className="px-6 py-4 text-sm">{c.currencySymbol}</td>
-                    <td className="px-6 py-4 text-sm">{c.country}</td>
-                    <td className="px-6 py-4 text-right">
-                      <button onClick={() => openCurrencyModal(c)} className="text-blue-600 hover:underline">
-                        Edit
-                      </button>
-                    </td>
+              <Button
+                onClick={() => openCurrencyModal()}
+                className="rounded-xl px-5 py-2.5 text-sm font-medium shadow-sm !bg-[#0A66C2] hover:opacity-90"
+              >
+                Add Currency
+              </Button>
+            </div>
+
+            <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
+              <table className="min-w-full table-auto">
+                <thead className="bg-gray-50/70 backdrop-blur dark:bg-gray-800/50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Name</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Code</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Symbol</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Country</th>
+                    <th className="px-6 py-4 text-right text-sm font-medium text-gray-700 dark:text-gray-300">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                  {paginatedCurrencies.map((c) => (
+                    <tr
+                      key={c.currencyId}
+                      className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/60"
+                    >
+                      <td className="px-6 py-4 text-sm">{c.currencyName}</td>
+                      <td className="px-6 py-4 text-sm font-mono">{c.currencyCode}</td>
+                      <td className="px-6 py-4 text-sm">{c.currencySymbol}</td>
+                      <td className="px-6 py-4 text-sm">{c.country}</td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={() => openCurrencyModal(c)}
+                          className="rounded-lg px-3 py-1.5 text-sm font-medium text-[#0A66C2] hover:bg-blue-50 dark:hover:bg-gray-800"
+                        >
+                          Edit
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <Pagination
+              currentPage={currencyPage}
+              totalPages={currencyTotalPages}
+              onPageChange={setCurrencyPage}
+            />
           </div>
+        </div>
+      </section>
 
-          <Pagination
-            currentPage={currencyPage}
-            totalPages={currencyTotalPages}
-            onPageChange={setCurrencyPage}
-          />
-        </section>
+      {/* ===================== PLANS ===================== */}
+      <section>
+        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+          <div className="p-6">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-semibold tracking-tight text-gray-900 dark:text-white">
+                  Subscription Plans
+                </h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Control pricing, limits, and growth tiers.
+                </p>
+              </div>
 
-        {/* Plans Table */}
-        <section>
-          <div className="mb-6 flex items-center justify-between">
-            <h3 className="text-2xl font-semibold text-gray-800 dark:text-white">Subscription Plans</h3>
-            <Button onClick={() => openPlanModal()} className="!bg-[#0A66C2]">
-              Add Plan
-            </Button>
-          </div>
+              <Button
+                onClick={() => openPlanModal()}
+                className="rounded-xl px-5 py-2.5 text-sm font-medium shadow-sm !bg-[#0A66C2] hover:opacity-90"
+              >
+                Add Plan
+              </Button>
+            </div>
 
-          <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
-            <table className="w-full table-auto">
-              <thead className="bg-gray-50 dark:bg-gray-800">
-                <tr>
-                  <th className="px-6 py-4 text-left">Name</th>
-                  <th className="px-6 py-4 text-left">Price</th>
-                  <th className="px-6 py-4 text-left">Currency</th>
-                  <th className="px-6 py-4 text-left">Tenants</th>
-                  <th className="px-6 py-4 text-left">Invoices</th>
-                  <th className="px-6 py-4 text-left">Popular</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {paginatedPlans.map((p) => (
-                  <tr key={p.planId}>
-                    <td className="px-6 py-4 font-medium">{p.planName}</td>
-                    <td className="px-6 py-4">{p.currency_detail.currencySymbol}{p.price}</td>
-                    <td className="px-6 py-4">{p.currency_detail.currencyCode}</td>
-                    <td className="px-6 py-4">{p.tenantLimit === -1 ? "Unlimited" : p.tenantLimit}</td>
-                    <td className="px-6 py-4">{p.invoiceLimit === -1 ? "Unlimited" : p.invoiceLimit}</td>
-                    <td className="px-6 py-4">{p.isPopular ? "Yes" : "No"}</td>
-                    <td className="px-6 py-4 text-right">
-                      <button onClick={() => openPlanModal(p)} className="text-blue-600 hover:underline">
-                        Edit
-                      </button>
-                    </td>
+            <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
+              <table className="min-w-full table-auto">
+                <thead className="bg-gray-50/70 backdrop-blur dark:bg-gray-800/50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Name</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Price</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Currency</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Tenants</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Invoices</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Popular</th>
+                    <th className="px-6 py-4 text-right text-sm font-medium text-gray-700 dark:text-gray-300">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                  {paginatedPlans.map((p) => (
+                    <tr
+                      key={p.planId}
+                      className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/60"
+                    >
+                      <td className="px-6 py-4 text-sm font-medium break-words">{p.planName}</td>
+                      <td className="px-6 py-4 text-sm break-words">{p.currency_detail.currencySymbol}{p.price}</td>
+                      <td className="px-6 py-4 text-sm break-words">{p.currency_detail.currencyCode}</td>
+                      <td className="px-6 py-4 text-sm break-words">{p.tenantLimit === -1 ? "Unlimited" : p.tenantLimit}</td>
+                      <td className="px-6 py-4 text-sm break-words">{p.invoiceLimit === -1 ? "Unlimited" : p.invoiceLimit}</td>
+                      <td className="px-6 py-4 text-sm break-words">{p.isPopular ? "Yes" : "No"}</td>
+                      <td className="px-6 py-4 text-sm text-right">
+                        <button
+                          onClick={() => openPlanModal(p)}
+                          className="rounded-lg px-3 py-1.5 text-sm font-medium text-[#0A66C2] hover:bg-blue-50 dark:hover:bg-gray-800"
+                        >
+                          Edit
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <Pagination
+              currentPage={planPage}
+              totalPages={planTotalPages}
+              onPageChange={setPlanPage}
+            />
           </div>
+        </div>
+      </section>
 
-          <Pagination
-            currentPage={planPage}
-            totalPages={planTotalPages}
-            onPageChange={setPlanPage}
-          />
-        </section>
+      {/* ===================== GATEWAYS ===================== */}
+      <section>
+        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+          <div className="p-6">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-semibold tracking-tight text-gray-900 dark:text-white">
+                  Payment Gateways
+                </h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Configure payment providers and integrations.
+                </p>
+              </div>
 
-        {/* Payment Gateways Table */}
-        <section>
-          <div className="mb-6 flex items-center justify-between">
-            <h3 className="text-2xl font-semibold text-gray-800 dark:text-white">Payment Gateways</h3>
-            <Button onClick={() => openGatewayModal()} className="!bg-[#0A66C2]">
-              Add Gateway
-            </Button>
-          </div>
+              <Button
+                onClick={() => openGatewayModal()}
+                className="rounded-xl px-5 py-2.5 text-sm font-medium shadow-sm !bg-[#0A66C2] hover:opacity-90"
+              >
+                Add Gateway
+              </Button>
+            </div>
 
-          <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
-            <table className="w-full table-auto">
-              <thead className="bg-gray-50 dark:bg-gray-800">
-                <tr>
-                  <th className="px-6 py-4 text-left">Name</th>
-                  <th className="px-6 py-4 text-left">URL</th>
-                  <th className="px-6 py-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
-                {paginatedGateways.map((g) => (
-                  <tr key={g.gatewayId}>
-                    <td className="px-6 py-4 font-medium">{g.paymentGatewayName}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                      {g.url || "—"}
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button onClick={() => openGatewayModal(g)} className="text-blue-600 hover:underline">
-                        Edit
-                      </button>
-                    </td>
+            <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
+              <table className="min-w-full table-auto">
+                <thead className="bg-gray-50/70 backdrop-blur dark:bg-gray-800/50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 dark:text-gray-300">Name</th>
+                    <th className="px-6 py-4 text-left text-sm font-medium text-gray-700 dark:text-gray-300">URL</th>
+                    <th className="px-6 py-4 text-right text-sm font-medium text-gray-700 dark:text-gray-300">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
+                  {paginatedGateways.map((g) => (
+                    <tr
+                      key={g.gatewayId}
+                      className="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/60"
+                    >
+                      <td className="px-6 py-4 text-sm font-medium">{g.paymentGatewayName}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{g.url || "—"}</td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={() => openGatewayModal(g)}
+                          className="rounded-lg px-3 py-1.5 text-sm font-medium text-[#0A66C2] hover:bg-blue-50 dark:hover:bg-gray-800"
+                        >
+                          Edit
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-          <Pagination
-            currentPage={gatewayPage}
-            totalPages={gatewayTotalPages}
-            onPageChange={setGatewayPage}
-          />
-        </section>
+            <Pagination
+              currentPage={gatewayPage}
+              totalPages={gatewayTotalPages}
+              onPageChange={setGatewayPage}
+            />
+          </div>
+        </div>
+      </section>
+
       </div>
 
       {/* Currency Modal with plain HTML inputs */}
-      <Modal isOpen={currencyModalOpen} onClose={() => setCurrencyModalOpen(false)} title={editingCurrency ? "Edit Currency" : "Add Currency"}>
-        <div className="space-y-4">
+      <Modal
+        isOpen={currencyModalOpen}
+        onClose={() => setCurrencyModalOpen(false)}
+        title={editingCurrency ? "Edit Currency" : "Add Currency"}
+      >
+        <div className="space-y-5">
+          {/* Currency Name */}
           <div>
             <Label>Currency Name</Label>
             <input
               type="text"
+              placeholder="e.g. Nigerian Naira"
               value={currencyForm.currencyName}
-              onChange={(e) => setCurrencyForm({ ...currencyForm, currencyName: e.target.value })}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              onChange={(e) =>
+                setCurrencyForm({
+                  ...currencyForm,
+                  currencyName: e.target.value,
+                })
+              }
+              autoComplete="off"
+              className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition
+                        focus:border-[#0A66C2] focus:outline-none focus:ring-2 focus:ring-[rgba(10,102,194,0.25)]
+                        dark:border-gray-700 dark:bg-gray-800 dark:text-white"
             />
           </div>
+
+          {/* Currency Code */}
           <div>
             <Label>Currency Code</Label>
             <input
               type="text"
+              placeholder="e.g. NGN"
+              maxLength={3}
               value={currencyForm.currencyCode}
-              onChange={(e) => setCurrencyForm({ ...currencyForm, currencyCode: e.target.value.toUpperCase() })}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              onChange={(e) =>
+                setCurrencyForm({
+                  ...currencyForm,
+                  currencyCode: e.target.value.toUpperCase(),
+                })
+              }
+              autoComplete="off"
+              className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition
+                        focus:border-[#0A66C2] focus:outline-none focus:ring-2 focus:ring-[rgba(10,102,194,0.25)]
+                        dark:border-gray-700 dark:bg-gray-800 dark:text-white"
             />
           </div>
+
+          {/* Currency Symbol */}
           <div>
             <Label>Currency Symbol</Label>
             <input
               type="text"
+              placeholder="e.g. ₦"
               value={currencyForm.currencySymbol}
-              onChange={(e) => setCurrencyForm({ ...currencyForm, currencySymbol: e.target.value })}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              onChange={(e) =>
+                setCurrencyForm({
+                  ...currencyForm,
+                  currencySymbol: e.target.value,
+                })
+              }
+              autoComplete="off"
+              className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition
+                        focus:border-[#0A66C2] focus:outline-none focus:ring-2 focus:ring-[rgba(10,102,194,0.25)]
+                        dark:border-gray-700 dark:bg-gray-800 dark:text-white"
             />
           </div>
+
+          {/* Country */}
           <div>
             <Label>Country</Label>
             <input
               type="text"
+              placeholder="e.g. Nigeria"
               value={currencyForm.country}
-              onChange={(e) => setCurrencyForm({ ...currencyForm, country: e.target.value })}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              onChange={(e) =>
+                setCurrencyForm({
+                  ...currencyForm,
+                  country: e.target.value,
+                })
+              }
+              autoComplete="off"
+              className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition
+                        focus:border-[#0A66C2] focus:outline-none focus:ring-2 focus:ring-[rgba(10,102,194,0.25)]
+                        dark:border-gray-700 dark:bg-gray-800 dark:text-white"
             />
           </div>
+
+          {/* Actions */}
           <div className="flex justify-end gap-3 pt-4">
-            <Button variant="secondary" onClick={() => setCurrencyModalOpen(false)}>Cancel</Button>
-            <Button onClick={saveCurrency}>Save</Button>
+            <Button
+              variant="secondary"
+              onClick={() => setCurrencyModalOpen(false)}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              type="button"
+              onClick={saveCurrency}
+              className="!bg-[#0A66C2] !text-white hover:!bg-[#004182] focus:!ring-2 focus:!ring-[rgba(10,102,194,0.35)]"
+            >
+              Save
+            </Button>
           </div>
         </div>
       </Modal>
 
       {/* Plan Modal with plain HTML inputs */}
-      <Modal isOpen={planModalOpen} onClose={() => setPlanModalOpen(false)} title={editingPlan ? "Edit Plan" : "Add Plan"}>
+      <Modal
+        isOpen={planModalOpen}
+        onClose={() => setPlanModalOpen(false)}
+        title={editingPlan ? "Edit Plan" : "Add Plan"}
+      >
         <div className="space-y-4">
           <div>
             <Label>Plan Name</Label>
             <input
               type="text"
+              placeholder="Enter plan name"
               value={planForm.planName}
-              onChange={(e) => setPlanForm({ ...planForm, planName: e.target.value })}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              onChange={(e) =>
+                setPlanForm({ ...planForm, planName: e.target.value })
+              }
+              className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition focus:border-[#0A66C2] focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
             />
           </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Price</Label>
               <input
                 type="number"
                 step="0.01"
+                placeholder="Enter price"
                 value={planForm.price}
-                onChange={(e) => setPlanForm({ ...planForm, price: e.target.value })}
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                onChange={(e) =>
+                  setPlanForm({ ...planForm, price: e.target.value })
+                }
+                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition focus:border-[#0A66C2] focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
               />
             </div>
+
             <div>
               <Label>Currency</Label>
               <select
                 value={planForm.currency}
-                onChange={(e) => setPlanForm({ ...planForm, currency: Number(e.target.value) })}
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                onChange={(e) =>
+                  setPlanForm({ ...planForm, currency: Number(e.target.value) })
+                }
+                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition focus:border-[#0A66C2] focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
               >
                 {currencies.map((c) => (
-                  <option key={c.currencyId} value={c.currencyId}>{c.currencyCode} - {c.currencyName}</option>
+                  <option key={c.currencyId} value={c.currencyId}>
+                    {c.currencyCode} - {c.currencyName}
+                  </option>
                 ))}
               </select>
             </div>
           </div>
+
           <div>
             <Label>Features (one per line)</Label>
             <textarea
               rows={5}
+              placeholder="Enter one feature per line"
               value={planForm.features}
-              onChange={(e) => setPlanForm({ ...planForm, features: e.target.value })}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              onChange={(e) =>
+                setPlanForm({ ...planForm, features: e.target.value })
+              }
+              className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition focus:border-[#0A66C2] focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
             />
           </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Tenant Limit</Label>
               <input
                 type="number"
+                placeholder="Enter tenant limit"
                 value={planForm.tenantLimit}
-                onChange={(e) => setPlanForm({ ...planForm, tenantLimit: Number(e.target.value) })}
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                onChange={(e) =>
+                  setPlanForm({
+                    ...planForm,
+                    tenantLimit: Number(e.target.value),
+                  })
+                }
+                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition focus:border-[#0A66C2] focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
               />
             </div>
+
             <div>
               <Label>Invoice Limit</Label>
               <input
                 type="number"
+                placeholder="Enter invoice limit"
                 value={planForm.invoiceLimit}
-                onChange={(e) => setPlanForm({ ...planForm, invoiceLimit: Number(e.target.value) })}
-                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                onChange={(e) =>
+                  setPlanForm({
+                    ...planForm,
+                    invoiceLimit: Number(e.target.value),
+                  })
+                }
+                className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition focus:border-[#0A66C2] focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
               />
             </div>
           </div>
-          {/* <div>
-            <Label>Flutterwave Plan ID (optional)</Label>
-            <input
-              type="text"
-              value={planForm.flutterwavePlanId}
-              onChange={(e) => setPlanForm({ ...planForm, flutterwavePlanId: e.target.value })}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-            />
-          </div> */}
+
           <div className="flex items-center gap-3">
             <input
               type="checkbox"
               id="popular"
               checked={planForm.isPopular === 1}
-              onChange={(e) => setPlanForm({ ...planForm, isPopular: e.target.checked ? 1 : 0 })}
+              onChange={(e) =>
+                setPlanForm({ ...planForm, isPopular: e.target.checked ? 1 : 0 })
+              }
               className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
-            <Label htmlFor="popular" className="!mb-0">Mark as Popular</Label>
+            <Label htmlFor="popular" className="!mb-0">
+              Mark as Popular
+            </Label>
           </div>
+
           <div className="flex justify-end gap-3 pt-4">
-            <Button variant="secondary" onClick={() => setPlanModalOpen(false)}>Cancel</Button>
-            <Button onClick={savePlan}>Save Plan</Button>
+            <Button
+              variant="secondary"
+              onClick={() => setPlanModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={savePlan}
+              className="!bg-[#0A66C2] !text-white hover:!bg-[#004182] focus:!ring-2 focus:!ring-[rgba(10,102,194,0.35)]"
+            >
+              Save Plan
+            </Button>
           </div>
         </div>
       </Modal>
 
       {/* Gateway Modal with plain HTML inputs */}
-      <Modal isOpen={gatewayModalOpen} onClose={() => setGatewayModalOpen(false)} title={editingGateway ? "Edit Gateway" : "Add Gateway"}>
+      <Modal
+        isOpen={gatewayModalOpen}
+        onClose={() => setGatewayModalOpen(false)}
+        title={editingGateway ? "Edit Gateway" : "Add Gateway"}
+      >
         <div className="space-y-4">
           <div>
             <Label>Gateway Name</Label>
             <input
               type="text"
+              placeholder="Enter gateway name"
               value={gatewayForm.paymentGatewayName}
-              onChange={(e) => setGatewayForm({ ...gatewayForm, paymentGatewayName: e.target.value })}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              onChange={(e) =>
+                setGatewayForm({ ...gatewayForm, paymentGatewayName: e.target.value })
+              }
+              className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition focus:border-[#0A66C2] focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
             />
           </div>
+
           <div>
             <Label>URL (optional)</Label>
             <input
               type="text"
+              placeholder="Enter gateway URL"
               value={gatewayForm.url}
-              onChange={(e) => setGatewayForm({ ...gatewayForm, url: e.target.value })}
-              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              onChange={(e) =>
+                setGatewayForm({ ...gatewayForm, url: e.target.value })
+              }
+              className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm transition focus:border-[#0A66C2] focus:outline-none focus:ring-2 focus:ring-blue-100 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
             />
           </div>
+
           <div className="flex justify-end gap-3 pt-4">
-            <Button variant="secondary" onClick={() => setGatewayModalOpen(false)}>Cancel</Button>
-            <Button onClick={saveGateway}>Save Gateway</Button>
+            <Button
+              variant="secondary"
+              onClick={() => setGatewayModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={saveGateway}
+              className="!bg-[#0A66C2] !text-white hover:!bg-[#004182] focus:!ring-2 focus:!ring-[rgba(10,102,194,0.35)]"
+            >
+              Save Gateway
+            </Button>
           </div>
         </div>
       </Modal>

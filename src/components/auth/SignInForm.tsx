@@ -19,6 +19,8 @@ interface LoginResponse {
   role?: string;
   id?: string;
   tenantId?: string;
+  requiresEmailVerification?: boolean;
+  requiresPasswordSetup?: boolean;
   // access_token?: string; // If returned in body, uncomment
 }
 
@@ -32,6 +34,8 @@ export default function SignInForm() {
     username: "",
     password: "",
   });
+  // const [email, setEmail] = useState("");
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -39,56 +43,114 @@ export default function SignInForm() {
     if (error) setError("");
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError("");
+//   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+//     e.preventDefault();
+//     setIsLoading(true);
+//     setError("");
 
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/signin`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include", // Crucial: sends/receives cookies
-        body: JSON.stringify(formData),
-      });
+//     try {
+//       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/signin`, {
+//         method: "POST",
+//         headers: {
+//           "Content-Type": "application/json",
+//         },
+//         credentials: "include", // Crucial: sends/receives cookies
+//         body: JSON.stringify(formData),
+//       });
 
-      const data: LoginResponse = await response.json();
+//       const data: LoginResponse = await response.json();
 
-      if (response.ok) {
-        // Store user data (even if JWT is in cookie, store profile info)
-        const userData = {
-          firstName: data.firstName,
-          lastName: data.lastName,
-          email: data.email,
-          phoneNumber: data.phoneNumber,
-          role: data.role,
+//       if (data.requiresEmailVerification) {
+//   localStorage.setItem("pending_user_email", email);
+//   router.push("/verify-email");
+//   return;
+// }
 
-          // id: data.id,
-        };
-        // const tenantId = {data.tenantId;
-        localStorage.setItem("user", JSON.stringify(userData));
-        localStorage.setItem("currentTenantId", String(data.tenantId)); // ✅
+// if (data.requiresPasswordSetup) {
+//   localStorage.setItem("pending_user_email", email);
+//   router.push("/setup-password");
+//   return;
+// }
+//       if (response.ok) {
+//         // Store user data (even if JWT is in cookie, store profile info)
+//         const userData = {
+//           firstName: data.firstName,
+//           lastName: data.lastName,
+//           email: data.email,
+//           phoneNumber: data.phoneNumber,
+//           role: data.role,
+
+//           // id: data.id,
+//         };
+//         // const tenantId = {data.tenantId;
+//         localStorage.setItem("user", JSON.stringify(userData));
+//         localStorage.setItem("currentTenantId", String(data.tenantId)); // ✅
 
         
-        // Optional: If backend returns access_token in body, store it
-        // if (data.access_token) {
-        //   localStorage.setItem("access_token", data.access_token);
-        // }
+//         // Optional: If backend returns access_token in body, store it
+//         // if (data.access_token) {
+//         //   localStorage.setItem("access_token", data.access_token);
+//         // }
 
-        // Redirect to dashboard
-        router.push("/dashboard");
-      } else {
-        setError(data.message || "Invalid credentials. Please try again.");
-      }
-    } catch (err) {
-      console.error("Login error:", err);
-      setError("Network error. Please try again.");
-    } finally {
-      setIsLoading(false);
+//         // Redirect to dashboard
+//         router.push("/dashboard");
+//       } else {
+//         setError(data.message || "Invalid credentials. Please try again.");
+//       }
+//     } catch (err) {
+//       console.error("Login error:", err);
+//       setError("Network error. Please try again.");
+//     } finally {
+//       setIsLoading(false);
+//     }
+//   };
+
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsLoading(true);
+  setError("");
+
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/signin`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify(formData),
+    });
+
+    const data = await res.json();
+
+    if (data.requiresEmailVerification) {
+      localStorage.setItem("pending_user_email", data.email);
+      router.push("/verify-email");
+      return;
     }
-  };
+
+    if (data.requiresPasswordSetup) {
+      localStorage.setItem("pending_user_email", data.email);
+      router.push("/setup-password");
+      return;
+    }
+
+    if (data.requiresPassword) {
+      localStorage.setItem("pending_user_email", formData.username);
+      router.push("/enter-password");
+      return;
+    }
+
+    if (data.status) {
+      router.push("/dashboard");
+    } else {
+      setError(data.message || "Login failed");
+    }
+  } catch {
+    setError("Network error");
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+
 
   return (
     <div className="flex flex-col flex-1 lg:w-1/2 w-full">
@@ -127,17 +189,25 @@ export default function SignInForm() {
                 <Label>
                   Email <span className="text-error-500">*</span>
                 </Label>
-                <Input
+                {/* <Input
                   name="username"
                   type="email"
                   placeholder="info@gmail.com"
                   value={formData.username}
                   onChange={handleChange}
                   required
-                />
+                /> */}
+                <Input
+  type="email"
+  placeholder="Enter your email"
+  value={formData.username}
+  onChange={(e) => setFormData({...formData, username: e.target.value})}
+  required
+/>
+
               </div>
 
-              <div>
+              {/* <div>
                 <Label>
                   Password <span className="text-error-500">*</span>
                 </Label>
@@ -163,9 +233,9 @@ export default function SignInForm() {
                     )}
                   </span>
                 </div>
-              </div>
+              </div> */}
 
-              <div className="flex items-center justify-between">
+              {/* <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Checkbox checked={isChecked} onChange={setIsChecked} />
                   <span className="block font-normal text-gray-700 text-theme-sm dark:text-gray-400">
@@ -178,7 +248,7 @@ export default function SignInForm() {
                 >
                   Forgot password?
                 </Link>
-              </div>
+              </div> */}
 
               <div>
                 {/* <Button
@@ -196,7 +266,7 @@ export default function SignInForm() {
                   loading={isLoading} 
                   className="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-white transition rounded-lg bg-[#0A66C2] shadow-theme-xs hover:bg-brand-600 disabled:opacity-50"
                 >
-                  {isLoading ? "Signing In..." : "Sign In"}
+                  {isLoading ? "Checking..." : "Next"}
                 </button>
               </div>
             </div>

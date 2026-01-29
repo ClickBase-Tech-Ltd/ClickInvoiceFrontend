@@ -224,7 +224,7 @@ export default function CompaniesListPage() {
       formData.append("tenantEmail", (form.elements.namedItem("tenantEmail") as HTMLInputElement).value);
       formData.append("tenantPhone", (form.elements.namedItem("tenantPhone") as HTMLInputElement).value);
       formData.append("timezone", (form.elements.namedItem("timezone") as HTMLSelectElement).value);
-      formData.append("currency", (form.elements.namedItem("currency") as HTMLSelectElement).value);
+      // formData.append("currency", (form.elements.namedItem("currency") as HTMLSelectElement).value);
       formData.append("gatewayPreference", (form.elements.namedItem("gatewayPreference") as HTMLSelectElement).value);
 
       if (logoInputRef.current?.files?.[0]) {
@@ -469,11 +469,11 @@ export default function CompaniesListPage() {
                                   />
                                 ) : (
                                   <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-bold">
-                                    {tenant.tenantName[0].toUpperCase()}
+                                    {tenant?.tenantName[0].toUpperCase()}
                                   </div>
                                 )}
                               </div>
-                              <span className="font-medium">{tenant.tenantName}</span>
+                              <span className="font-medium">{tenant?.tenantName}</span>
                             </div>
                           </TableCell>
 
@@ -573,13 +573,13 @@ export default function CompaniesListPage() {
                 width={96} 
                 height={96} 
                 src={`${process.env.NEXT_PUBLIC_FILE_URL}${selectedTenant.tenantLogo}`} 
-                alt={selectedTenant.tenantName}
+                alt={selectedTenant?.tenantName}
                 className="w-full h-full object-cover"
                 unoptimized 
               />
             ) : (
               <div className="w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-3xl font-bold text-gray-600 dark:text-gray-400">
-                {selectedTenant.tenantName[0].toUpperCase()}
+                {selectedTenant?.tenantName[0].toUpperCase()}
               </div>
             )}
           </div>
@@ -757,7 +757,7 @@ export default function CompaniesListPage() {
                   <input
                     name="tenantName"
                     type="text"
-                    defaultValue={editingTenant.tenantName}
+                    defaultValue={editingTenant?.tenantName}
                     required
                     className="mt-1 w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
                   />
@@ -785,7 +785,7 @@ export default function CompaniesListPage() {
                     className="mt-1 w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
                   />
                 </div>
-               <div>
+               {/* <div>
   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Currency</label>
   <select
     name="currency"
@@ -804,7 +804,7 @@ export default function CompaniesListPage() {
       </option>
     ))}
   </select>
-</div>
+</div> */}
               </div>
 
               <div>

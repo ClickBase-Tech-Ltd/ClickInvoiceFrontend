@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   LockClosedIcon,
-  EyeIcon,
+  // EyeIcon,
   EyeSlashIcon,
   CheckCircleIcon,
   ArrowPathIcon,
@@ -14,6 +14,7 @@ import Label from "@/components/form/Label";
 import Link from 'next/link';
 import Image from 'next/image';
 import Icon from "@/components/Icons";
+import { EyeCloseIcon, EyeIcon } from '@/icons';
 
 export default function SetupPasswordPage() {
   const router = useRouter();
@@ -29,14 +30,33 @@ export default function SetupPasswordPage() {
     confirmPassword: '',
   });
 
-  useEffect(() => {
-    const email = localStorage.getItem('pending_user_email');
-    if (!email) {
-      router.push('/signup'); // Redirect to your signup page
-      return;
-    }
-    setUserEmail(email);
-  }, [router]);
+  // useEffect(() => {
+  //   const email = localStorage.getItem('pending_user_email');
+  //   if (!email) {
+  //     router.push('/signup'); // Redirect to your signup page
+  //     return;
+  //   }
+  //   setUserEmail(email);
+  // }, [router]);
+
+//   useEffect(() => {
+//   const email = localStorage.getItem("pending_user_email");
+//   if (!email) {
+//     router.push("/signin");
+//   }
+// }, []);
+
+
+useEffect(() => {
+  const email = localStorage.getItem("pending_user_email");
+  if (!email) {
+    router.push("/signin");
+    return; // ← good practice
+  }
+
+  setUserEmail(email);           // ← this line was missing!
+}, [router]);                    // ← router is stable, but it's fine to include
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -121,7 +141,7 @@ export default function SetupPasswordPage() {
         localStorage.setItem("currentTenantId", String(loginData.tenantId)); // ✅
 
         setSuccess('Setup successful! Login you in and redirecting to dashboard...');
-        setTimeout(() => router.push('/'), 1500);
+        setTimeout(() => router.push('/dashboard'), 1500);
       } else {
         setError(loginData.message || 'Auto-login failed. Please sign in manually.');
         localStorage.removeItem('pending_user_email');
@@ -175,7 +195,7 @@ export default function SetupPasswordPage() {
             {success && (
             <div className="mb-6 p-4 bg-emerald-50 dark:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800 rounded-lg text-emerald-700 dark:text-emerald-300 flex items-center gap-2">
               {/* <CheckCircleIcon className="w-5 h-5" /> */}
-              <Icon src={CheckCircleIcon} className="w-5 h-5" />
+              {/* <Icon src={CheckCircleIcon} className="w-5 h-5" /> */}
               {success}
             </div>
           )}
@@ -207,12 +227,14 @@ export default function SetupPasswordPage() {
                 >
                   {showPassword ? (
                     // <EyeSlashIcon className="w-5 h-5" />
-                    <Icon src={EyeSlashIcon} className="w-5 h-5" />
+                    <Icon src={EyeCloseIcon} className="fill-gray-500 dark:fill-gray-400"/>
                   ) : (
                     // <EyeIcon className="w-5 h-5" />
-                    <Icon src={EyeIcon} className="w-5 h-5" />
+                    <Icon src={EyeIcon} className="fill-gray-500 dark:fill-gray-400"/>
                   )}
                 </button>
+
+                
               </div>
 
               {formData.password && (
@@ -283,12 +305,13 @@ export default function SetupPasswordPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full flex items-center justify-center px-4 py-3 text-sm font-medium text-white transition rounded-lg bg-brand-500 hover:bg-brand-600 disabled:opacity-50 shadow-theme-xs"
+              className="w-full flex items-center justify-center px-4 py-3 text-sm font-medium text-white transition rounded-lg bg-[#0A66C2] hover:bg-brand-600 disabled:opacity-50 shadow-theme-xs"
             >
               {isLoading ? (
                 <>
                   {/* <ArrowPathIcon className="w-5 h-5 animate-spin mr-2" /> */}
-                  <Icon src={ArrowPathIcon} className="w-5 h-5 animate-spin mr-2"/>
+                  {/* <Icon src={ArrowPathIcon} className="w-5 h-5 animate-spin mr-2"/> */}
+                  <ArrowPathIcon className="w-5 h-5 animate-spin mr-2" />
                   Setting up...
                 </>
               ) : (
