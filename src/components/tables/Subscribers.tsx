@@ -1,7 +1,6 @@
-// app/admin/subscriptions/page.tsx
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -19,6 +18,9 @@ interface Plan {
   planId: number;
   planName: string;
   price: string;
+  currency_detail?: {
+    currencySymbol: string;
+  };
 }
 
 interface User {
@@ -46,6 +48,8 @@ interface Subscription {
 
 /* ---------------- component ---------------- */
 
+const ITEMS_PER_PAGE = 10;
+
 export default function AdminSubscriptionsPage() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,11 +57,15 @@ export default function AdminSubscriptionsPage() {
   const [selectedSub, setSelectedSub] = useState<Subscription | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+
   useEffect(() => {
     const fetchSubscriptions = async () => {
       try {
         const res = await api.get("/subscribers");
         setSubscriptions(res.data.subscriptions || []);
+        setCurrentPage(1); // Reset to page 1 on fresh load
       } catch (err: any) {
         setError(err?.response?.data?.message || "Failed to load subscriptions");
       } finally {
@@ -81,8 +89,6 @@ export default function AdminSubscriptionsPage() {
     const num = parseFloat(price);
     if (isNaN(num)) return "₦0.00";
     return new Intl.NumberFormat("en-NG", {
-      // style: "currency",
-      // currency: "NGN",
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(num);
@@ -101,6 +107,26 @@ export default function AdminSubscriptionsPage() {
         return "secondary";
     }
   };
+
+  // ─── Pagination Logic ────────────────────────────────────────
+  const totalPages = Math.ceil(subscriptions.length / ITEMS_PER_PAGE);
+
+  const paginatedSubscriptions = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return subscriptions.slice(start, start + ITEMS_PER_PAGE);
+  }, [subscriptions, currentPage]);
+
+  // Reset to page 1 when list length changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [subscriptions.length]);
+
+  // Safety: reset if current page is invalid
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [totalPages, currentPage]);
 
   const openModal = (sub: Subscription) => {
     setSelectedSub(sub);
@@ -150,78 +176,129 @@ export default function AdminSubscriptionsPage() {
               No subscriptions found.
             </div>
           ) : (
-            subscriptions.map((sub) => (
-              <div
-                key={sub.subscriptionId}
-                onClick={() => openModal(sub)}
-                className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] p-5 shadow-sm cursor-pointer transition hover:shadow-md"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center text-xl font-bold text-[#0A66C2] flex-shrink-0">
-                      {sub.user.firstName[0].toUpperCase()}
+            <>
+              {paginatedSubscriptions.map((sub) => (
+                <div
+                  key={sub.subscriptionId}
+                  onClick={() => openModal(sub)}
+                  className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] p-5 shadow-sm cursor-pointer transition hover:shadow-md"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center text-xl font-bold text-[#0A66C2] flex-shrink-0">
+                        {sub.user.firstName[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900 dark:text-white">
+                          {sub.user.firstName} {sub.user.lastName}
+                          {sub.user.otherNames && (
+                            <span className="text-sm text-gray-500"> ({sub.user.otherNames})</span>
+                          )}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                          {sub.user.email}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openModal(sub);
+                      }}
+                      className="p-2 text-gray-600 hover:text-brand-600 transition rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                      title="View details"
+                    >
+                      <Icon src={EyeIcon} className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 text-sm border-t pt-4 border-gray-100 dark:border-white/[0.08]">
+                    <div>
+                      <span className="text-gray-500">Plan</span>
+                      <p className="font-medium">{sub.plan.planName}</p>
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900 dark:text-white">
-                        {sub.user.firstName} {sub.user.lastName}
-                        {sub.user.otherNames && (
-                          <span className="text-sm text-gray-500"> ({sub.user.otherNames})</span>
-                        )}
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        {sub.user.email}
+                      <span className="text-gray-500">Amount</span>
+                      <p className="font-medium">
+                        {sub?.plan?.currency_detail?.currencySymbol || "₦"} {formatMoney(sub.plan.price)}
                       </p>
                     </div>
+                    <div>
+                      <span className="text-gray-500">Status</span>
+                      <div className="mt-1">
+                        <span
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
+                            {
+                              success: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+                              error: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+                              secondary: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300",
+                            }[statusBadgeColor(sub.status)]
+                          }`}
+                        >
+                          {sub.status.toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Next Billing</span>
+                      <p className="font-medium">{formatDate(sub.nextBillingDate)}</p>
+                    </div>
                   </div>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openModal(sub);
-                    }}
-                    className="p-2 text-gray-600 hover:text-brand-600 transition rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                    title="View details"
-                  >
-                    <Icon src={EyeIcon} className="w-5 h-5" />
-                  </button>
                 </div>
+              ))}
 
-                <div className="grid grid-cols-2 gap-4 text-sm border-t pt-4 border-gray-100 dark:border-white/[0.08]">
-                  <div>
-                    <span className="text-gray-500">Plan</span>
-                    <p className="font-medium">{sub.plan.planName}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Amount</span>
-                    <p className="font-medium">{sub?.plan?.currency_detail?.currencySymbol} {formatMoney(sub.plan.price)}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Status</span>
-                    <div className="mt-1">
-                      <span
-                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
-                          {
-                            success: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-                            error: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-                            secondary: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300",
-                          }[statusBadgeColor(sub.status)]
-                        }`}
+              {/* Mobile Pagination */}
+              {totalPages > 1 && (
+                <div className="flex flex-col items-center gap-4 mt-8 px-2">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–
+                    {Math.min(currentPage * ITEMS_PER_PAGE, subscriptions.length)} of {subscriptions.length}
+                  </p>
+
+                  <div className="flex items-center justify-center gap-4 flex-wrap">
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="px-4 py-2 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
+                    >
+                      ← Prev
+                    </button>
+
+                    <div className="flex items-center gap-3">
+                      <label htmlFor="mobile-page-select" className="text-sm whitespace-nowrap">
+                        Page:
+                      </label>
+                      <select
+                        id="mobile-page-select"
+                        value={currentPage}
+                        onChange={(e) => setCurrentPage(Number(e.target.value))}
+                        className="min-w-[80px] px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-[#0A66C2]"
                       >
-                        {sub.status.toUpperCase()}
-                      </span>
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                          <option key={page} value={page}>
+                            {page}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="text-sm text-gray-500">of {totalPages}</span>
                     </div>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Next Billing</span>
-                    <p className="font-medium">{formatDate(sub.nextBillingDate)}</p>
+
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="px-4 py-2 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
+                    >
+                      Next →
+                    </button>
                   </div>
                 </div>
-              </div>
-            ))
+              )}
+            </>
           )}
         </div>
 
-        {/* Desktop Table View (hidden on mobile) */}
+        {/* Desktop Table View */}
         <div className="hidden md:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
           <div className="max-w-full overflow-x-auto">
             <div className="min-w-[900px]">
@@ -231,9 +308,6 @@ export default function AdminSubscriptionsPage() {
                     <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
                       Subscriber
                     </TableCell>
-                    {/* <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
-                      Email
-                    </TableCell> */}
                     <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
                       Plan
                     </TableCell>
@@ -258,48 +332,45 @@ export default function AdminSubscriptionsPage() {
                 <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="py-10 text-center text-gray-500 dark:text-gray-400">
+                      <TableCell colSpan={7} className="py-10 text-center text-gray-500 dark:text-gray-400">
                         Loading subscriptions...
                       </TableCell>
                     </TableRow>
                   ) : error ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="py-10 text-center text-red-600">
+                      <TableCell colSpan={7} className="py-10 text-center text-red-600">
                         {error}
                       </TableCell>
                     </TableRow>
                   ) : subscriptions.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="py-10 text-center text-gray-500 dark:text-gray-400">
+                      <TableCell colSpan={7} className="py-10 text-center text-gray-500 dark:text-gray-400">
                         No subscriptions found.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    subscriptions.map((sub) => (
+                    paginatedSubscriptions.map((sub) => (
                       <TableRow
                         key={sub.subscriptionId}
                         className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
+                        onClick={() => openModal(sub)}
                       >
                         <TableCell className="px-5 py-4 text-start">
                           <span className="font-medium text-gray-800 dark:text-white/90">
                             {sub.user.firstName} {sub.user.lastName}
                           </span>
-
-                            <span className="block text-xs text-gray-500">({sub?.user.email})</span>
-
+                          <span className="block text-xs text-gray-500">
+                            ({sub?.user.email})
+                          </span>
                         </TableCell>
-
-                        {/* <TableCell className="px-5 py-4 text-start text-theme-sm text-gray-600 dark:text-gray-400">
-                          {sub.user.email}
-                        </TableCell> */}
 
                         <TableCell className="px-5 py-4 text-start text-theme-sm text-gray-600 dark:text-gray-400">
                           {sub.plan.planName}
                         </TableCell>
 
                         <TableCell className="px-5 py-4 text-start font-medium text-gray-800 dark:text-white/90">
-                          {/* {formatMoney(sub.plan.price)} */}
-                          {sub?.plan?.currency_detail?.currencySymbol} {formatMoney(sub.plan.price)}
+                          {sub?.plan?.currency_detail?.currencySymbol || "₦"}{" "}
+                          {formatMoney(sub.plan.price)}
                         </TableCell>
 
                         <TableCell className="px-5 py-4 text-start">
@@ -308,7 +379,6 @@ export default function AdminSubscriptionsPage() {
                               {
                                 success: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
                                 error: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-                                info: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
                                 secondary: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300",
                               }[statusBadgeColor(sub.status)]
                             }`}
@@ -344,10 +414,62 @@ export default function AdminSubscriptionsPage() {
               </Table>
             </div>
           </div>
+
+          {/* Desktop Pagination */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row justify-between items-center px-6 py-4 border-t border-gray-200 dark:border-white/[0.05] gap-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
+                {Math.min(currentPage * ITEMS_PER_PAGE, subscriptions.length)} of {subscriptions.length} subscriptions
+              </p>
+
+              <div className="flex items-center gap-4 flex-wrap justify-center sm:justify-end">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                  Previous
+                </button>
+
+                <div className="flex items-center gap-3">
+                  <label
+                    htmlFor="desktop-page-select"
+                    className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap hidden sm:block"
+                  >
+                    Go to page:
+                  </label>
+                  <select
+                    id="desktop-page-select"
+                    value={currentPage}
+                    onChange={(e) => setCurrentPage(Number(e.target.value))}
+                    className="min-w-[90px] px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-[#0A66C2]"
+                  >
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <option key={page} value={page}>
+                        {page}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
+                    of {totalPages}
+                  </span>
+                </div>
+
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Modal remains unchanged - already responsive */}
+      {/* Modal remains unchanged */}
       {isModalOpen && selectedSub && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-gray-900 p-6 shadow-2xl">
@@ -394,7 +516,10 @@ export default function AdminSubscriptionsPage() {
                 <div>
                   <h4 className="font-medium text-gray-900 dark:text-white mb-3">Plan</h4>
                   <p><strong>Name:</strong> {selectedSub.plan.planName}</p>
-                  <p className="mt-2 text-xl font-semibold">{selectedSub?.plan?.currency_detail?.currencySymbol} {formatMoney(selectedSub.plan.price)}</p>
+                  <p className="mt-2 text-xl font-semibold">
+                    {selectedSub?.plan?.currency_detail?.currencySymbol || "₦"}{" "}
+                    {formatMoney(selectedSub.plan.price)}
+                  </p>
                 </div>
               </div>
 

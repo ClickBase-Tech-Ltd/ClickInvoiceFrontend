@@ -52,7 +52,8 @@ import ChatIcon from "./chat.svg";
 import MoreDotIcon from "./more-dot.svg";
 import BellIcon from "./bell.svg";
 import BillIcon from "./bill-receipt-svgrepo-com.svg";
-
+import XCircleIcon from "./circle-xmark-solid-full.svg";
+import RefreshCwIcon from "./arrows-rotate-solid-full.svg";
 export {
   BillIcon,
   DownloadIcon,
@@ -108,4 +109,7 @@ export {
   HorizontaLDots,
   ChevronUpIcon,
   ChatIcon,
+  XCircleIcon,
+  RefreshCwIcon,
 };
+

@@ -101,7 +101,7 @@ export default function EnterPasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setIsLoading(true);
     setError("");
 
     try {
@@ -139,7 +139,7 @@ export default function EnterPasswordPage() {
     } catch {
       setError("Network error. Please try again.");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -159,15 +159,26 @@ export default function EnterPasswordPage() {
               />
             </Link>
           </div>
-          <div className="mb-5 sm:mb-8">
-           <h1 className="text-xl font-semibold mb-2">Welcome</h1>
-        {/* <h1 className="text-sm text-gray-500 mb-6">{email}</h1> */}
-        <h1 className="text-xl font-semibold mb-2 text-blue-500">{email}</h1>
+         <div className="mb-5 sm:mb-8">
+  <h1 className="text-xl font-semibold mb-2">Welcome</h1>
+  <div className="flex items-center gap-3 flex-wrap">
+    <h2 className="text-xl font-semibold text-blue-500">{email}</h2>
+    <button
+      type="button"
+      onClick={() => {
+        localStorage.removeItem("pending_user_email");
+        router.push("/signin");           // or "/login" — wherever email is entered
+      }}
+      className="text-sm text-gray-500 hover:text-gray-700 underline"
+    >
+      Change email
+    </button>
+  </div>
 
-        {error && (
-          <div className="mb-4 text-red-600 text-sm">{error}</div>
-        )}
-          </div>
+  {error && (
+    <div className="mt-3 text-red-600 text-sm">{error}</div>
+  )}
+</div>
 
           {error && (
             <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/50 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300">

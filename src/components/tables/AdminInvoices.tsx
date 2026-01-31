@@ -1,4 +1,3 @@
-// app/admin/invoices/page.tsx
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
@@ -13,7 +12,6 @@ import Button from "../ui/button/Button";
 import { ChevronLeftIcon, EyeIcon } from "@/icons";
 import api from "../../../lib/api";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import Icon from "@/components/Icons";
 
 /* ---------------- types ---------------- */
@@ -37,6 +35,8 @@ interface Invoice {
 
 /* ---------------- component ---------------- */
 
+const ITEMS_PER_PAGE = 10;
+
 export default function AdminInvoices() {
   const router = useRouter();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -45,7 +45,22 @@ export default function AdminInvoices() {
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+
+  useEffect(() => {
+    const fetchInvoices = async () => {
+      try {
+        const res = await api.get("/invoices/admin");
+        setInvoices(res.data || []);
+        setCurrentPage(1); // reset to page 1 on data load
+      } catch (err: any) {
+        setError(err?.response?.data?.message || "Failed to load invoices");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInvoices();
+  }, []);
 
   /* ---------------- Money Formatter ---------------- */
   const formatMoney = (value: number | null | undefined, currencySymbol: string = "$") => {
@@ -61,22 +76,6 @@ export default function AdminInvoices() {
       .format(num)
       .replace("$", currencySymbol);
   };
-
-  /* ---------------- fetch invoices ---------------- */
-  useEffect(() => {
-    const fetchInvoices = async () => {
-      try {
-        const res = await api.get("/invoices/admin");
-        setInvoices(res.data || []);
-      } catch (err: any) {
-        setError(err?.response?.data?.message || "Failed to load invoices");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchInvoices();
-  }, []);
 
   /* ---------------- helpers ---------------- */
   const formatDate = (date: string) =>
@@ -104,12 +103,20 @@ export default function AdminInvoices() {
     router.push(`/dashboard/admin/invoice?invoiceId=${invoiceId}`);
   };
 
-  // Pagination Logic
-  const totalPages = Math.ceil(invoices.length / itemsPerPage);
+  // ─── Pagination Calculations ────────────────────────────────────────
+  const totalPages = Math.ceil(invoices.length / ITEMS_PER_PAGE);
+
   const paginatedInvoices = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return invoices.slice(start, start + itemsPerPage);
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return invoices.slice(start, start + ITEMS_PER_PAGE);
   }, [invoices, currentPage]);
+
+  // Safety reset if current page is invalid
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [totalPages, currentPage]);
 
   return (
     <div className="relative min-h-screen">
@@ -147,70 +154,119 @@ export default function AdminInvoices() {
               No invoices found.
             </div>
           ) : (
-            paginatedInvoices.map((inv) => (
-              <div
-                key={inv.invoiceId}
-                onClick={() => navigateToInvoice(inv.invoiceId)}
-                className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] p-5 shadow-sm cursor-pointer transition hover:shadow-md"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <p className="font-semibold text-lg text-gray-900 dark:text-white">
-                      {inv.userGeneratedInvoiceId || inv.invoiceId}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      {inv.projectName || "No project"}
-                    </p>
+            <>
+              {paginatedInvoices.map((inv) => (
+                <div
+                  key={inv.invoiceId}
+                  onClick={() => navigateToInvoice(inv.invoiceId)}
+                  className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] p-5 shadow-sm cursor-pointer transition hover:shadow-md"
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <p className="font-semibold text-lg text-gray-900 dark:text-white">
+                        {inv.userGeneratedInvoiceId || inv.invoiceId}
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        {inv.projectName || "No project"}
+                      </p>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigateToInvoice(inv.invoiceId);
+                      }}
+                      className="p-2 text-gray-600 hover:text-brand-600 transition rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                      title="View invoice"
+                    >
+                      <Icon src={EyeIcon} className="w-5 h-5" />
+                    </button>
                   </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigateToInvoice(inv.invoiceId);
-                    }}
-                    className="p-2 text-gray-600 hover:text-brand-600 transition rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                    title="View invoice"
-                  >
-                    <Icon src={EyeIcon} className="w-5 h-5" />
-                  </button>
-                </div>
 
-                <div className="grid grid-cols-2 gap-4 text-sm border-t pt-4 border-gray-100 dark:border-white/[0.08]">
-                  <div>
-                    <span className="text-gray-500">Date</span>
-                    <p className="font-medium">{formatDate(inv.invoiceDate)}</p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Amount Paid</span>
-                    <p className="font-medium">
-                      {formatMoney(inv.amountPaid, inv.currency_detail?.currencySymbol || inv.currencySymbol)}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Balance Due</span>
-                    <p className="font-medium">
-                      {formatMoney(inv.balanceDue, inv.currency_detail?.currencySymbol || inv.currencySymbol)}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Status</span>
-                    <div className="mt-1">
-                      <span
-                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
-                          {
-                            success: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-                            error: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-                            info: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-                            secondary: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300",
-                          }[statusBadgeColor(inv.status)]
-                        }`}
-                      >
-                        {inv.status.toUpperCase()}
-                      </span>
+                  <div className="grid grid-cols-2 gap-4 text-sm border-t pt-4 border-gray-100 dark:border-white/[0.08]">
+                    <div>
+                      <span className="text-gray-500">Date</span>
+                      <p className="font-medium">{formatDate(inv.invoiceDate)}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Amount Paid</span>
+                      <p className="font-medium">
+                        {formatMoney(inv.amountPaid, inv.currency_detail?.currencySymbol || inv.currencySymbol)}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Balance Due</span>
+                      <p className="font-medium">
+                        {formatMoney(inv.balanceDue, inv.currency_detail?.currencySymbol || inv.currencySymbol)}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Status</span>
+                      <div className="mt-1">
+                        <span
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
+                            {
+                              success: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+                              error: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+                              info: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+                              secondary: "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300",
+                            }[statusBadgeColor(inv.status)]
+                          }`}
+                        >
+                          {inv.status.toUpperCase()}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))
+              ))}
+
+              {/* Mobile Pagination */}
+              {totalPages > 1 && (
+                <div className="flex flex-col items-center gap-4 mt-8 px-2">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–
+                    {Math.min(currentPage * ITEMS_PER_PAGE, invoices.length)} of {invoices.length}
+                  </p>
+
+                  <div className="flex items-center justify-center gap-4 flex-wrap">
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="px-4 py-2 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
+                    >
+                      ← Prev
+                    </button>
+
+                    <div className="flex items-center gap-3">
+                      <label htmlFor="mobile-page-select" className="text-sm whitespace-nowrap">
+                        Page:
+                      </label>
+                      <select
+                        id="mobile-page-select"
+                        value={currentPage}
+                        onChange={(e) => setCurrentPage(Number(e.target.value))}
+                        className="min-w-[80px] px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-[#0A66C2]"
+                      >
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                          <option key={page} value={page}>
+                            {page}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="text-sm text-gray-500">of {totalPages}</span>
+                    </div>
+
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="px-4 py-2 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
+                    >
+                      Next →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -341,42 +397,59 @@ export default function AdminInvoices() {
               </Table>
             </div>
           </div>
+
+          {/* Desktop Pagination */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row justify-between items-center px-6 py-4 border-t border-gray-200 dark:border-white/[0.05] gap-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
+                {Math.min(currentPage * ITEMS_PER_PAGE, invoices.length)} of {invoices.length} invoices
+              </p>
+
+              <div className="flex items-center gap-4 flex-wrap justify-center sm:justify-end">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                  Previous
+                </button>
+
+                <div className="flex items-center gap-3">
+                  <label
+                    htmlFor="desktop-page-select"
+                    className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap hidden sm:block"
+                  >
+                    Go to page:
+                  </label>
+                  <select
+                    id="desktop-page-select"
+                    value={currentPage}
+                    onChange={(e) => setCurrentPage(Number(e.target.value))}
+                    className="min-w-[90px] px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-[#0A66C2]"
+                  >
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <option key={page} value={page}>
+                        {page}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
+                    of {totalPages}
+                  </span>
+                </div>
+
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-
-        {/* Pagination Controls */}
-        {invoices.length > itemsPerPage && (
-          <div className="flex justify-center items-center gap-2 mt-6">
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-              disabled={currentPage === 1}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
-            >
-              Prev
-            </button>
-
-            {Array.from({ length: totalPages }, (_, i) => (
-              <button
-                key={i + 1}
-                onClick={() => setCurrentPage(i + 1)}
-                className={`px-3 py-1 rounded-md text-sm transition ${
-                  currentPage === i + 1
-                    ? "bg-[#0A66C2] text-white"
-                    : "bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
-                }`}
-              >
-                {i + 1}
-              </button>
-            ))}
-
-            <button
-              onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
-            >
-              Next
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

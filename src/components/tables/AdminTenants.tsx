@@ -1,4 +1,3 @@
-// app/admin/companies/page.tsx (or app/admin/tenants/page.tsx)
 "use client";
 
 import React, { useEffect, useState, useRef, useMemo } from "react";
@@ -56,6 +55,8 @@ interface Gateway {
   paymentGatewayName: string;
 }
 
+const ITEMS_PER_PAGE = 10;
+
 const timezones = [
   { value: "Africa/Lagos", label: "West Africa Time (Lagos, Nigeria) - WAT" },
   { value: "Africa/Accra", label: "Greenwich Mean Time (Accra, Ghana) - GMT" },
@@ -90,14 +91,32 @@ export default function AdminTenants() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
 
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
-
   const logoInputRef = useRef<HTMLInputElement>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
 
   const { isAnyModalOpen, openModal, closeModal } = useModal();
+
+  // ─── Pagination ────────────────────────────────────────
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalPages = Math.ceil(tenants.length / ITEMS_PER_PAGE);
+
+  const paginatedTenants = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return tenants.slice(start, start + ITEMS_PER_PAGE);
+  }, [tenants, currentPage]);
+
+  // Reset to page 1 when tenants array length changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [tenants.length]);
+
+  // Safety: clamp current page if it becomes invalid
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [totalPages, currentPage]);
 
   useEffect(() => {
     const fetchTenants = async () => {
@@ -144,13 +163,6 @@ export default function AdminTenants() {
       minute: "2-digit",
     });
   };
-
-  // Pagination Logic
-  const totalPages = Math.ceil(tenants.length / itemsPerPage);
-  const paginatedTenants = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return tenants.slice(start, start + itemsPerPage);
-  }, [tenants, currentPage]);
 
   const handleViewTenant = (tenant: Tenant) => {
     setSelectedTenant(tenant);
@@ -290,7 +302,7 @@ export default function AdminTenants() {
   return (
     <div className="relative min-h-screen">
       <div className="space-y-6 py-6 px-4 md:px-6 lg:px-8">
-        {/* Responsive Header */}
+        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
             <button
@@ -316,87 +328,134 @@ export default function AdminTenants() {
             <div className="text-center py-12 text-gray-500">Loading businesses...</div>
           ) : tenants.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
-              No businesses found.{" "}
-              <Link href="/dashboard/tenants/create" className="text-brand-600 hover:underline font-medium">
-                Add your first business
-              </Link>
+              No businesses found.
             </div>
           ) : (
-            paginatedTenants.map((tenant) => (
-              <div
-                key={tenant.tenantId}
-                className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] p-5 shadow-sm"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full overflow-hidden border flex-shrink-0">
-                      {tenant.tenantLogo ? (
-                        <Image
-                          width={48}
-                          height={48}
-                          src={`${process.env.NEXT_PUBLIC_FILE_URL}${tenant.tenantLogo}`}
-                          alt={tenant.tenantName}
-                          unoptimized
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-lg font-bold text-gray-600 dark:text-gray-400">
-                          {tenant.tenantName[0].toUpperCase()}
-                        </div>
-                      )}
+            <>
+              {paginatedTenants.map((tenant) => (
+                <div
+                  key={tenant.tenantId}
+                  className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] p-5 shadow-sm"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full overflow-hidden border flex-shrink-0">
+                        {tenant.tenantLogo ? (
+                          <Image
+                            width={48}
+                            height={48}
+                            src={`${process.env.NEXT_PUBLIC_FILE_URL}${tenant.tenantLogo}`}
+                            alt={tenant.tenantName}
+                            unoptimized
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-lg font-bold text-gray-600 dark:text-gray-400">
+                            {tenant.tenantName[0].toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900 dark:text-white">
+                          {tenant.tenantName}
+                        </h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">{tenant.tenantEmail}</p>
+                        {tenant.tenantPhone && (
+                          <p className="text-xs text-gray-500 mt-1">{tenant.tenantPhone}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleViewTenant(tenant)}
+                      className="p-2 text-gray-600 hover:text-brand-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                      title="View details"
+                    >
+                      <Icon src={EyeIcon} className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 text-sm border-t pt-4 border-gray-100 dark:border-white/[0.08]">
+                    <div>
+                      <span className="text-gray-500">Status</span>
+                      <div className="mt-1">
+                        <Badge color={tenant.status === "active" ? "success" : "error"} size="sm">
+                          {tenant.status.charAt(0).toUpperCase() + tenant.status.slice(1)}
+                        </Badge>
+                      </div>
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white">
-                        {tenant.tenantName}
-                      </h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{tenant.tenantEmail}</p>
-                      {tenant.tenantPhone && (
-                        <p className="text-xs text-gray-500 mt-1">{tenant.tenantPhone}</p>
-                      )}
+                      <span className="text-gray-500">Default</span>
+                      <div className="mt-1">
+                        {tenant.isDefault === 1 ? (
+                          <Badge color="info" size="sm">Current</Badge>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-
-                  <button
-                    onClick={() => handleViewTenant(tenant)}
-                    className="p-2 text-gray-600 hover:text-brand-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                    title="View details"
-                  >
-                    <Icon src={EyeIcon} className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 text-sm border-t pt-4 border-gray-100 dark:border-white/[0.08]">
-                  <div>
-                    <span className="text-gray-500">Status</span>
-                    <div className="mt-1">
-                      <Badge color={tenant.status === "active" ? "success" : "error"} size="sm">
-                        {tenant.status.charAt(0).toUpperCase() + tenant.status.slice(1)}
-                      </Badge>
+                    <div>
+                      <span className="text-gray-500">Currency</span>
+                      <p className="font-medium">
+                        {tenant.currency?.currencySymbol || "?"}{" "}
+                        {tenant.currency?.currencyCode || "—"}
+                      </p>
                     </div>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Default</span>
-                    <div className="mt-1">
-                      {tenant.isDefault === 1 ? (
-                        <Badge color="info" size="sm">Current</Badge>
-                      ) : (
-                        <span className="text-gray-400">—</span>
-                      )}
+                    <div>
+                      <span className="text-gray-500">Created</span>
+                      <p className="font-medium text-xs">{formatDate(tenant.created_at)}</p>
                     </div>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Currency</span>
-                    <p className="font-medium">
-                      {tenant.currency?.currencySymbol} {tenant.currency?.currencyCode}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Created</span>
-                    <p className="font-medium text-xs">{formatDate(tenant.created_at)}</p>
                   </div>
                 </div>
-              </div>
-            ))
+              ))}
+
+              {/* Mobile Pagination */}
+              {totalPages > 1 && (
+                <div className="flex flex-col items-center gap-4 mt-8 px-2">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–
+                    {Math.min(currentPage * ITEMS_PER_PAGE, tenants.length)} of {tenants.length}
+                  </p>
+
+                  <div className="flex items-center justify-center gap-4 flex-wrap">
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="px-4 py-2 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
+                    >
+                      ← Prev
+                    </button>
+
+                    <div className="flex items-center gap-3">
+                      <label htmlFor="mobile-page-select" className="text-sm whitespace-nowrap">
+                        Page:
+                      </label>
+                      <select
+                        id="mobile-page-select"
+                        value={currentPage}
+                        onChange={(e) => setCurrentPage(Number(e.target.value))}
+                        className="min-w-[80px] px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-[#0A66C2]"
+                      >
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                          <option key={page} value={page}>
+                            {page}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="text-sm text-gray-500">of {totalPages}</span>
+                    </div>
+
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="px-4 py-2 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
+                    >
+                      Next →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -432,10 +491,7 @@ export default function AdminTenants() {
                   ) : tenants.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={4} className="py-10 text-center text-gray-500 dark:text-gray-400">
-                        No businesses found.{" "}
-                        <Link href="/dashboard/tenants/create" className="text-brand-500 hover:underline">
-                          Add your first business
-                        </Link>
+                        No businesses found.
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -499,45 +555,60 @@ export default function AdminTenants() {
               </Table>
             </div>
           </div>
+
+          {/* Desktop Pagination */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row justify-between items-center px-6 py-4 border-t border-gray-200 dark:border-white/[0.05] gap-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
+                {Math.min(currentPage * ITEMS_PER_PAGE, tenants.length)} of {tenants.length} businesses
+              </p>
+
+              <div className="flex items-center gap-4 flex-wrap justify-center sm:justify-end">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                  Previous
+                </button>
+
+                <div className="flex items-center gap-3">
+                  <label
+                    htmlFor="desktop-page-select"
+                    className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap hidden sm:block"
+                  >
+                    Go to page:
+                  </label>
+                  <select
+                    id="desktop-page-select"
+                    value={currentPage}
+                    onChange={(e) => setCurrentPage(Number(e.target.value))}
+                    className="min-w-[90px] px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-[#0A66C2]"
+                  >
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <option key={page} value={page}>
+                        {page}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
+                    of {totalPages}
+                  </span>
+                </div>
+
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-
-        {/* Pagination Controls */}
-        {tenants.length > itemsPerPage && (
-          <div className="flex justify-center items-center gap-2 mt-6">
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-              disabled={currentPage === 1}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800"
-            >
-              Prev
-            </button>
-
-            {Array.from({ length: totalPages }, (_, i) => (
-              <button
-                key={i + 1}
-                onClick={() => setCurrentPage(i + 1)}
-                className={`px-3 py-1 rounded-md text-sm ${
-                  currentPage === i + 1
-                    ? "bg-[#0A66C2] text-white"
-                    : "bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
-                }`}
-              >
-                {i + 1}
-              </button>
-            ))}
-
-            <button
-              onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800"
-            >
-              Next
-            </button>
-          </div>
-        )}
       </div>
-
-
 
       {/* View Details Modal */}
       {selectedTenant && !editingTenant && !statusError && (
@@ -551,19 +622,19 @@ export default function AdminTenants() {
                 </svg>
               </button>
             </div>
-            
+
             <div className="space-y-8">
               {/* Company Header with Logo */}
               <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
                 <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-700">
                   {selectedTenant.tenantLogo ? (
-                    <Image 
-                      width={96} 
-                      height={96} 
-                      src={`${process.env.NEXT_PUBLIC_FILE_URL}${selectedTenant.tenantLogo}`} 
+                    <Image
+                      width={96}
+                      height={96}
+                      src={`${process.env.NEXT_PUBLIC_FILE_URL}${selectedTenant.tenantLogo}`}
                       alt={selectedTenant.tenantName}
                       className="w-full h-full object-cover"
-                      unoptimized 
+                      unoptimized
                     />
                   ) : (
                     <div className="w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-3xl font-bold text-gray-600 dark:text-gray-400">
@@ -572,7 +643,9 @@ export default function AdminTenants() {
                   )}
                 </div>
                 <div className="flex-1 text-center sm:text-left">
-                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{selectedTenant.tenantName}</h3>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {selectedTenant.tenantName}
+                  </h3>
                   <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-3">
                     {selectedTenant.isDefault === 1 && (
                       <Badge color="info" size="md">Current Business</Badge>
@@ -587,9 +660,7 @@ export default function AdminTenants() {
                 </div>
               </div>
 
-              {/* Business Information Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Contact Information */}
                 <div className="space-y-4">
                   <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b pb-2">
                     Contact Information
@@ -610,7 +681,6 @@ export default function AdminTenants() {
                   </div>
                 </div>
 
-                {/* Financial Settings */}
                 <div className="space-y-4">
                   <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b pb-2">
                     Financial Settings
@@ -619,9 +689,11 @@ export default function AdminTenants() {
                     <div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">Currency</p>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold">{selectedTenant.currency?.currencySymbol}</span>
-                        <span className="font-medium">{selectedTenant.currency?.currencyCode}</span>
-                        <span className="text-sm text-gray-500">({selectedTenant.currency?.currencyName})</span>
+                        <span className="font-bold">{selectedTenant.currency?.currencySymbol || "?"}</span>
+                        <span className="font-medium">{selectedTenant.currency?.currencyCode || "—"}</span>
+                        <span className="text-sm text-gray-500">
+                          ({selectedTenant.currency?.currencyName || "Unknown"})
+                        </span>
                       </div>
                     </div>
                     <div>
@@ -638,7 +710,6 @@ export default function AdminTenants() {
                 </div>
               </div>
 
-              {/* Timezone & Timeline */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b pb-2">
@@ -647,10 +718,7 @@ export default function AdminTenants() {
                   <div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">Timezone</p>
                     <p className="font-medium">
-                      {(() => {
-                        const tz = timezones.find(t => t.value === selectedTenant.timezone);
-                        return tz ? tz.label : selectedTenant.timezone;
-                      })()}
+                      {timezones.find((t) => t.value === selectedTenant.timezone)?.label || selectedTenant.timezone}
                     </p>
                   </div>
                 </div>
@@ -672,7 +740,6 @@ export default function AdminTenants() {
                 </div>
               </div>
 
-              {/* Authorized Signature */}
               {selectedTenant.authorizedSignature && (
                 <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
                   <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -698,7 +765,6 @@ export default function AdminTenants() {
                 </div>
               )}
 
-              {/* Actions */}
               <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
                 <button
                   onClick={handleCloseModal}
@@ -780,8 +846,8 @@ export default function AdminTenants() {
                   <select
                     name="currency"
                     defaultValue={
-                      editingTenant.currency && typeof editingTenant.currency === 'object' 
-                        ? editingTenant.currency.currencyId 
+                      editingTenant.currency && typeof editingTenant.currency === "object"
+                        ? editingTenant.currency.currencyId
                         : editingTenant.currency
                     }
                     className="mt-1 w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"

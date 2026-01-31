@@ -1,4 +1,3 @@
-// app/admin/customers/page.tsx
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
@@ -42,6 +41,8 @@ interface Customer {
 
 /* ---------------- Component ---------------- */
 
+const ITEMS_PER_PAGE = 10;
+
 export default function AdminCustomers() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,7 +54,6 @@ export default function AdminCustomers() {
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
 
   useEffect(() => {
     const fetchCustomers = async () => {
@@ -109,17 +109,25 @@ export default function AdminCustomers() {
     });
   }, [customers, searchTerm, tenantFilter]);
 
-  // Paginated results
-  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredCustomers.length / ITEMS_PER_PAGE);
+
   const paginatedCustomers = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return filteredCustomers.slice(start, start + itemsPerPage);
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredCustomers.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredCustomers, currentPage]);
 
-  // Reset page when filters change
+  // Reset page when filters or search change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, tenantFilter]);
+
+  // Safety: reset if current page is out of range
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [totalPages, currentPage]);
 
   const openModal = (customer: Customer) => {
     setSelectedCustomer(customer);
@@ -199,71 +207,120 @@ export default function AdminCustomers() {
                 : "No customers found."}
             </div>
           ) : (
-            paginatedCustomers.map((customer) => (
-              <div
-                key={customer.customerId}
-                onClick={() => openModal(customer)}
-                className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] p-5 shadow-sm cursor-pointer transition hover:shadow-md"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center text-xl font-bold text-[#0A66C2]">
-                      {customer.customerName.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-900 dark:text-white">
-                        {customer.customerName}
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        ID: #{customer.customerId}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openModal(customer);
-                    }}
-                    className="p-2 text-gray-600 hover:text-brand-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                    title="View details"
-                  >
-                    <Icon src={EyeIcon} className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="space-y-3 text-sm">
-                  <div>
-                    <span className="text-gray-500">Contact</span>
-                    <div className="mt-1">
-                      {customer.customerEmail ? (
-                        <p className="font-medium break-all">{customer.customerEmail}</p>
-                      ) : (
-                        <p className="text-gray-400">No email</p>
-                      )}
-                      {customer.customerPhone && (
-                        <p className="text-gray-600 mt-1">{customer.customerPhone}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <span className="text-gray-500">Business</span>
-                    <div className="mt-1 flex items-center gap-2">
-                      <Icon src={InfoIcon} className="w-4 h-4 text-gray-500" />
+            <>
+              {paginatedCustomers.map((customer) => (
+                <div
+                  key={customer.customerId}
+                  onClick={() => openModal(customer)}
+                  className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] p-5 shadow-sm cursor-pointer transition hover:shadow-md"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center text-xl font-bold text-[#0A66C2]">
+                        {customer.customerName.charAt(0).toUpperCase()}
+                      </div>
                       <div>
-                        <p className="font-medium">{customer.tenant.tenantName}</p>
-                        <p className="text-xs text-gray-500">{customer.tenant.tenantEmail}</p>
+                        <p className="font-semibold text-gray-900 dark:text-white">
+                          {customer.customerName}
+                        </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                          ID: #{customer.customerId}
+                        </p>
                       </div>
                     </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openModal(customer);
+                      }}
+                      className="p-2 text-gray-600 hover:text-brand-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                      title="View details"
+                    >
+                      <Icon src={EyeIcon} className="w-5 h-5" />
+                    </button>
                   </div>
 
-                  <div>
-                    <span className="text-gray-500">Created</span>
-                    <p className="font-medium text-sm mt-1">{formatDate(customer.created_at)}</p>
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <span className="text-gray-500">Contact</span>
+                      <div className="mt-1">
+                        {customer.customerEmail ? (
+                          <p className="font-medium break-all">{customer.customerEmail}</p>
+                        ) : (
+                          <p className="text-gray-400">No email</p>
+                        )}
+                        {customer.customerPhone && (
+                          <p className="text-gray-600 mt-1">{customer.customerPhone}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="text-gray-500">Business</span>
+                      <div className="mt-1 flex items-center gap-2">
+                        <Icon src={InfoIcon} className="w-4 h-4 text-gray-500" />
+                        <div>
+                          <p className="font-medium">{customer.tenant.tenantName}</p>
+                          <p className="text-xs text-gray-500">{customer.tenant.tenantEmail}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="text-gray-500">Created</span>
+                      <p className="font-medium text-sm mt-1">{formatDate(customer.created_at)}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              ))}
+
+              {/* Mobile Pagination */}
+              {totalPages > 1 && (
+                <div className="flex flex-col items-center gap-4 mt-8 px-2">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–
+                    {Math.min(currentPage * ITEMS_PER_PAGE, filteredCustomers.length)} of {filteredCustomers.length}
+                  </p>
+
+                  <div className="flex items-center justify-center gap-4 flex-wrap">
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="px-4 py-2 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
+                    >
+                      ← Prev
+                    </button>
+
+                    <div className="flex items-center gap-3">
+                      <label htmlFor="mobile-page-select" className="text-sm whitespace-nowrap">
+                        Page:
+                      </label>
+                      <select
+                        id="mobile-page-select"
+                        value={currentPage}
+                        onChange={(e) => setCurrentPage(Number(e.target.value))}
+                        className="min-w-[80px] px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-[#0A66C2]"
+                      >
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                          <option key={page} value={page}>
+                            {page}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="text-sm text-gray-500">of {totalPages}</span>
+                    </div>
+
+                    <button
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="px-4 py-2 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
+                    >
+                      Next →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -384,45 +441,62 @@ export default function AdminCustomers() {
               </TableBody>
             </Table>
           </div>
+
+          {/* Desktop Pagination */}
+          {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row justify-between items-center px-6 py-4 border-t border-gray-200 dark:border-white/[0.05] gap-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
+                {Math.min(currentPage * ITEMS_PER_PAGE, filteredCustomers.length)} of {filteredCustomers.length} customers
+              </p>
+
+              <div className="flex items-center gap-4 flex-wrap justify-center sm:justify-end">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                  Previous
+                </button>
+
+                <div className="flex items-center gap-3">
+                  <label
+                    htmlFor="desktop-page-select"
+                    className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap hidden sm:block"
+                  >
+                    Go to page:
+                  </label>
+                  <select
+                    id="desktop-page-select"
+                    value={currentPage}
+                    onChange={(e) => setCurrentPage(Number(e.target.value))}
+                    className="min-w-[90px] px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-[#0A66C2]"
+                  >
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                      <option key={page} value={page}>
+                        {page}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
+                    of {totalPages}
+                  </span>
+                </div>
+
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-
-        {/* Pagination Controls */}
-        {filteredCustomers.length > itemsPerPage && (
-          <div className="flex justify-center items-center gap-2 mt-6">
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-              disabled={currentPage === 1}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
-            >
-              Prev
-            </button>
-
-            {Array.from({ length: totalPages }, (_, i) => (
-              <button
-                key={i + 1}
-                onClick={() => setCurrentPage(i + 1)}
-                className={`px-3 py-1 rounded-md text-sm transition ${
-                  currentPage === i + 1
-                    ? "bg-[#0A66C2] text-white"
-                    : "bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700"
-                }`}
-              >
-                {i + 1}
-              </button>
-            ))}
-
-            <button
-              onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
-            >
-              Next
-            </button>
-          </div>
-        )}
       </div>
 
-    {/* Customer Details Modal */}
+      {/* Customer Details Modal */}
       {isModalOpen && selectedCustomer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-gray-900 p-6 shadow-2xl">

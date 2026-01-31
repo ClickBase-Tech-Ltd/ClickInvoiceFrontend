@@ -160,6 +160,12 @@ const getMenuItems = (role: UserRole) => {
         path: "/dashboard/receipts",
       },
       {
+        // icon: <PageIcon />,
+        icon: <Icon src={PageIcon} />,
+        name: "My Subscriptions",
+        path: "/dashboard/my-subscriptions",
+      },
+      {
         // icon: <UserCircleIcon />,
         icon: <Icon src={UserCircleIcon} />,
         name: "Profile",
