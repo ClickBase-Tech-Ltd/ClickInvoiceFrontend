@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { Metadata } from "next";
-import PlansPage from "@/components/ecommerce/Plans";
+import PlansPage from "@/components/ecommerce/Plans2";
 export const metadata: Metadata = {
   title: "Plans | ClickInvoice",
   description: "Manage plans, upgrade to higher plans and enjoy unlimited offers.",

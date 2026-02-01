@@ -1,4 +1,3 @@
-// app/plans/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -51,6 +50,8 @@ export default function PlansPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processingPlan, setProcessingPlan] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"standard" | "nigeria">("standard");
+  const [selectedNairaPlan, setSelectedNairaPlan] = useState<string>("Basic");
 
   useEffect(() => {
     const fetchPlans = async () => {
@@ -110,21 +111,14 @@ export default function PlansPage() {
   }, []);
 
   const handleUpgrade = async (plan: Plan) => {
-    // Allow clicking on any paid plan (even if lower tier or same)
-    // Only block if it's free or currently processing
-    if (plan.price === 0) {
-      return;
-    }
+    if (plan.price === 0) return;
 
     setProcessingPlan(plan.id.toString());
 
     try {
       const res = await api.post(`/subscribe/${plan.id}`);
       const { payment_link } = res.data;
-
-      if (payment_link) {
-        window.location.href = payment_link;
-      }
+      if (payment_link) window.location.href = payment_link;
     } catch (err: any) {
       console.error("Failed to initiate subscription:", err);
       alert(err?.response?.data?.error || "Failed to start subscription. Please try again.");
@@ -133,35 +127,44 @@ export default function PlansPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="max-w-7xl mx-auto py-12 text-center">
-        <p className="text-xl text-gray-600">Loading plans...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="max-w-7xl mx-auto py-12 text-center">
-        <p className="text-xl text-red-600">{error}</p>
-      </div>
-    );
-  }
-
-  // Find current active plan ID for downgrade detection (for display only)
   const currentPlanId = plans.find((p) => p.is_subscribed)?.id || null;
 
+  const nairaPlans = [
+    { name: "Basic", amount: 3563 },
+    { name: "Premium", amount: 8588 },
+  ];
+
   return (
-    <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">Choose Your Plan</h1>
-        <p className="text-xl text-gray-600 dark:text-gray-300">
-          Upgrade to unlock more features and grow your business faster.
-        </p>
+    <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8 relative">
+      {/* Tabs */}
+      <div className="flex justify-center mb-8 gap-4">
+        <button
+          className={`px-6 py-2 rounded-t-lg font-semibold transition ${
+            activeTab === "standard"
+              ? "bg-[#0A66C2] text-white"
+              : "bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+          }`}
+          onClick={() => setActiveTab("standard")}
+        >
+          Standard
+        </button>
+        <button
+          className={`px-6 py-2 rounded-t-lg font-semibold transition ${
+            activeTab === "nigeria"
+              ? "bg-[#0A66C2] text-white"
+              : "bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+          }`}
+          onClick={() => setActiveTab("nigeria")}
+        >
+          For Nigeria Customers 🇳🇬
+        </button>
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+      {/* Standard Plans Grid */}
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto relative z-0">
+        {loading && <p className="text-center text-xl text-gray-600 col-span-full">Loading plans...</p>}
+        {error && <p className="text-center text-xl text-red-600 col-span-full">{error}</p>}
+
         {plans.map((plan) => {
           const isCurrentPlan = plan.is_subscribed;
           const isFreePlan = plan.price === 0;
@@ -179,7 +182,6 @@ export default function PlansPage() {
             ? "Downgrade"
             : "Upgrade Now";
 
-          // Only disable: Current Plan, Free Plan, or while processing
           const isButtonDisabled = isCurrentPlan || isFreePlan || processingPlan === plan.id.toString();
 
           return (
@@ -250,6 +252,74 @@ export default function PlansPage() {
             </ComponentCard>
           );
         })}
+      </div>
+
+      {/* Nigerian Drawer */}
+      <div
+        className={`fixed top-0 right-0 h-full w-full max-w-sm bg-white dark:bg-gray-900 shadow-xl transform transition-transform duration-700 ease-[cubic-bezier(0.68,-0.55,0.265,1.55)] z-40
+          ${activeTab === "nigeria" ? "translate-x-0" : "translate-x-full"}`}
+      >
+        <div className="p-8 pt-24 flex flex-col h-full justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-6 mb-4 text-center">
+              Alternative Payment Option 🇳🇬
+            </h2>
+            <p className="text-gray-700 dark:text-gray-300 mb-6 text-center">
+              Select your plan and pay to the bank account below. Include your email or business name as description.
+            </p>
+
+            {/* Nigerian Plans Buttons */}
+            <div className="flex justify-center gap-2 mb-4">
+              {nairaPlans.map((plan) => (
+                <Button
+                  key={plan.name}
+                  onClick={() => setSelectedNairaPlan(plan.name)}
+                  className="bg-[#0A66C2] text-white px-3 py-2 rounded-lg hover:bg-[#0A66C2] transition"
+                >
+                  {plan.name} ₦{plan.amount}
+                </Button>
+              ))}
+            </div>
+
+            <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 mb-4 text-center space-y-2">
+              <p><strong>Account Name:</strong> ClickBase Technologies Ltd</p>
+              <p><strong>Account Number:</strong> 1228481040</p>
+              <p><strong>Bank:</strong> Zenith Bank</p>
+              <p><strong>Email:</strong> support@clickinvoice.app</p>
+            </div>
+
+            <div className="flex flex-col gap-3 items-center mb-6">
+              <a
+                href={`https://wa.me/2349088559072?text=${encodeURIComponent(
+                  `I want to pay for ClickInvoice subscription. I just paid for ${selectedNairaPlan} plan.`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block bg-[#25D366] text-white font-semibold px-6 py-3 rounded-lg hover:bg-green-600 transition w-full text-center"
+              >
+                Chat on WhatsApp
+              </a>
+
+              <a
+                href="/dashboard/support"
+                className="inline-block bg-[#0A66C2] text-white font-semibold px-6 py-3 rounded-lg hover:bg-[#084d93] transition w-full text-center"
+              >
+                Go to Support
+              </a>
+            </div>
+
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center mt-4">
+              Note: Ensure you include your email or business name when making the payment.
+            </p>
+          </div>
+
+          <Button
+            className="self-end text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-xl font-bold mt-4"
+            onClick={() => setActiveTab("standard")}
+          >
+            ×
+          </Button>
+        </div>
       </div>
 
       <div className="mt-12 text-center text-sm text-gray-500 dark:text-gray-400">

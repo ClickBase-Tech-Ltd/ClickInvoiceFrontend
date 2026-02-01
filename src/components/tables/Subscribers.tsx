@@ -37,7 +37,7 @@ interface Subscription {
   userId: number;
   planId: number;
   flutterwaveSubscriptionId: string | null;
-  status: "pending" | "active" | "cancelled" | "failed";
+  status: "pending" | "active" | "cancelled" | "failed" | "expired";
   startDate: string | null;
   nextBillingDate: string | null;
   created_at: string;
@@ -57,7 +57,16 @@ export default function AdminSubscriptionsPage() {
   const [selectedSub, setSelectedSub] = useState<Subscription | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Pagination state
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+
+  // Confirmation modal state
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [actionType, setActionType] = useState<"activate" | "deactivate" | null>(null);
+  const [confirmReason, setConfirmReason] = useState("");
+
+  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
@@ -65,7 +74,7 @@ export default function AdminSubscriptionsPage() {
       try {
         const res = await api.get("/subscribers");
         setSubscriptions(res.data.subscriptions || []);
-        setCurrentPage(1); // Reset to page 1 on fresh load
+        setCurrentPage(1);
       } catch (err: any) {
         setError(err?.response?.data?.message || "Failed to load subscriptions");
       } finally {
@@ -102,13 +111,13 @@ export default function AdminSubscriptionsPage() {
         return "secondary";
       case "cancelled":
       case "failed":
+      case "expired":
         return "error";
       default:
         return "secondary";
     }
   };
 
-  // ─── Pagination Logic ────────────────────────────────────────
   const totalPages = Math.ceil(subscriptions.length / ITEMS_PER_PAGE);
 
   const paginatedSubscriptions = useMemo(() => {
@@ -116,12 +125,10 @@ export default function AdminSubscriptionsPage() {
     return subscriptions.slice(start, start + ITEMS_PER_PAGE);
   }, [subscriptions, currentPage]);
 
-  // Reset to page 1 when list length changes
   useEffect(() => {
     setCurrentPage(1);
   }, [subscriptions.length]);
 
-  // Safety: reset if current page is invalid
   useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
       setCurrentPage(1);
@@ -131,19 +138,99 @@ export default function AdminSubscriptionsPage() {
   const openModal = (sub: Subscription) => {
     setSelectedSub(sub);
     setIsModalOpen(true);
+    setActionError(null);
+    setActionSuccess(null);
+    setShowConfirmModal(false);
     document.body.style.overflow = "hidden";
   };
 
   const closeModal = () => {
     setIsModalOpen(false);
     setSelectedSub(null);
+    setActionError(null);
+    setActionSuccess(null);
+    setShowConfirmModal(false);
     document.body.style.overflow = "unset";
+  };
+
+  const openActionConfirm = (type: "activate" | "deactivate") => {
+    setActionType(type);
+    setConfirmReason("");
+    setActionError(null);
+    setActionSuccess(null);
+    setShowConfirmModal(true);
+  };
+
+  const closeConfirmModal = () => {
+    setShowConfirmModal(false);
+    setActionType(null);
+    setConfirmReason("");
+  };
+
+  const performAction = async () => {
+    if (!selectedSub || !actionType) return;
+
+    setActionLoading(true);
+    setActionError(null);
+    setActionSuccess(null);
+
+    try {
+      const endpoint =
+        actionType === "activate"
+          ? `/subscriptions/${selectedSub.subscriptionId}/activate`
+          : `/subscriptions/${selectedSub.subscriptionId}/deactivate`;
+
+      const payload = actionType === "deactivate" && confirmReason.trim()
+        ? { reason: confirmReason.trim() }
+        : {};
+
+      await api.patch(endpoint, payload);
+
+      // Optimistic UI update
+      setSubscriptions((prev) =>
+        prev.map((s) =>
+          s.subscriptionId === selectedSub.subscriptionId
+            ? {
+                ...s,
+                status: actionType === "activate" ? "active" : "cancelled",
+                startDate: actionType === "activate" ? new Date().toISOString() : s.startDate,
+              }
+            : s
+        )
+      );
+
+      setSelectedSub((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: actionType === "activate" ? "active" : "cancelled",
+              startDate: actionType === "activate" ? new Date().toISOString() : prev.startDate,
+            }
+          : null
+      );
+
+      setActionSuccess(
+        actionType === "activate"
+          ? "Subscription activated successfully"
+          : "Subscription deactivated successfully"
+      );
+
+      // Auto-close confirmation modal after short delay
+      setTimeout(() => {
+        closeConfirmModal();
+      }, 1800);
+
+    } catch (err: any) {
+      setActionError(err?.response?.data?.message || `Failed to ${actionType} subscription`);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   return (
     <div className="relative min-h-screen">
       <div className="space-y-6 py-6 px-4 md:px-6 lg:px-8">
-        {/* Responsive Header */}
+        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
             <button
@@ -157,9 +244,9 @@ export default function AdminSubscriptionsPage() {
               Subscriptions Management
             </h1>
           </div>
-
           <div className="text-sm text-gray-600 dark:text-gray-400">
-            Total: <span className="font-medium">{subscriptions.length}</span> subscription{subscriptions.length !== 1 ? "s" : ""}
+            Total: <span className="font-medium">{subscriptions.length}</span> subscription
+            {subscriptions.length !== 1 ? "s" : ""}
           </div>
         </div>
 
@@ -221,7 +308,8 @@ export default function AdminSubscriptionsPage() {
                     <div>
                       <span className="text-gray-500">Amount</span>
                       <p className="font-medium">
-                        {sub?.plan?.currency_detail?.currencySymbol || "₦"} {formatMoney(sub.plan.price)}
+                        {sub?.plan?.currency_detail?.currencySymbol || "₦"}{" "}
+                        {formatMoney(sub.plan.price)}
                       </p>
                     </div>
                     <div>
@@ -467,110 +555,209 @@ export default function AdminSubscriptionsPage() {
             </div>
           )}
         </div>
-      </div>
 
-      {/* Modal remains unchanged */}
-      {isModalOpen && selectedSub && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-gray-900 p-6 shadow-2xl">
-            <div className="flex justify-between items-start mb-6">
-              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
-                Subscription Details
-              </h2>
-              <button
-                onClick={closeModal}
-                className="text-gray-500 hover:text-gray-700 transition"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="space-y-8">
-              <div className="flex flex-col sm:flex-row items-start gap-6">
-                <div className="w-20 h-20 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center text-2xl font-bold text-[#0A66C2]">
-                  {selectedSub.user.firstName[0].toUpperCase()}
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold">
-                    {selectedSub.user.firstName} {selectedSub.user.lastName}
-                  </h3>
-                  {selectedSub.user.otherNames && (
-                    <p className="text-sm text-gray-500 mt-1">({selectedSub.user.otherNames})</p>
-                  )}
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                    Subscription ID: #{selectedSub.subscriptionId}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-3">Contact</h4>
-                  <p><strong>Email:</strong> {selectedSub.user.email}</p>
-                  {selectedSub.user.phoneNumber && (
-                    <p className="mt-2"><strong>Phone:</strong> {selectedSub.user.phoneNumber}</p>
-                  )}
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-3">Plan</h4>
-                  <p><strong>Name:</strong> {selectedSub.plan.planName}</p>
-                  <p className="mt-2 text-xl font-semibold">
-                    {selectedSub?.plan?.currency_detail?.currencySymbol || "₦"}{" "}
-                    {formatMoney(selectedSub.plan.price)}
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-medium text-gray-900 dark:text-white mb-3">Billing Dates</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-500">Start Date</p>
-                    <p className="font-medium">{formatDate(selectedSub.startDate)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Next Billing</p>
-                    <p className="font-medium">{formatDate(selectedSub.nextBillingDate)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Created</p>
-                    <p className="font-medium">{formatDate(selectedSub.created_at)}</p>
-                  </div>
-                </div>
-              </div>
-
-              {selectedSub.flutterwaveSubscriptionId && (
-                <div>
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">Flutterwave ID</h4>
-                  <code className="block text-sm bg-gray-100 dark:bg-gray-800 px-4 py-2 rounded-lg break-all">
-                    {selectedSub.flutterwaveSubscriptionId}
-                  </code>
-                </div>
-              )}
-
-              {selectedSub.metadata && (
-                <div>
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">Payment Metadata</h4>
-                  <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto">
-                    {JSON.stringify(selectedSub.metadata, null, 2)}
-                  </pre>
-                </div>
-              )}
-
-              <div className="flex justify-end pt-6 border-t border-gray-200 dark:border-gray-700">
+        {/* Detail Modal */}
+        {isModalOpen && selectedSub && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+            <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-gray-900 p-6 shadow-2xl">
+              <div className="flex justify-between items-start mb-6">
+                <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  Subscription Details
+                </h2>
                 <button
                   onClick={closeModal}
-                  className="px-6 py-3 rounded-lg bg-[#0A66C2] hover:bg-[#084d93] text-white font-medium transition"
+                  className="text-gray-500 hover:text-gray-700 transition"
                 >
-                  Close
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-8">
+                <div className="flex flex-col sm:flex-row items-start gap-6">
+                  <div className="w-20 h-20 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center text-2xl font-bold text-[#0A66C2]">
+                    {selectedSub.user.firstName[0].toUpperCase()}
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold">
+                      {selectedSub.user.firstName} {selectedSub.user.lastName}
+                    </h3>
+                    {selectedSub.user.otherNames && (
+                      <p className="text-sm text-gray-500 mt-1">({selectedSub.user.otherNames})</p>
+                    )}
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                      Subscription ID: #{selectedSub.subscriptionId}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h4 className="font-medium text-gray-900 dark:text-white mb-3">Contact</h4>
+                    <p><strong>Email:</strong> {selectedSub.user.email}</p>
+                    {selectedSub.user.phoneNumber && (
+                      <p className="mt-2"><strong>Phone:</strong> {selectedSub.user.phoneNumber}</p>
+                    )}
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-gray-900 dark:text-white mb-3">Plan</h4>
+                    <p><strong>Name:</strong> {selectedSub.plan.planName}</p>
+                    <p className="mt-2 text-xl font-semibold">
+                      {selectedSub?.plan?.currency_detail?.currencySymbol || "₦"}{" "}
+                      {formatMoney(selectedSub.plan.price)}
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white mb-3">Billing Dates</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500">Start Date</p>
+                      <p className="font-medium">{formatDate(selectedSub.startDate)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Next Billing</p>
+                      <p className="font-medium">{formatDate(selectedSub.nextBillingDate)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500">Created</p>
+                      <p className="font-medium">{formatDate(selectedSub.created_at)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 text-sm">
+                  <p className="font-medium text-yellow-800 dark:text-yellow-300 mb-1">
+                    Admin Actions Warning
+                  </p>
+                  <p className="text-yellow-700 dark:text-yellow-400">
+                    Manual activation/deactivation bypasses payment gateway validation. Use only for support cases, testing, or payment disputes.
+                  </p>
+                </div>
+
+                {selectedSub.flutterwaveSubscriptionId && (
+                  <div>
+                    <h4 className="font-medium text-gray-900 dark:text-white mb-2">Flutterwave ID</h4>
+                    <code className="block text-sm bg-gray-100 dark:bg-gray-800 px-4 py-2 rounded-lg break-all">
+                      {selectedSub.flutterwaveSubscriptionId}
+                    </code>
+                  </div>
+                )}
+
+                {selectedSub.metadata && (
+                  <div>
+                    <h4 className="font-medium text-gray-900 dark:text-white mb-2">Payment Metadata</h4>
+                    <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto">
+                      {JSON.stringify(selectedSub.metadata, null, 2)}
+                    </pre>
+                  </div>
+                )}
+
+                <div className="flex flex-col sm:flex-row justify-between items-center pt-6 border-t border-gray-200 dark:border-gray-700 gap-4">
+                  <div className="w-full sm:w-auto">
+                    {actionError && <p className="text-red-600 text-sm">{actionError}</p>}
+                    {actionSuccess && <p className="text-green-600 text-sm font-medium">{actionSuccess}</p>}
+                  </div>
+
+                  <div className="flex flex-wrap gap-3 justify-end">
+                    {selectedSub.status !== "active" && (
+                      <button
+                        onClick={() => openActionConfirm("activate")}
+                        disabled={actionLoading}
+                        className="px-5 py-2.5 rounded-lg bg-green-600 hover:bg-green-700 text-white font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Activate Subscription
+                      </button>
+                    )}
+
+                    {selectedSub.status === "active" && (
+                      <button
+                        onClick={() => openActionConfirm("deactivate")}
+                        disabled={actionLoading}
+                        className="px-5 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Deactivate Subscription
+                      </button>
+                    )}
+
+                    <button
+                      onClick={closeModal}
+                      className="px-6 py-2.5 rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium transition"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Action Confirmation Modal */}
+        {showConfirmModal && selectedSub && actionType && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4">
+            <div className="w-full max-w-md rounded-xl bg-white dark:bg-gray-800 p-6 shadow-2xl">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                {actionType === "activate" ? "Activate Subscription?" : "Deactivate Subscription?"}
+              </h3>
+
+              <div className="mb-6 space-y-4">
+                <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed">
+                  {actionType === "activate"
+                    ? "This action will manually activate the subscription and bypass payment gateway checks. The user will immediately gain access."
+                    : "This action will immediately revoke access for the user. They will no longer be able to use premium features until a new subscription is created."}
+                </p>
+
+                {actionType === "deactivate" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Reason for deactivation (optional)
+                    </label>
+                    <textarea
+                      value={confirmReason}
+                      onChange={(e) => setConfirmReason(e.target.value)}
+                      placeholder="e.g. User requested cancellation, fraudulent activity, manual adjustment..."
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#0A66C2] text-sm"
+                      rows={3}
+                    />
+                  </div>
+                )}
+
+                {actionError && <p className="text-red-600 text-sm">{actionError}</p>}
+                {actionSuccess && <p className="text-green-600 text-sm font-medium">{actionSuccess}</p>}
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={closeConfirmModal}
+                  disabled={actionLoading}
+                  className="px-5 py-2.5 rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium transition disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={performAction}
+                  disabled={actionLoading}
+                  className={`px-5 py-2.5 rounded-lg text-white font-medium transition disabled:opacity-50 min-w-[120px] ${
+                    actionType === "activate"
+                      ? "bg-green-600 hover:bg-green-700"
+                      : "bg-red-600 hover:bg-red-700"
+                  }`}
+                >
+                  {actionLoading
+                    ? "Processing..."
+                    : actionType === "activate"
+                    ? "Activate"
+                    : "Deactivate"}
                 </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
