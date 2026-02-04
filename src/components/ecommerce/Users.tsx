@@ -147,7 +147,7 @@ export default function AdminUsersPage() {
     const fetchUsers = async () => {
       try {
         const res = await api.get("/users");
-        setUsers(res.data || []);
+        setUsers((res.data || []).sort((a: User, b: User) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
       } catch (err: any) {
         setError(err?.response?.data?.message || "Failed to load users");
       } finally {

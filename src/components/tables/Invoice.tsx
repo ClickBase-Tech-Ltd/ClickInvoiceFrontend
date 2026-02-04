@@ -447,7 +447,7 @@ const handleDownloadPDF = async () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <div className="max-w-4xl mx-auto p-0">
       <button
         onClick={() => window.history.back()}
         className="mb-6 inline-flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900"
@@ -460,7 +460,7 @@ const handleDownloadPDF = async () => {
         {/* This div is what will be converted to PDF */}
           <div
             ref={contentRef}
-            className="max-w-full mx-auto p-6 bg-white text-gray-900"
+            className="max-w-full mx-auto p-2 bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100"
             style={{
               width: '210mm', // keeps PDF layout
               boxSizing: 'border-box',
@@ -471,11 +471,11 @@ const handleDownloadPDF = async () => {
           >
 
           {/* Company Header */}
-          <div className="flex flex-col sm:flex-row justify-between items-start gap-2 border-b pb-2">
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-2 border-b pb-2 border-gray-200 dark:border-gray-700">
             <div className="text-center sm:text-left">
               <h1 className="text-2xl sm:text-3xl font-bold text-[#0A66C2]">{invoice.company.name}</h1>
-              <p className="text-gray-800">{invoice.company.email}</p> {/* darker text for PDF */}
-              <p className="text-gray-800">{invoice.company.phone}</p>
+              <p className="text-gray-800 dark:text-gray-300">{invoice.company.email}</p> {/* darker text for PDF */}
+              <p className="text-gray-800 dark:text-gray-300">{invoice.company.phone}</p>
             </div>
             {invoice.company.logoUrl && (
               <img
@@ -491,12 +491,12 @@ const handleDownloadPDF = async () => {
             <div>
               <h2 className="text-xl sm:text-2xl font-bold">{invoice.projectName}</h2>
               <div className="mt-4 space-y-1">
-                <p className="text-gray-600 font-medium">Bill To:</p>
-                <p className="text-gray-800">{invoice.customerName}</p>
+                <p className="text-gray-600 dark:text-gray-400 font-medium">Bill To:</p>
+                <p className="text-gray-800 dark:text-gray-200">{invoice.customerName}</p>
                 {invoice.customerAddress && (
-                  <p className="text-gray-600 text-sm whitespace-pre-line">{invoice.customerAddress}</p>
+                  <p className="text-gray-600 dark:text-gray-400 text-sm whitespace-pre-line">{invoice.customerAddress}</p>
                 )}
-                {invoice.customerEmail && <p className="text-gray-600">{invoice.customerEmail}</p>}
+                {invoice.customerEmail && <p className="text-gray-600 dark:text-gray-400">{invoice.customerEmail}</p>}
                 {invoice.customerPhone && <p className="text-gray-600">{invoice.customerPhone}</p>}
               </div>
             </div>
@@ -505,7 +505,7 @@ const handleDownloadPDF = async () => {
               <p className="text-2xl sm:text-3xl font-bold">
                 {formatMoney(invoice.totalAmount, invoice.currencySymbol)}
               </p>
-              <p className="text-sm text-gray-500 mt-1">Balance Due</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Balance Due</p>
               <p className="text-lg sm:text-xl font-semibold text-orange-600">
                 {formatMoney(invoice.balanceDue, invoice.currencySymbol)}
               </p>
@@ -513,7 +513,7 @@ const handleDownloadPDF = async () => {
           </div>
 
           {/* Status Section */}
-          <div className="bg-gray-50 p-4 rounded-lg mt-8">
+          <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded-lg mt-4">
             <div className="flex flex-col gap-4">
               <div className={isPdf ? "text-center my-0" : "flex flex-col sm:flex-row sm:items-center justify-between gap-4"}>
                 {isPdf ? (
@@ -563,7 +563,7 @@ const handleDownloadPDF = async () => {
               </div>
 
               {showAmountInput && (
-                <div className="p-4 bg-blue-50 rounded border border-blue-200">
+                <div className="p-4 bg-blue-50 dark:bg-blue-900 rounded border border-blue-200 dark:border-blue-700">
                   <div className="flex flex-col gap-3">
                     <label htmlFor="amountPaid" className="text-gray-700 font-medium">
                       Amount Paid ({invoice.currencySymbol}):
@@ -574,7 +574,7 @@ const handleDownloadPDF = async () => {
                       value={amountPaid}
                       onChange={handleAmountPaidChange}
                       placeholder="Enter amount paid"
-                      className="border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="border border-gray-300 dark:border-gray-600 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                     />
                     <div className="text-sm text-gray-600">
                       Total: {formatMoney(invoice.totalAmount, invoice.currencySymbol)}
@@ -593,18 +593,18 @@ const handleDownloadPDF = async () => {
           {/* Dates */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-sm mt-8">
             <div>
-              <p className="text-gray-500">Invoice Date</p>
-              <p className="font-medium">{new Date(invoice.invoiceDate).toLocaleDateString()}</p>
+              <p className="text-gray-500 dark:text-gray-400">Invoice Date</p>
+              <p className="font-medium dark:text-gray-100">{new Date(invoice.invoiceDate).toLocaleDateString()}</p>
             </div>
             {invoice.dueDate && (
               <div>
-                <p className="text-gray-500">Due Date</p>
-                <p className="font-medium">{new Date(invoice.dueDate).toLocaleDateString()}</p>
+                <p className="text-gray-500 dark:text-gray-400">Due Date</p>
+                <p className="font-medium dark:text-gray-100">{new Date(invoice.dueDate).toLocaleDateString()}</p>
               </div>
             )}
             <div>
-              <p className="text-gray-500">Amount Paid</p>
-              <p className="font-medium">{formatMoney(invoice.amountPaid, invoice.currencySymbol)}</p>
+              <p className="text-gray-500 dark:text-gray-400">Amount Paid</p>
+              <p className="font-medium dark:text-gray-100">{formatMoney(invoice.amountPaid, invoice.currencySymbol)}</p>
             </div>
           </div>
 
@@ -612,14 +612,14 @@ const handleDownloadPDF = async () => {
           <div className="overflow-x-auto mt-4"> {/* reduced mt from 8 → 4 */}
             <table className="w-full border-collapse min-w-full sm:min-w-0">
               <thead>
-                <tr className="border-b text-left text-gray-600 bg-gray-50">
+                <tr className="border-b text-left text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800">
                   <th className="py-2 px-2">Description</th>
                   <th className="py-2 px-2 text-right">Amount</th>
                 </tr>
               </thead>
                 <tbody>
                   {invoice.items.map((item, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #E5E7EB' }}>
+                    <tr key={idx} className="border-b border-gray-200 dark:border-gray-700">
                       <td style={{ padding: '8px' }}>{item.description}</td>
                       <td style={{ padding: '8px', textAlign: 'right', fontWeight: 500 }}>
                         {formatMoney(item.amount, invoice.currencySymbol)}
@@ -638,7 +638,7 @@ const handleDownloadPDF = async () => {
                       {formatMoney(invoice.taxAmount, invoice.currencySymbol)}
                     </td>
                   </tr>
-                  <tr style={{ backgroundColor: '#DBEAFE' }}>
+                  <tr className="bg-blue-100 dark:bg-blue-800">
                     <td style={{ padding: '6px', textAlign: 'right', fontWeight: 700, fontSize: '14pt' }}>Total</td>
                     <td style={{ padding: '6px', textAlign: 'right', fontWeight: 700, fontSize: '15pt' }}>
                       {formatMoney(invoice.totalAmount, invoice.currencySymbol)}
@@ -650,14 +650,7 @@ const handleDownloadPDF = async () => {
 
           {/* Payment Details */}
           <div 
-            style={{
-              backgroundColor: '#f0fdf4',
-              padding: '12px',
-              borderRadius: '8px',
-              boxSizing: 'border-box',
-              marginTop: '8px',
-              pageBreakInside: 'avoid', 
-            }}
+            className="mt-2 p-3 rounded bg-green-50 dark:bg-green-900 text-gray-900 dark:text-gray-100" style={{ pageBreakInside: 'avoid' }}
           >
             <h3 style={{ fontWeight: 600, marginBottom: '8px', fontSize: '18px' }}>
               Payment Details
@@ -677,16 +670,7 @@ const handleDownloadPDF = async () => {
       <h3 style={{ fontWeight: 600, fontSize: '16px', marginBottom: '6px' }}>
         Notes
       </h3>
-      <p
-        style={{
-          backgroundColor: '#f9fafb',
-          padding: '10px',
-          borderRadius: '6px',
-          color: '#374151',
-          lineHeight: 1.3,
-          margin: 0,
-        }}
-      >
+      <p className="p-2 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200">
         {invoice.notes}
       </p>
     </div>

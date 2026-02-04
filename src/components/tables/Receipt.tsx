@@ -573,9 +573,9 @@ const isPremium = ["2", "3", 2, 3].includes(receipt.user.currentPlan);
           </div>
 
           {/* Payment Details */}
-          <div className="bg-blue-50 p-6 rounded-lg">
-            <h3 className="font-semibold mb-3">Payment Received Via</h3>
-            <div className="space-y-2">
+          <div className="bg-blue-50 dark:bg-[#E8F4FD] p-6 rounded-lg">
+            <h3 className="font-semibold mb-3 text-gray-900 dark:text-gray-900">Payment Received Via</h3>
+            <div className="space-y-2 text-gray-900 dark:text-gray-900">
               <p><strong>Account Name:</strong> {receipt.accountName}</p>
               <p><strong>Account Number:</strong> {receipt.accountNumber}</p>
               <p><strong>Bank:</strong> {receipt.bank}</p>

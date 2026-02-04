@@ -1,8 +1,6 @@
-// app/receipts/page.tsx
 "use client";
 
 import React, { useEffect, useState } from "react";
-import ComponentCard from "../../components/common/ComponentCard";
 import Button from "../../components/ui/button/Button";
 import { ChevronLeftIcon } from "@/icons";
 import api from "../../../lib/api";
@@ -36,8 +34,12 @@ export default function ReceiptsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  /* ---------------- Money Formatter ---------------- */
-  const formatMoney = (value: number | null | undefined, currencySymbol: string = "$") => {
+  /* ---------------- helpers ---------------- */
+
+  const formatMoney = (
+    value: number | null | undefined,
+    currencySymbol: string = "$"
+  ) => {
     const num = Number(value);
     if (isNaN(num)) return `${currencySymbol}0.00`;
 
@@ -51,12 +53,67 @@ export default function ReceiptsPage() {
       .replace("$", currencySymbol);
   };
 
-  /* ---------------- fetch receipts ---------------- */
+  const formatDate = (date: string) =>
+    new Date(date).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+
+  const statusColor = (status: Receipt["status"]) =>
+    ({
+      issued:
+        "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+      void:
+        "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+      partial:
+        "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+    }[status] ||
+    "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300");
+
+  const handleViewReceipt = (receiptId: string) => {
+    router.push(`/dashboard/receipt?receiptId=${receiptId}`);
+  };
+
+  /* ---------------- View Button ---------------- */
+
+  const ViewButton = ({ onClick }: { onClick: () => void }) => (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      className="
+        relative inline-flex items-center justify-center
+        rounded-md bg-[#0A66C2]
+        px-3 py-1.5 text-xs font-medium text-white
+        shadow-sm transition-all duration-200
+        hover:bg-[#084d93] hover:-translate-y-[1px] hover:shadow-md
+        active:translate-y-0
+      "
+    >
+      View
+      <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-500 hover:translate-x-full" />
+    </button>
+  );
+
+  /* ---------------- fetch ---------------- */
+
   useEffect(() => {
     const fetchReceipts = async () => {
       try {
         const res = await api.get("/receipts");
-        setReceipts(res.data);
+
+        // Sort receipts descending by updated_at > receiptDate > createdAt
+        const sorted = res.data
+          .slice()
+          .sort((a: Receipt, b: Receipt) => {
+            const dateA = new Date(a.updated_at || a.receiptDate || a.createdAt).getTime();
+            const dateB = new Date(b.updated_at || b.receiptDate || b.createdAt).getTime();
+            return dateB - dateA; // latest first
+          });
+
+        setReceipts(sorted);
       } catch (err: any) {
         setError(err?.response?.data?.message || "Failed to load receipts");
       } finally {
@@ -67,197 +124,175 @@ export default function ReceiptsPage() {
     fetchReceipts();
   }, []);
 
-  /* ---------------- helpers ---------------- */
-  const formatDate = (date: string) =>
-    new Date(date).toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-
-  const statusColor = (status: Receipt["status"]) => {
-    switch (status) {
-      case "issued":
-        return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
-      case "void":
-        return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
-      case "partial":
-        return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400";
-      default:
-        return "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300";
-    }
-  };
-
-  const handleViewReceipt = (receiptId: string) => {
-    router.push(`/dashboard/receipt?receiptId=${receiptId}`);
-  };
-
   /* ---------------- UI ---------------- */
+
   return (
-    <div className="relative min-h-screen">
-      <div className="space-y-6 py-6 px-4 md:px-6 lg:px-8 max-w-6xl mx-auto">
-        {/* Header with Back Button */}
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => window.history.back()}
-            className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900"
-          >
-            <Icon src={ChevronLeftIcon} className="w-5 h-5" />
-            Back
-          </button>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
-            Receipts
-          </h1>
+    <div className="relative min-h-screen bg-gray-50 dark:bg-gray-950">
+      <div className="space-y-3 px-2 py-3 md:px-4 lg:px-6">
+        {/* Header */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => window.history.back()}
+              className="inline-flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+            >
+              <Icon src={ChevronLeftIcon} className="w-4 h-4" />
+              Back
+            </button>
+            <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Receipts
+            </h1>
+          </div>
         </div>
 
-        <ComponentCard title="">
-          {/* Loading / Error / Empty States */}
-          {loading && (
-            <p className="text-center text-sm text-gray-500 dark:text-gray-400 py-12">
-              Loading receipts...
+        {/* ---------------- Mobile Cards ---------------- */}
+        <div className="block md:hidden space-y-2">
+          {loading ? (
+            <p className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+              Loading receipts…
             </p>
-          )}
+          ) : error ? (
+            <p className="py-6 text-center text-sm text-red-600">{error}</p>
+          ) : (
+            receipts.map((rec) => {
+              const symbol =
+                rec.currency_detail?.currencySymbol || rec.currencySymbol;
 
-          {!loading && error && (
-            <p className="text-center text-sm text-red-600 py-12">{error}</p>
-          )}
+              return (
+                <div
+                  key={rec.receiptId}
+                  onClick={() => handleViewReceipt(rec.receiptId)}
+                  className="
+                    rounded-lg border border-gray-200 bg-white
+                    p-3 shadow-sm transition hover:shadow-md
+                    dark:border-white/[0.08] dark:bg-white/[0.03]
+                  "
+                >
+                  <div className="mb-2 flex items-start justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                        {rec.userGeneratedReceiptId || rec.receiptId}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {rec.projectName || "No project"}
+                      </p>
+                    </div>
+                    <ViewButton
+                      onClick={() => handleViewReceipt(rec.receiptId)}
+                    />
+                  </div>
 
-          {!loading && !error && receipts.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-gray-500 dark:text-gray-400 mb-6">
-                No receipts found. Start by creating an invoice.
-              </p>
-              <Button onClick={() => router.push("/dashboard/invoices/create")}>
-                Create Invoice
-              </Button>
-            </div>
-          )}
+                  <div className="grid grid-cols-2 gap-2 border-t pt-2 text-xs border-gray-200 dark:border-white/[0.08]">
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">
+                        Date
+                      </span>
+                      <p className="text-gray-900 dark:text-gray-100">
+                        {formatDate(
+                          rec.updated_at || rec.receiptDate || rec.createdAt
+                        )}
+                      </p>
+                    </div>
 
-          {/* Mobile Card View */}
-          <div className="block md:hidden space-y-4">
-            {receipts.map((receipt) => (
-              <div
-                key={receipt.receiptId}
-                className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] p-5 shadow-sm"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <p className="font-semibold text-lg text-gray-900 dark:text-white">
-                      {receipt.userGeneratedReceiptId || receipt.receiptId}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      {receipt.projectName || "No project"}
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleViewReceipt(receipt.receiptId)}
-                  >
-                    View
-                  </Button>
-                </div>
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">
+                        Amount
+                      </span>
+                      <p className="text-gray-900 dark:text-gray-100">
+                        {formatMoney(rec.totalAmount, symbol)}
+                      </p>
+                    </div>
 
-                <div className="grid grid-cols-2 gap-4 text-sm border-t pt-4 border-gray-100 dark:border-white/[0.08]">
-                  <div>
-                    <span className="text-gray-500">Date</span>
-                    <p className="font-medium">
-                      {formatDate(receipt.updated_at || receipt.receiptDate || receipt.createdAt)}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Amount</span>
-                    <p className="font-medium">
-                      {formatMoney(receipt.totalAmount, receipt.currency_detail?.currencySymbol || receipt.currencySymbol)}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Paid</span>
-                    <p className="font-medium">
-                      {formatMoney(receipt.amountPaid, receipt.currency_detail?.currencySymbol || receipt.currencySymbol)}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Status</span>
-                    <div className="mt-1">
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">
+                        Paid
+                      </span>
+                      <p className="text-gray-900 dark:text-gray-100">
+                        {formatMoney(rec.amountPaid, symbol)}
+                      </p>
+                    </div>
+
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">
+                        Status
+                      </span>
                       <span
-                        className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${statusColor(
-                          receipt.status
+                        className={`mt-0.5 inline-block rounded-full px-2 py-0.5 text-xs ${statusColor(
+                          rec.status
                         )}`}
                       >
-                        {receipt.status.toUpperCase()}
+                        {rec.status.toUpperCase()}
                       </span>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              );
+            })
+          )}
+        </div>
 
-          {/* Desktop Table View (hidden on mobile) */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="border-b text-left text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                  <th className="py-4 font-medium">Receipt</th>
-                  <th className="py-4 font-medium">Project</th>
-                  <th className="py-4 font-medium">Date</th>
-                  <th className="py-4 font-medium">Balance Due</th>
-                  <th className="py-4 font-medium">Paid</th>
-                  <th className="py-4 font-medium">Status</th>
-                  <th className="py-4 text-right font-medium">Actions</th>
-                </tr>
-              </thead>
+        {/* ---------------- Desktop Table ---------------- */}
+        <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03]">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="border-b border-gray-200 dark:border-white/[0.08] text-left text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                <th className="py-2 px-3 font-medium">Receipt</th>
+                <th className="py-2 px-3 font-medium">Project</th>
+                <th className="py-2 px-3 font-medium">Date</th>
+                <th className="py-2 px-3 font-medium">Amount</th>
+                <th className="py-2 px-3 font-medium">Paid</th>
+                <th className="py-2 px-3 font-medium">Status</th>
+                <th className="py-2 px-3 text-right font-medium">Actions</th>
+              </tr>
+            </thead>
 
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {receipts.map((receipt) => (
+            <tbody className="divide-y divide-gray-200 dark:divide-white/[0.08]">
+              {receipts.map((rec) => {
+                const symbol =
+                  rec.currency_detail?.currencySymbol || rec.currencySymbol;
+
+                return (
                   <tr
-                    key={receipt.receiptId}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    key={rec.receiptId}
+                    className="hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors"
                   >
-                    <td className="py-4 font-medium">
-                      {receipt.userGeneratedReceiptId || receipt.receiptId}
+                    <td className="py-2 px-3 font-medium text-gray-900 dark:text-white">
+                      {rec.userGeneratedReceiptId || rec.receiptId}
                     </td>
-
-                    <td className="py-4">{receipt.projectName || "—"}</td>
-
-                    <td className="py-4">
-                      {formatDate(receipt.updated_at || receipt.receiptDate || receipt.createdAt)}
+                    <td className="py-2 px-3 text-gray-700 dark:text-gray-300">
+                      {rec.projectName || "—"}
                     </td>
-
-                    <td className="py-4 font-medium">
-                      {formatMoney(receipt.totalAmount, receipt.currency_detail?.currencySymbol || receipt.currencySymbol)}
+                    <td className="py-2 px-3 text-gray-700 dark:text-gray-300">
+                      {formatDate(
+                        rec.updated_at || rec.receiptDate || rec.createdAt
+                      )}
                     </td>
-
-                    <td className="py-4 font-medium">
-                      {formatMoney(receipt.amountPaid, receipt.currency_detail?.currencySymbol || receipt.currencySymbol)}
+                    <td className="py-2 px-3 font-medium text-gray-900 dark:text-white">
+                      {formatMoney(rec.totalAmount, symbol)}
                     </td>
-
-                    <td className="py-4">
+                    <td className="py-2 px-3 font-medium text-gray-900 dark:text-white">
+                      {formatMoney(rec.amountPaid, symbol)}
+                    </td>
+                    <td className="py-2 px-3">
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor(
-                          receipt.status
+                        className={`px-2 py-0.5 rounded-full text-xs ${statusColor(
+                          rec.status
                         )}`}
                       >
-                        {receipt.status.toUpperCase()}
+                        {rec.status.toUpperCase()}
                       </span>
                     </td>
-
-                    <td className="py-4 text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleViewReceipt(receipt.receiptId)}
-                      >
-                        View
-                      </Button>
+                    <td className="py-2 px-3 text-right">
+                      <ViewButton
+                        onClick={() => handleViewReceipt(rec.receiptId)}
+                      />
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </ComponentCard>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

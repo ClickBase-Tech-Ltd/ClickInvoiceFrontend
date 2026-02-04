@@ -123,7 +123,7 @@ export default function AdminTenants() {
       try {
         setLoading(true);
         const response = await api.get("/tenants");
-        setTenants(response.data ?? []);
+        setTenants((response.data ?? []).sort((a: Tenant, b: Tenant) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
       } catch (error) {
         console.error("Error fetching tenants:", error);
         setTenants([]);

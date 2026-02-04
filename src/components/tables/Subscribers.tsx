@@ -73,7 +73,13 @@ export default function AdminSubscriptionsPage() {
     const fetchSubscriptions = async () => {
       try {
         const res = await api.get("/subscribers");
-        setSubscriptions(res.data.subscriptions || []);
+        setSubscriptions(
+  (res.data.subscriptions || []).sort(
+    (a: Subscription, b: Subscription) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  )
+);
+
         setCurrentPage(1);
       } catch (err: any) {
         setError(err?.response?.data?.message || "Failed to load subscriptions");
@@ -273,7 +279,7 @@ export default function AdminSubscriptionsPage() {
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center text-xl font-bold text-[#0A66C2] flex-shrink-0">
-                        {sub.user.firstName[0].toUpperCase()}
+                        {sub.user.firstName?.[0]?.toUpperCase() || "?"}
                       </div>
                       <div>
                         <p className="font-semibold text-gray-900 dark:text-white">
@@ -577,7 +583,7 @@ export default function AdminSubscriptionsPage() {
               <div className="space-y-8">
                 <div className="flex flex-col sm:flex-row items-start gap-6">
                   <div className="w-20 h-20 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center text-2xl font-bold text-[#0A66C2]">
-                    {selectedSub.user.firstName[0].toUpperCase()}
+                    {selectedSub.user.firstName?.[0]?.toUpperCase() || "?"}
                   </div>
                   <div>
                     <h3 className="text-2xl font-bold">
