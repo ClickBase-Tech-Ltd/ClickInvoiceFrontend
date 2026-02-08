@@ -59,7 +59,7 @@ function SuccessModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
   );
 }
 
-// New Upgrade Required Modal
+// Upgrade Required Modal
 function UpgradeModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   if (!isOpen) return null;
 
@@ -90,7 +90,7 @@ function UpgradeModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => voi
   );
 }
 
-// Updated Error Modal (now without Upgrade button by default)
+// Error Modal
 function ErrorModal({ isOpen, message, onClose }: { isOpen: boolean; message: string; onClose: () => void }) {
   if (!isOpen) return null;
 
@@ -227,7 +227,6 @@ export default function AddCompanyPage() {
         error?.message ||
         "Failed to create tenant. Please try again.";
 
-      // Exact match for the subscription limit message
       if (message === "Sorry you can't add any more businesses. Upgrade to premium to add more businesses.") {
         setShowUpgradeModal(true);
       } else {
@@ -253,7 +252,6 @@ export default function AddCompanyPage() {
 
         <ComponentCard title="Add New Business">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Form fields remain unchanged */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <Label htmlFor="tenantName">Business Name</Label>
@@ -307,6 +305,31 @@ export default function AddCompanyPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+            </div>
+
+            {/* Added fields: Business Address & Tax ID */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <Label htmlFor="tenantAddress">Business Address</Label>
+                <input
+                  id="tenantAddress"
+                  name="tenantAddress"
+                  type="text"
+                  placeholder="123 Lagos Street, Ikeja, Lagos, Nigeria"
+                  className="mt-1 w-full px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="taxId">Tax ID / TIN / VAT Number</Label>
+                <input
+                  id="taxId"
+                  name="taxId"
+                  type="text"
+                  placeholder="0123456789Z1 or A12345678"
+                  className="mt-1 w-full px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
               </div>
             </div>
 
