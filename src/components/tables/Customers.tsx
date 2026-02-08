@@ -10,7 +10,7 @@ import {
   TableRow,
 } from "../../components/ui/table";
 import Button from "../../components/ui/button/Button";
-import { ChevronLeftIcon, MailIcon, EyeIcon, PlusIcon } from "@/icons";
+import { ChevronLeftIcon, MailIcon, PlusIcon } from "@/icons";
 import api from "../../../lib/api";
 import { useRouter } from "next/navigation";
 import Icon from "@/components/Icons";
@@ -287,6 +287,26 @@ export default function CustomersPage() {
       day: "numeric",
     });
 
+  const ViewButton = ({ onClick }: { onClick: () => void }) => (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      className="
+        relative inline-flex items-center justify-center
+        rounded-md bg-[#0A66C2]
+        px-3 py-1.5 text-xs font-medium text-white
+        shadow-sm transition-all duration-200
+        hover:bg-[#084d93] hover:-translate-y-[1px] hover:shadow-md
+        active:translate-y-0
+      "
+    >
+      View
+      <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-500 hover:translate-x-full" />
+    </button>
+  );
+
   const toggleCustomerSelection = (customerId: string) => {
     const newSelected = new Set(selectedCustomers);
     newSelected.has(customerId) ? newSelected.delete(customerId) : newSelected.add(customerId);
@@ -407,47 +427,45 @@ export default function CustomersPage() {
   };
 
   return (
-    <div className="relative min-h-screen">
-      <div className="space-y-6 py-6 px-4 md:px-6 lg:px-8">
-        {/* Page Header - Responsive */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-4">
+    <div className="relative min-h-screen bg-gray-50 dark:bg-gray-950">
+      <div className="space-y-3 px-2 py-3 md:px-4 lg:px-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => window.history.back()}
-              className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900"
+              className="inline-flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
             >
-              <Icon src={ChevronLeftIcon} className="w-5 h-5" />
+              <Icon src={ChevronLeftIcon} className="w-4 h-4" />
               Back
             </button>
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+            <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
               Customers
             </h1>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                      <Button
-                        onClick={() => setIsAddCustomerOpen(true)}
-                        className="flex items-center justify-center gap-2 !bg-green-600 hover:!bg-green-700 w-full sm:w-auto"
-                      >
-                        <Icon src={PlusIcon} className="w-4 h-4" />
-                        Add Customer
-                      </Button>
-          
-                      {customers.length > 0 && (
-                        <Button
-                          onClick={openBulkEmailModal}
-                          disabled={customers.length === 0}
-                          className="!bg-[#0A66C2] hover:!bg-[#084d93] flex items-center gap-2 w-full sm:w-auto"
-                        >
-                          <Icon src={MailIcon} className="w-4 h-4" />
-                          {selectedCustomers.size > 0
-                            ? `Email Selected (${selectedCustomers.size})`
-                            : "Broadcast Email"}
-                        </Button>
-                      )}
-                    </div>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button
+              onClick={() => setIsAddCustomerOpen(true)}
+              className="flex items-center justify-center gap-2 !bg-green-600 hover:!bg-green-700 w-full sm:w-auto"
+            >
+              <Icon src={PlusIcon} className="w-4 h-4" />
+              Add Customer
+            </Button>
 
-       
+            {customers.length > 0 && (
+              <Button
+                onClick={openBulkEmailModal}
+                disabled={customers.length === 0}
+                className="!bg-[#0A66C2] hover:!bg-[#084d93] flex items-center gap-2 w-full sm:w-auto"
+              >
+                <Icon src={MailIcon} className="w-4 h-4" />
+                {selectedCustomers.size > 0
+                  ? `Email Selected (${selectedCustomers.size})`
+                  : "Broadcast Email"}
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Selection Info */}
@@ -460,13 +478,13 @@ export default function CustomersPage() {
         )}
 
         {/* Mobile Card View */}
-        <div className="block md:hidden space-y-4">
+        <div className="block md:hidden space-y-2">
           {loading ? (
-            <div className="text-center py-10 text-gray-500">Loading customers...</div>
+            <div className="text-center py-6 text-sm text-gray-500 dark:text-gray-400">Loading customers...</div>
           ) : error ? (
-            <div className="text-center py-10 text-red-600">{error}</div>
+            <div className="text-center py-6 text-sm text-red-600">{error}</div>
           ) : customers.length === 0 ? (
-            <div className="text-center py-10 text-gray-500">
+            <div className="text-center py-6 text-sm text-gray-500 dark:text-gray-400">
               No customers found.{" "}
               <Button onClick={() => router.push("/customers/create")} variant="outline" className="mt-4">
                 Add Customer
@@ -476,9 +494,9 @@ export default function CustomersPage() {
             customers.map((customer) => (
               <div
                 key={customer.customerId}
-                className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] p-5 shadow-sm"
+                className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm transition hover:shadow-md dark:border-white/[0.08] dark:bg-white/[0.03]"
               >
-                <div className="flex items-start justify-between mb-4">
+                <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-3">
                     <input
                       type="checkbox"
@@ -487,57 +505,54 @@ export default function CustomersPage() {
                       className="rounded mt-1"
                     />
                     <div>
-                      <p className="font-semibold text-gray-900 dark:text-white">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">
                         {customer.customerName}
                       </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
                         {customer.customerEmail || "No email"}
                       </p>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => openViewModal(customer)}
-                      className="p-2 text-gray-600 hover:text-brand-600 transition rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                      title="View details"
-                    >
-                      <Icon src={EyeIcon} className="w-5 h-5" />
-                    </button>
-                    {customer.customerEmail && (
-                      <button
-                        onClick={() => openSingleEmailModal(customer)}
-                        className="p-2 text-gray-600 hover:text-brand-600 transition rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                        title="Send email"
-                      >
-                        <Icon src={MailIcon} className="w-5 h-5" />
-                      </button>
-                    )}
+                  <ViewButton onClick={() => openViewModal(customer)} />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs border-t pt-2 border-gray-200 dark:border-white/[0.08]">
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400">Phone</span>
+                    <p className="text-gray-900 dark:text-gray-100">{customer.customerPhone || "—"}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400">Added</span>
+                    <p className="text-gray-900 dark:text-gray-100">{formatDate(customer.created_at)}</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-sm border-t pt-4 border-gray-100 dark:border-white/[0.08]">
-                  <div>
-                    <span className="text-gray-500">Phone</span>
-                    <p className="font-medium">{customer.customerPhone || "—"}</p>
+                {customer.customerEmail && (
+                  <div className="flex justify-end gap-2 pt-2 border-t border-gray-200 dark:border-white/[0.08]">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openSingleEmailModal(customer)}
+                      className="flex items-center gap-1"
+                    >
+                      <Icon src={MailIcon} className="w-3 h-3" />
+                      Email
+                    </Button>
                   </div>
-                  <div>
-                    <span className="text-gray-500">Added</span>
-                    <p className="font-medium">{formatDate(customer.created_at)}</p>
-                  </div>
-                </div>
+                )}
               </div>
             ))
           )}
         </div>
 
         {/* Desktop Table View (hidden on mobile) */}
-        <div className="hidden md:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+        <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03]">
           <div className="overflow-x-auto">
             <div className="min-w-[800px]">
               <Table>
-                <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
+                <TableHeader className="border-b border-gray-200 dark:border-white/[0.08]">
                   <TableRow>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400 w-12">
+                    <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider w-12">
                       <input
                         type="checkbox"
                         checked={selectedCustomers.size === customers.length && customers.length > 0}
@@ -545,40 +560,40 @@ export default function CustomersPage() {
                         className="rounded"
                       />
                     </TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Name
                     </TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Email
                     </TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Phone
                     </TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Added
                     </TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Actions
                     </TableCell>
                   </TableRow>
                 </TableHeader>
 
-                <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+                <TableBody className="divide-y divide-gray-200 dark:divide-white/[0.08]">
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-10 text-center text-gray-500 dark:text-gray-400">
+                      <TableCell colSpan={6} className="px-4 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
                         Loading customers...
                       </TableCell>
                     </TableRow>
                   ) : error ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-10 text-center text-red-600">
+                      <TableCell colSpan={6} className="px-4 py-4 text-center text-sm text-red-600">
                         {error}
                       </TableCell>
                     </TableRow>
                   ) : customers.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-10 text-center text-gray-500 dark:text-gray-400">
+                      <TableCell colSpan={6} className="px-4 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
                         No customers found.{" "}
                         <Button onClick={() => router.push("/customers/create")} variant="outline">
                           Add Customer
@@ -587,8 +602,8 @@ export default function CustomersPage() {
                     </TableRow>
                   ) : (
                     customers.map((customer) => (
-                      <TableRow key={customer.customerId} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                        <TableCell className="px-5 py-4">
+                      <TableRow key={customer.customerId} className="hover:bg-gray-50 dark:hover:bg-white/[0.04]">
+                        <TableCell className="px-4 py-3">
                           <input
                             type="checkbox"
                             checked={selectedCustomers.has(customer.customerId)}
@@ -596,29 +611,23 @@ export default function CustomersPage() {
                             className="rounded"
                           />
                         </TableCell>
-                        <TableCell className="px-5 py-4 text-start">
-                          <span className="font-medium text-gray-800 dark:text-white/90">
+                        <TableCell className="px-4 py-3 text-start">
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">
                             {customer.customerName}
                           </span>
                         </TableCell>
-                        <TableCell className="px-5 py-4 text-start text-theme-sm text-gray-600 dark:text-gray-400">
+                        <TableCell className="px-4 py-3 text-start text-xs text-gray-600 dark:text-gray-400">
                           {customer.customerEmail || "—"}
                         </TableCell>
-                        <TableCell className="px-5 py-4 text-start text-theme-sm text-gray-600 dark:text-gray-400">
+                        <TableCell className="px-4 py-3 text-start text-xs text-gray-600 dark:text-gray-400">
                           {customer.customerPhone || "—"}
                         </TableCell>
-                        <TableCell className="px-5 py-4 text-start text-theme-sm text-gray-600 dark:text-gray-400">
+                        <TableCell className="px-4 py-3 text-start text-xs text-gray-600 dark:text-gray-400">
                           {formatDate(customer.created_at)}
                         </TableCell>
-                        <TableCell className="px-5 py-4 text-start">
-                          <div className="flex items-center gap-3">
-                            <button
-                              onClick={() => openViewModal(customer)}
-                              className="text-gray-600 hover:text-brand-600 transition"
-                              title="View details"
-                            >
-                              <Icon src={EyeIcon} className="w-5 h-5" />
-                            </button>
+                        <TableCell className="px-4 py-3 text-start">
+                          <div className="flex items-center gap-2">
+                            <ViewButton onClick={() => openViewModal(customer)} />
                             {customer.customerEmail && (
                               <Button
                                 variant="outline"

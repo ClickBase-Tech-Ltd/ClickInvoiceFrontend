@@ -704,16 +704,18 @@ export default function InvoiceViewPage() {
             )}
 
             {invoice.company.signatureUrl && (
-              <div style={{ textAlign: 'center', marginTop: '24px' }}>
+              <div className="mt-6 flex flex-col items-center text-center">
                 <img
                   src={signatureBase64 || invoice.company.signatureUrl}
                   alt="Authorized Signature"
                   style={{
                     height: '70px',
                     objectFit: 'contain',
+                    display: 'block',
+                    margin: '0 auto',
                   }}
                 />
-                <p style={{ fontSize: '13px', color: '#6b7280', marginTop: '8px' }}>
+                <p className="mt-2 text-[13px] text-gray-500">
                   Authorized Signature
                 </p>
               </div>

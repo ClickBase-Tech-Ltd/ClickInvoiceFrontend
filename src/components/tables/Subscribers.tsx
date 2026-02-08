@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "../../components/ui/table";
-import { ChevronLeftIcon, EyeIcon } from "@/icons";
+import { ChevronLeftIcon } from "@/icons";
 import Icon from "@/components/Icons";
 import api from "../../../lib/api";
 
@@ -56,6 +56,7 @@ export default function AdminSubscriptionsPage() {
   const [error, setError] = useState("");
   const [selectedSub, setSelectedSub] = useState<Subscription | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"active" | "pending" | "expired">("active");
 
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -124,16 +125,28 @@ export default function AdminSubscriptionsPage() {
     }
   };
 
-  const totalPages = Math.ceil(subscriptions.length / ITEMS_PER_PAGE);
+  const filteredSubscriptions = useMemo(() => {
+    if (activeTab === "active") {
+      return subscriptions.filter((sub) => sub.status === "active");
+    }
+    if (activeTab === "pending") {
+      return subscriptions.filter((sub) => sub.status === "pending");
+    }
+    return subscriptions.filter((sub) =>
+      ["cancelled", "failed", "expired"].includes(sub.status)
+    );
+  }, [subscriptions, activeTab]);
+
+  const totalPages = Math.ceil(filteredSubscriptions.length / ITEMS_PER_PAGE);
 
   const paginatedSubscriptions = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return subscriptions.slice(start, start + ITEMS_PER_PAGE);
-  }, [subscriptions, currentPage]);
+    return filteredSubscriptions.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredSubscriptions, currentPage]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [subscriptions.length]);
+  }, [filteredSubscriptions.length, activeTab]);
 
   useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
@@ -233,39 +246,99 @@ export default function AdminSubscriptionsPage() {
     }
   };
 
+  const ViewButton = ({ onClick }: { onClick: () => void }) => (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      className="
+        relative inline-flex items-center justify-center
+        rounded-md bg-[#0A66C2]
+        px-3 py-1.5 text-xs font-medium text-white
+        shadow-sm transition-all duration-200
+        hover:bg-[#084d93] hover:-translate-y-[1px] hover:shadow-md
+        active:translate-y-0
+      "
+    >
+      View
+      <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-500 hover:translate-x-full" />
+    </button>
+  );
+
   return (
-    <div className="relative min-h-screen">
-      <div className="space-y-6 py-6 px-4 md:px-6 lg:px-8">
+    <div className="relative min-h-screen bg-gray-50 dark:bg-gray-950">
+      <div className="space-y-3 px-2 py-3 md:px-4 lg:px-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => window.history.back()}
-              className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900"
+              className="inline-flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
             >
-              <Icon src={ChevronLeftIcon} className="w-5 h-5" />
+              <Icon src={ChevronLeftIcon} className="w-4 h-4" />
               Back
             </button>
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+            <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
               Subscriptions Management
             </h1>
           </div>
           <div className="text-sm text-gray-600 dark:text-gray-400">
-            Total: <span className="font-medium">{subscriptions.length}</span> subscription
-            {subscriptions.length !== 1 ? "s" : ""}
+            Total: <span className="font-medium">{subscriptions.length}</span> subscription{subscriptions.length !== 1 ? "s" : ""}
           </div>
         </div>
 
+        <div className="flex items-center gap-2 flex-wrap">
+          {([
+            { key: "active", label: "Active" },
+            { key: "pending", label: "Pending" },
+            { key: "expired", label: "Expired" },
+          ] as const).map((tab) => {
+            const isActive = activeTab === tab.key;
+            const count =
+              tab.key === "active"
+                ? subscriptions.filter((sub) => sub.status === "active").length
+                : tab.key === "pending"
+                ? subscriptions.filter((sub) => sub.status === "pending").length
+                : subscriptions.filter((sub) =>
+                    ["cancelled", "failed", "expired"].includes(sub.status)
+                  ).length;
+
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium transition ${
+                  isActive
+                    ? "border-[#0A66C2] bg-[#0A66C2]/10 text-[#0A66C2]"
+                    : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-white/[0.12] dark:bg-white/[0.02] dark:text-gray-300 dark:hover:bg-white/[0.05]"
+                }`}
+              >
+                {tab.label}
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[11px] ${
+                    isActive
+                      ? "bg-[#0A66C2]/15 text-[#0A66C2]"
+                      : "bg-gray-100 text-gray-600 dark:bg-white/[0.08] dark:text-gray-300"
+                  }`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
         {/* Mobile Card View */}
-        <div className="block md:hidden space-y-4">
+        <div className="block md:hidden space-y-2">
           {loading ? (
-            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-              Loading subscriptions...
+            <div className="text-center py-6 text-sm text-gray-500 dark:text-gray-400">
+              Loading subscriptions…
             </div>
           ) : error ? (
-            <div className="text-center py-12 text-red-600">{error}</div>
-          ) : subscriptions.length === 0 ? (
-            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+            <div className="text-center py-6 text-sm text-red-600">{error}</div>
+          ) : filteredSubscriptions.length === 0 ? (
+            <div className="text-center py-6 text-sm text-gray-500 dark:text-gray-400">
               No subscriptions found.
             </div>
           ) : (
@@ -274,55 +347,45 @@ export default function AdminSubscriptionsPage() {
                 <div
                   key={sub.subscriptionId}
                   onClick={() => openModal(sub)}
-                  className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] p-5 shadow-sm cursor-pointer transition hover:shadow-md"
+                  className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm cursor-pointer transition hover:shadow-md dark:border-white/[0.08] dark:bg-white/[0.03]"
                 >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center text-xl font-bold text-[#0A66C2] flex-shrink-0">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center text-sm font-semibold text-[#0A66C2] flex-shrink-0">
                         {sub.user.firstName?.[0]?.toUpperCase() || "?"}
                       </div>
                       <div>
                         <p className="font-semibold text-gray-900 dark:text-white">
                           {sub.user.firstName} {sub.user.lastName}
                           {sub.user.otherNames && (
-                            <span className="text-sm text-gray-500"> ({sub.user.otherNames})</span>
+                            <span className="text-xs text-gray-500"> ({sub.user.otherNames})</span>
                           )}
                         </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
                           {sub.user.email}
                         </p>
                       </div>
                     </div>
-
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openModal(sub);
-                      }}
-                      className="p-2 text-gray-600 hover:text-brand-600 transition rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                      title="View details"
-                    >
-                      <Icon src={EyeIcon} className="w-5 h-5" />
-                    </button>
+                    <ViewButton onClick={() => openModal(sub)} />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 text-sm border-t pt-4 border-gray-100 dark:border-white/[0.08]">
+                  <div className="grid grid-cols-2 gap-2 text-xs border-t pt-2 border-gray-200 dark:border-white/[0.08]">
                     <div>
-                      <span className="text-gray-500">Plan</span>
-                      <p className="font-medium">{sub.plan.planName}</p>
+                      <span className="text-gray-500 dark:text-gray-400">Plan</span>
+                      <p className="font-medium text-gray-900 dark:text-gray-100">{sub.plan.planName}</p>
                     </div>
                     <div>
-                      <span className="text-gray-500">Amount</span>
-                      <p className="font-medium">
+                      <span className="text-gray-500 dark:text-gray-400">Amount</span>
+                      <p className="font-medium text-gray-900 dark:text-gray-100">
                         {sub?.plan?.currency_detail?.currencySymbol || "₦"}{" "}
                         {formatMoney(sub.plan.price)}
                       </p>
                     </div>
                     <div>
-                      <span className="text-gray-500">Status</span>
+                      <span className="text-gray-500 dark:text-gray-400">Status</span>
                       <div className="mt-1">
                         <span
-                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                             {
                               success: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
                               error: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
@@ -335,8 +398,10 @@ export default function AdminSubscriptionsPage() {
                       </div>
                     </div>
                     <div>
-                      <span className="text-gray-500">Next Billing</span>
-                      <p className="font-medium">{formatDate(sub.nextBillingDate)}</p>
+                      <span className="text-gray-500 dark:text-gray-400">Next Billing</span>
+                      <p className="font-medium text-gray-900 dark:text-gray-100">
+                        {formatDate(sub.nextBillingDate)}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -344,30 +409,30 @@ export default function AdminSubscriptionsPage() {
 
               {/* Mobile Pagination */}
               {totalPages > 1 && (
-                <div className="flex flex-col items-center gap-4 mt-8 px-2">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                <div className="flex flex-col items-center gap-3 mt-6 px-2">
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
                     Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–
-                    {Math.min(currentPage * ITEMS_PER_PAGE, subscriptions.length)} of {subscriptions.length}
+                    {Math.min(currentPage * ITEMS_PER_PAGE, filteredSubscriptions.length)} of {filteredSubscriptions.length}
                   </p>
 
-                  <div className="flex items-center justify-center gap-4 flex-wrap">
+                  <div className="flex items-center justify-center gap-3 flex-wrap">
                     <button
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
-                      className="px-4 py-2 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
+                      className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-xs disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800"
                     >
                       ← Prev
                     </button>
 
-                    <div className="flex items-center gap-3">
-                      <label htmlFor="mobile-page-select" className="text-sm whitespace-nowrap">
+                    <div className="flex items-center gap-2">
+                      <label htmlFor="mobile-page-select" className="text-xs whitespace-nowrap">
                         Page:
                       </label>
                       <select
                         id="mobile-page-select"
                         value={currentPage}
                         onChange={(e) => setCurrentPage(Number(e.target.value))}
-                        className="min-w-[80px] px-3 py-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-[#0A66C2]"
+                        className="min-w-[80px] px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-xs focus:outline-none focus:ring-2 focus:ring-[#0A66C2]"
                       >
                         {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                           <option key={page} value={page}>
@@ -375,13 +440,13 @@ export default function AdminSubscriptionsPage() {
                           </option>
                         ))}
                       </select>
-                      <span className="text-sm text-gray-500">of {totalPages}</span>
+                      <span className="text-xs text-gray-500">of {totalPages}</span>
                     </div>
 
                     <button
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
-                      className="px-4 py-2 rounded border border-gray-300 dark:border-gray-600 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
+                      className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-600 text-xs disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800"
                     >
                       Next →
                     </button>
@@ -393,52 +458,52 @@ export default function AdminSubscriptionsPage() {
         </div>
 
         {/* Desktop Table View */}
-        <div className="hidden md:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+        <div className="hidden md:block overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-white/[0.08] dark:bg-white/[0.03]">
           <div className="max-w-full overflow-x-auto">
             <div className="min-w-[900px]">
               <Table>
-                <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
+                <TableHeader className="border-b border-gray-200 dark:border-white/[0.08]">
                   <TableRow>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Subscriber
                     </TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Plan
                     </TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Amount
                     </TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Status
                     </TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Start Date
                     </TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Next Billing
                     </TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Actions
                     </TableCell>
                   </TableRow>
                 </TableHeader>
 
-                <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+                <TableBody className="divide-y divide-gray-200 dark:divide-white/[0.08]">
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="py-10 text-center text-gray-500 dark:text-gray-400">
-                        Loading subscriptions...
+                      <TableCell colSpan={7} className="px-4 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                        Loading subscriptions…
                       </TableCell>
                     </TableRow>
                   ) : error ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="py-10 text-center text-red-600">
+                      <TableCell colSpan={7} className="px-4 py-4 text-center text-sm text-red-600">
                         {error}
                       </TableCell>
                     </TableRow>
-                  ) : subscriptions.length === 0 ? (
+                  ) : filteredSubscriptions.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="py-10 text-center text-gray-500 dark:text-gray-400">
+                      <TableCell colSpan={7} className="px-4 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
                         No subscriptions found.
                       </TableCell>
                     </TableRow>
@@ -446,30 +511,30 @@ export default function AdminSubscriptionsPage() {
                     paginatedSubscriptions.map((sub) => (
                       <TableRow
                         key={sub.subscriptionId}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
+                        className="hover:bg-gray-50 dark:hover:bg-white/[0.04] cursor-pointer transition-colors"
                         onClick={() => openModal(sub)}
                       >
-                        <TableCell className="px-5 py-4 text-start">
-                          <span className="font-medium text-gray-800 dark:text-white/90">
+                        <TableCell className="px-4 py-3 text-start">
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">
                             {sub.user.firstName} {sub.user.lastName}
                           </span>
-                          <span className="block text-xs text-gray-500">
+                          <span className="block text-xs text-gray-500 dark:text-gray-400">
                             ({sub?.user.email})
                           </span>
                         </TableCell>
 
-                        <TableCell className="px-5 py-4 text-start text-theme-sm text-gray-600 dark:text-gray-400">
+                        <TableCell className="px-4 py-3 text-start text-xs text-gray-600 dark:text-gray-400">
                           {sub.plan.planName}
                         </TableCell>
 
-                        <TableCell className="px-5 py-4 text-start font-medium text-gray-800 dark:text-white/90">
+                        <TableCell className="px-4 py-3 text-start text-sm font-medium text-gray-900 dark:text-white">
                           {sub?.plan?.currency_detail?.currencySymbol || "₦"}{" "}
                           {formatMoney(sub.plan.price)}
                         </TableCell>
 
-                        <TableCell className="px-5 py-4 text-start">
+                        <TableCell className="px-4 py-3 text-start">
                           <span
-                            className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                               {
                                 success: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
                                 error: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
@@ -481,25 +546,16 @@ export default function AdminSubscriptionsPage() {
                           </span>
                         </TableCell>
 
-                        <TableCell className="px-5 py-4 text-start text-theme-sm text-gray-600 dark:text-gray-400">
+                        <TableCell className="px-4 py-3 text-start text-xs text-gray-600 dark:text-gray-400">
                           {formatDate(sub.startDate)}
                         </TableCell>
 
-                        <TableCell className="px-5 py-4 text-start text-theme-sm text-gray-600 dark:text-gray-400">
+                        <TableCell className="px-4 py-3 text-start text-xs text-gray-600 dark:text-gray-400">
                           {formatDate(sub.nextBillingDate)}
                         </TableCell>
 
-                        <TableCell className="px-5 py-4 text-start">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openModal(sub);
-                            }}
-                            className="text-gray-600 hover:text-brand-600 transition"
-                            title="View subscription details"
-                          >
-                            <Icon src={EyeIcon} className="w-5 h-5" />
-                          </button>
+                        <TableCell className="px-4 py-3 text-start">
+                          <ViewButton onClick={() => openModal(sub)} />
                         </TableCell>
                       </TableRow>
                     ))
@@ -511,25 +567,25 @@ export default function AdminSubscriptionsPage() {
 
           {/* Desktop Pagination */}
           {totalPages > 1 && (
-            <div className="flex flex-col sm:flex-row justify-between items-center px-6 py-4 border-t border-gray-200 dark:border-white/[0.05] gap-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+            <div className="flex flex-col sm:flex-row justify-between items-center px-4 py-3 border-t border-gray-200 dark:border-white/[0.08] gap-3">
+              <p className="text-xs text-gray-600 dark:text-gray-400">
                 Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to{" "}
-                {Math.min(currentPage * ITEMS_PER_PAGE, subscriptions.length)} of {subscriptions.length} subscriptions
+                {Math.min(currentPage * ITEMS_PER_PAGE, filteredSubscriptions.length)} of {filteredSubscriptions.length} subscriptions
               </p>
 
-              <div className="flex items-center gap-4 flex-wrap justify-center sm:justify-end">
+              <div className="flex items-center gap-3 flex-wrap justify-center sm:justify-end">
                 <button
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-4 py-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-700 text-xs disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800"
                 >
                   Previous
                 </button>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <label
                     htmlFor="desktop-page-select"
-                    className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap hidden sm:block"
+                    className="text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap hidden sm:block"
                   >
                     Go to page:
                   </label>
@@ -537,7 +593,7 @@ export default function AdminSubscriptionsPage() {
                     id="desktop-page-select"
                     value={currentPage}
                     onChange={(e) => setCurrentPage(Number(e.target.value))}
-                    className="min-w-[90px] px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-[#0A66C2]"
+                    className="min-w-[90px] px-3 py-1.5 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs focus:outline-none focus:ring-2 focus:ring-[#0A66C2]"
                   >
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                       <option key={page} value={page}>
@@ -545,7 +601,7 @@ export default function AdminSubscriptionsPage() {
                       </option>
                     ))}
                   </select>
-                  <span className="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
+                  <span className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
                     of {totalPages}
                   </span>
                 </div>
@@ -553,7 +609,7 @@ export default function AdminSubscriptionsPage() {
                 <button
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="px-4 py-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-700 text-xs disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800"
                 >
                   Next
                 </button>

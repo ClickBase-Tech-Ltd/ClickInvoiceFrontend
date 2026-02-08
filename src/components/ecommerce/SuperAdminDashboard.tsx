@@ -50,17 +50,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getUserName } from "../../../lib/auth";
-import QuickActions from "@/components/ecommerce/QuickActions";
-import RecentInvoices from "@/components/ecommerce/RecentInvoices";
-import OutstandingAndCollected from "@/components/ecommerce/OutstandingAndCollected";
-// import AllTenants from "@/components/ecommerce/AllTenants"; // Admin-specific widget
-import RevenueByCurrency from "@/components/ecommerce/RevenueByCurrency"; // Admin-specific widget
 import AdminOutstandingAndCollected from "./AdminOutstandingAndCollected";
 import AdminQuickActions from "./AdminQuickActions";
 import InvoiceStatusChart from "../admin/InvoiceStatusChart";
-import OverdueInvoicesChart from "../admin/OverdueInvoicesChart";
 import CurrencyDistributionChart from "../admin/CurrencyDistributionChart";
-import PaymentMethodChart from "../admin/PaymentMethodChart";
 import RevenueTrendsChart from "../admin/RevenueTrendsChart";
 import TopTenantsChart from "../admin/TopTenantsChart";
 
@@ -79,12 +72,14 @@ export default function SuperAdminDashboard() {
   }, [router]);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-5 sm:space-y-6">
       {/* Welcome Header */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center overflow-hidden">
+      <div className="relative overflow-hidden rounded-2xl border border-gray-200/70 bg-gradient-to-br from-white via-white to-[#0A66C2]/5 p-4 sm:p-6 shadow-sm dark:border-white/10 dark:from-gray-900 dark:via-gray-900 dark:to-[#0A66C2]/10">
+        <div className="pointer-events-none absolute -right-24 -top-24 h-48 w-48 rounded-full bg-[#0A66C2]/10 blur-3xl" />
+        <div className="pointer-events-none absolute -left-16 -bottom-20 h-40 w-40 rounded-full bg-emerald-400/10 blur-3xl" />
+        <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-4 sm:gap-5">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-12 h-12 rounded-full bg-white/80 dark:bg-gray-800/80 border border-gray-200/80 dark:border-white/10 shadow-sm flex items-center justify-center overflow-hidden">
               <img
                 src="/images/avatar.png"
                 alt="Admin Avatar"
@@ -92,51 +87,51 @@ export default function SuperAdminDashboard() {
               />
             </div>
             <div>
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+              <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-[0.2em] text-[#0A66C2]">
+                Super Admin Console
+              </p>
+              <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">
                 Welcome back, {name || "Admin"}
               </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Manage your businesses, invoices, and system-wide settings
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Manage businesses, invoices, and system-wide settings
               </p>
             </div>
           </div>
-          <AdminQuickActions />
+          <div className="w-full md:w-auto">
+            <AdminQuickActions />
+          </div>
         </div>
       </div>
 
-      {/* KPIs: Outstanding & Collected */}
-      {/* <AdminOutstandingAndCollected currency={currency} />
-      <InvoiceStatusChart />
-      <OverdueInvoicesChart/>
-      <CurrencyDistributionChart/>
-      <RevenueTrendsChart/>
-      <TopTenantsChart/> */}
+      <div className="space-y-3 sm:space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Core Metrics</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Real-time snapshot of currency performance
+            </p>
+          </div>
+        </div>
 
-    <AdminOutstandingAndCollected currency={currency} />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
-  {/* Row 1 */}
-  <div className="w-full">
-    <InvoiceStatusChart />
-  </div>
-  <div className="w-full">
-    <OverdueInvoicesChart />
-  </div>
+        <AdminOutstandingAndCollected currency={currency} />
 
-  {/* Row 2 */}
-  <div className="w-full">
-    <CurrencyDistributionChart />
-  </div>
-  <div className="w-full">
-    <RevenueTrendsChart />
-  </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 lg:gap-6">
+          <div className="w-full">
+            <InvoiceStatusChart />
+          </div>
+          <div className="w-full">
+            <TopTenantsChart />
+          </div>
 
-  {/* Row 3 */}
-  <div className="w-full">
-    <TopTenantsChart />
-  </div>
-  <div className="w-full">
-  </div>
-</div>
+          <div className="w-full">
+            <CurrencyDistributionChart />
+          </div>
+          <div className="w-full">
+            <RevenueTrendsChart />
+          </div>
+        </div>
+      </div>
 
       {/* Admin-specific Widgets */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

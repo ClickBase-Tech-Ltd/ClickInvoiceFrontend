@@ -20,7 +20,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { ChevronLeftIcon, EyeIcon, XCircleIcon, RefreshCwIcon } from "@/icons";
+import { ChevronLeftIcon, XCircleIcon, RefreshCwIcon } from "@/icons";
 import Icon from "@/components/Icons";
 import api from "../../../lib/api";
 
@@ -77,7 +77,14 @@ export default function MySubscriptionsPage() {
     try {
       setLoading(true);
       const res = await api.get("/my-subscriptions");
-      setSubscriptions(res.data.subscriptions || []);
+      const raw = res.data.subscriptions || [];
+      const sorted = [...raw].sort((a: Subscription, b: Subscription) => {
+        const statusRank = (status: Subscription["status"]) => (status === "active" ? 0 : 1);
+        const statusDiff = statusRank(a.status) - statusRank(b.status);
+        if (statusDiff !== 0) return statusDiff;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+      setSubscriptions(sorted);
       setError("");
     } catch (err: any) {
       setError(err?.response?.data?.message || "Failed to load subscriptions");
@@ -153,7 +160,7 @@ export default function MySubscriptionsPage() {
   };
 
   const getStatusBadgeClasses = (status: Subscription["status"]) => {
-    const base = "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium";
+    const base = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium";
     switch (status) {
       case "active":
         return `${base} bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400`;
@@ -173,6 +180,26 @@ export default function MySubscriptionsPage() {
     document.body.style.overflow = "hidden";
   };
 
+  const ViewButton = ({ onClick }: { onClick: () => void }) => (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      className="
+        relative inline-flex items-center justify-center
+        rounded-md bg-[#0A66C2]
+        px-3 py-1.5 text-xs font-medium text-white
+        shadow-sm transition-all duration-200
+        hover:bg-[#084d93] hover:-translate-y-[1px] hover:shadow-md
+        active:translate-y-0
+      "
+    >
+      View
+      <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-500 hover:translate-x-full" />
+    </button>
+  );
+
   const closeModal = () => {
     setIsModalOpen(false);
     setSelectedSub(null);
@@ -180,19 +207,19 @@ export default function MySubscriptionsPage() {
   };
 
   return (
-    <div className="relative min-h-screen">
-      <div className="space-y-6 py-6 px-4 md:px-6 lg:px-8">
+    <div className="relative min-h-screen bg-gray-50 dark:bg-gray-950">
+      <div className="space-y-3 px-2 py-3 md:px-4 lg:px-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => window.history.back()}
-              className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900"
+              className="inline-flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
             >
-              <Icon src={ChevronLeftIcon} className="w-5 h-5" />
+              <Icon src={ChevronLeftIcon} className="w-4 h-4" />
               Back
             </button>
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+            <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
               Subscriptions Management
             </h1>
           </div>
@@ -204,15 +231,15 @@ export default function MySubscriptionsPage() {
         </div>
 
         {/* Mobile Card View */}
-        <div className="block md:hidden space-y-4">
+        <div className="block md:hidden space-y-2">
           {loading ? (
-            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+            <div className="text-center py-6 text-sm text-gray-500 dark:text-gray-400">
               Loading subscriptions...
             </div>
           ) : error ? (
-            <div className="text-center py-12 text-red-600">{error}</div>
+            <div className="text-center py-6 text-sm text-red-600">{error}</div>
           ) : subscriptions.length === 0 ? (
-            <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+            <div className="text-center py-6 text-sm text-gray-500 dark:text-gray-400">
               No subscriptions found.
             </div>
           ) : (
@@ -220,52 +247,46 @@ export default function MySubscriptionsPage() {
               <div
                 key={sub.subscriptionId}
                 onClick={() => openModal(sub)}
-                className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] p-5 shadow-sm cursor-pointer transition hover:shadow-md"
+                className={`rounded-lg border bg-white dark:bg-white/[0.03] p-3 shadow-sm cursor-pointer transition hover:shadow-md ${
+                  sub.status === "active"
+                    ? "border-[#0A66C2]/30 dark:border-[#0A66C2]/30"
+                    : "border-gray-200 dark:border-white/[0.08]"
+                }`}
               >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center text-xl font-bold text-[#0A66C2] flex-shrink-0">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center text-sm font-semibold text-[#0A66C2] flex-shrink-0">
                       {sub.user.firstName[0].toUpperCase()}
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900 dark:text-white">
+                      <p className="text-sm font-semibold text-gray-900 dark:text-white">
                         {sub.user.firstName} {sub.user.lastName}
                         {sub.user.otherNames && (
-                          <span className="text-sm text-gray-500"> ({sub.user.otherNames})</span>
+                          <span className="text-xs text-gray-500"> ({sub.user.otherNames})</span>
                         )}
                       </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
                         {sub.user.email}
                       </p>
                     </div>
                   </div>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openModal(sub);
-                    }}
-                    className="p-2 text-gray-600 hover:text-brand-600 transition rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                    title="View details"
-                  >
-                    <Icon src={EyeIcon} className="w-5 h-5" />
-                  </button>
+                  <ViewButton onClick={() => openModal(sub)} />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-sm border-t pt-4 border-gray-100 dark:border-white/[0.08]">
+                <div className="grid grid-cols-2 gap-2 text-xs border-t pt-2 border-gray-200 dark:border-white/[0.08]">
                   <div>
-                    <span className="text-gray-500">Plan</span>
-                    <p className="font-medium">{sub.plan.planName}</p>
+                    <span className="text-gray-500 dark:text-gray-400">Plan</span>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">{sub.plan.planName}</p>
                   </div>
                   <div>
-                    <span className="text-gray-500">Amount</span>
-                    <p className="font-medium">
+                    <span className="text-gray-500 dark:text-gray-400">Amount</span>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">
                       {sub?.plan?.currency_detail?.currencySymbol || "₦"}{" "}
                       {formatMoney(sub.plan.price)}
                     </p>
                   </div>
                   <div>
-                    <span className="text-gray-500">Status</span>
+                    <span className="text-gray-500 dark:text-gray-400">Status</span>
                     <div className="mt-1">
                       <span className={getStatusBadgeClasses(sub.status)}>
                         {sub.status.toUpperCase()}
@@ -273,12 +294,12 @@ export default function MySubscriptionsPage() {
                     </div>
                   </div>
                   <div>
-                    <span className="text-gray-500">Next Billing</span>
-                    <p className="font-medium">{formatDate(sub.nextBillingDate)}</p>
+                    <span className="text-gray-500 dark:text-gray-400">Next Billing</span>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">{formatDate(sub.nextBillingDate)}</p>
                   </div>
                 </div>
 
-                <div className="mt-5 pt-4 border-t border-gray-100 dark:border-white/[0.08] flex flex-col gap-3">
+                <div className="mt-3 pt-2 border-t border-gray-200 dark:border-white/[0.08] flex flex-col gap-2">
                   {sub.status === "active" && (
                     <Button
                       variant="destructive"
@@ -313,55 +334,55 @@ export default function MySubscriptionsPage() {
         </div>
 
         {/* Desktop Table View */}
-        <div className="hidden md:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+        <div className="hidden md:block overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-white/[0.08] dark:bg-white/[0.03]">
           <div className="max-w-full overflow-x-auto">
             <div className="min-w-[1200px]">
               <Table>
-                <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
+                <TableHeader className="border-b border-gray-200 dark:border-white/[0.08]">
                   <TableRow>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Subscriber
                     </TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Plan
                     </TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Amount
                     </TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Status
                     </TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Start Date
                     </TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Next Billing
                     </TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Created
                     </TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                       Actions
                     </TableCell>
                   </TableRow>
                 </TableHeader>
 
-                <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+                <TableBody className="divide-y divide-gray-200 dark:divide-white/[0.08]">
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="py-12 text-center text-gray-500 dark:text-gray-400">
+                      <TableCell colSpan={8} className="px-4 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
                         Loading subscriptions...
                       </TableCell>
                     </TableRow>
                   ) : error ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="py-12 text-center text-red-600">
+                      <TableCell colSpan={8} className="px-4 py-4 text-center text-sm text-red-600">
                         {error}
                       </TableCell>
                     </TableRow>
                   ) : subscriptions.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={8} className="py-12 text-center text-gray-500 dark:text-gray-400">
+                      <TableCell colSpan={8} className="px-4 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
                         No subscriptions found.
                       </TableCell>
                     </TableRow>
@@ -369,11 +390,13 @@ export default function MySubscriptionsPage() {
                     subscriptions.map((sub) => (
                       <TableRow
                         key={sub.subscriptionId}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
-                        
+                        onClick={() => openModal(sub)}
+                        className={`hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors cursor-pointer ${
+                          sub.status === "active" ? "bg-[#0A66C2]/[0.03]" : ""
+                        }`}
                       >
-                        <TableCell className="px-5 py-4">
-                          <div className="font-medium text-gray-900 dark:text-white">
+                        <TableCell className="px-4 py-3">
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">
                             {sub.user.firstName} {sub.user.lastName}
                           </div>
                           <div className="text-xs text-gray-500 mt-0.5">
@@ -381,45 +404,36 @@ export default function MySubscriptionsPage() {
                           </div>
                         </TableCell>
 
-                        <TableCell className="px-5 py-4 text-gray-600 dark:text-gray-300">
+                        <TableCell className="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">
                           {sub.plan.planName}
                         </TableCell>
 
-                        <TableCell className="px-5 py-4 font-medium text-gray-900 dark:text-white">
+                        <TableCell className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
                           {sub?.plan?.currency_detail?.currencySymbol || "₦"}{" "}
                           {formatMoney(sub.plan.price)}
                         </TableCell>
 
-                        <TableCell className="px-5 py-4">
+                        <TableCell className="px-4 py-3">
                           <span className={getStatusBadgeClasses(sub.status)}>
                             {sub.status.toUpperCase()}
                           </span>
                         </TableCell>
 
-                        <TableCell className="px-5 py-4 text-gray-600 dark:text-gray-300">
+                        <TableCell className="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">
                           {formatDate(sub.startDate)}
                         </TableCell>
 
-                        <TableCell className="px-5 py-4 text-gray-600 dark:text-gray-300">
+                        <TableCell className="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">
                           {formatDate(sub.nextBillingDate)}
                         </TableCell>
 
-                        <TableCell className="px-5 py-4 text-gray-600 dark:text-gray-300">
+                        <TableCell className="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">
                           {formatDate(sub.created_at)}
                         </TableCell>
 
-                        <TableCell className="px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openModal(sub);
-                              }}
-                              className="text-gray-500 hover:text-brand-600 transition"
-                              title="View details"
-                            >
-                              <Icon src={EyeIcon} className="w-5 h-5" />
-                            </button>
+                        <TableCell className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <ViewButton onClick={() => openModal(sub)} />
 
                             {sub.status === "active" && (
                               <Button

@@ -21,6 +21,7 @@ import {
   XAxis,
   YAxis,
   Tooltip,
+  CartesianGrid,
   PieChart,
   Pie,
   Cell,
@@ -37,7 +38,7 @@ function Modal({ isOpen, onClose, title, children }: ModalProps) {
   return (
     <>
       <div
-        className={`fixed inset-0 bg-white/20 backdrop-blur-sm transition-opacity duration-300 z-40 ${
+        className={`fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm transition-opacity duration-300 z-40 ${
           isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
         onClick={onClose}
@@ -47,12 +48,17 @@ function Modal({ isOpen, onClose, title, children }: ModalProps) {
           isOpen ? "scale-100 opacity-100" : "scale-95 opacity-0 pointer-events-none"
         }`}
       >
-        <div className="bg-white/95 dark:bg-gray-900/95 rounded-2xl shadow-2xl w-full max-w-6xl transform animate-modalSlideUp">
-          <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-xl font-bold text-[#0A66C2]">{title} Analysis</h2>
+        <div className="bg-white/95 dark:bg-gray-900/95 rounded-2xl shadow-2xl w-full max-w-6xl transform animate-modalSlideUp border border-white/60 dark:border-white/10 ring-1 ring-black/5">
+          <div className="flex justify-between items-center px-6 py-4 border-b border-gray-200/80 dark:border-gray-700/80">
+            <div className="flex items-center gap-2">
+              <h2 className="text-xl font-bold text-[#0A66C2]">{title} Analysis</h2>
+              <span className="rounded-full bg-[#0A66C2]/10 px-2 py-0.5 text-xs font-semibold text-[#0A66C2]">
+                Live
+              </span>
+            </div>
             <button
               onClick={onClose}
-              className="text-gray-500 hover:text-[#0A66C2] transition-colors"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-gray-500 hover:text-[#0A66C2] hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             >
               <FontAwesomeIcon icon={faXmark} className="text-2xl" />
             </button>
@@ -82,6 +88,27 @@ interface KpiData {
   breakdown?: Record<string, number>; // for Receipts categories
 }
 
+interface RecentInvoice {
+  invoiceId?: string;
+  userGeneratedInvoiceId?: string | null;
+  userGeneratedReceiptId?: string | null;
+  receiptId?: string | null;
+  status?: string;
+  invoiceDate?: string | null;
+  receiptDate?: string | null;
+  createdAt?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+interface SubscriptionRevenueItem {
+  status?: string;
+  created_at?: string | null;
+  plan?: {
+    price?: string;
+  };
+}
+
 const COLORS = ["#0A66C2", "#FF7F50", "#00C49F", "#FFBB28", "#9B59B6"];
 
 export default function AdminQuickActions() {
@@ -95,7 +122,14 @@ export default function AdminQuickActions() {
   const [totalInvoices, setTotalInvoices] = useState(0);
   const [totalReceipts, setTotalReceipts] = useState(0);
   const [totalBusinesses, setTotalBusinesses] = useState(0);
+  const [subscriptionRevenueUsd, setSubscriptionRevenueUsd] = useState<number | null>(null);
+  const [subscriptionItems, setSubscriptionItems] = useState<SubscriptionRevenueItem[]>([]);
   const [loadingCounts, setLoadingCounts] = useState(true);
+  const [revenueLoading, setRevenueLoading] = useState(true);
+  const [revenueModalOpen, setRevenueModalOpen] = useState(false);
+  const [revenueRange, setRevenueRange] = useState<"day" | "week" | "month" | "year">("month");
+  const [revenueTrend, setRevenueTrend] = useState<Array<{ period: string; revenue: number }>>([]);
+  const [trendLoading, setTrendLoading] = useState(false);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState<
@@ -126,6 +160,113 @@ export default function AdminQuickActions() {
     const interval = setInterval(fetchCounts, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    const fetchSubscriptionRevenue = async () => {
+      setRevenueLoading(true);
+      try {
+        const res = await api.get("/subscribers");
+        const raw = res.data?.subscriptions ?? res.data ?? [];
+        const items: SubscriptionRevenueItem[] = Array.isArray(raw) ? raw : [];
+        setSubscriptionItems(items);
+
+        const paidItems = items.filter(
+          (item) => String(item.status || "").toLowerCase() === "active"
+        );
+        const total = paidItems.reduce((sum, item) => {
+          const price = Number.parseFloat(item.plan?.price || "0");
+          return Number.isNaN(price) ? sum : sum + price;
+        }, 0);
+        setSubscriptionRevenueUsd(total);
+      } catch (err) {
+        console.error("Error fetching subscription revenue:", err);
+        setSubscriptionItems([]);
+        setSubscriptionRevenueUsd(null);
+      } finally {
+        setRevenueLoading(false);
+      }
+    };
+
+    fetchSubscriptionRevenue();
+  }, []);
+
+  useEffect(() => {
+    if (!revenueModalOpen) return;
+
+    const toIsoDate = (value?: string | null) => {
+      if (!value) return null;
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? null : date;
+    };
+
+    const getPeriodKey = (date: Date, range: "day" | "week" | "month" | "year") => {
+      const year = date.getUTCFullYear();
+      const month = date.getUTCMonth();
+      const day = date.getUTCDate();
+      if (range === "day") {
+        return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      }
+      if (range === "month") {
+        const monthName = new Intl.DateTimeFormat("en-US", { month: "short" }).format(date);
+        return `${monthName} ${year}`;
+      }
+      if (range === "year") {
+        return `${year}`;
+      }
+
+      const temp = new Date(Date.UTC(year, month, day));
+      const dayNum = temp.getUTCDay() || 7;
+      temp.setUTCDate(temp.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(temp.getUTCFullYear(), 0, 1));
+      const weekNo = Math.ceil((((temp.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+      return `${temp.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+    };
+
+    const getSortKey = (date: Date, range: "day" | "week" | "month" | "year") => {
+      const year = date.getUTCFullYear();
+      const month = date.getUTCMonth();
+      const day = date.getUTCDate();
+      if (range === "day") return Date.UTC(year, month, day);
+      if (range === "month") return Date.UTC(year, month, 1);
+      if (range === "year") return Date.UTC(year, 0, 1);
+
+      const temp = new Date(Date.UTC(year, month, day));
+      const dayNum = temp.getUTCDay() || 7;
+      temp.setUTCDate(temp.getUTCDate() + 4 - dayNum);
+      return Date.UTC(temp.getUTCFullYear(), temp.getUTCMonth(), temp.getUTCDate());
+    };
+
+    setTrendLoading(true);
+    try {
+      const paidItems = subscriptionItems.filter(
+        (item) => String(item.status || "").toLowerCase() === "active"
+      );
+      const buckets = new Map<string, { period: string; revenue: number; sort: number }>();
+
+      paidItems.forEach((item) => {
+        const date = toIsoDate(item.created_at);
+        if (!date) return;
+        const price = Number.parseFloat(item.plan?.price || "0");
+        if (Number.isNaN(price)) return;
+
+        const period = getPeriodKey(date, revenueRange);
+        const sort = getSortKey(date, revenueRange);
+        const current = buckets.get(period);
+        if (current) {
+          current.revenue += price;
+        } else {
+          buckets.set(period, { period, revenue: price, sort });
+        }
+      });
+
+      const sorted = Array.from(buckets.values())
+        .sort((a, b) => a.sort - b.sort)
+        .map(({ period, revenue }) => ({ period, revenue }));
+      setRevenueTrend(sorted);
+    } finally {
+      setTrendLoading(false);
+    }
+  }, [revenueModalOpen, revenueRange, subscriptionItems]);
 
   const kpiActions = [
     { label: "Users", count: totalUsers, icon: faUsers, isKpi: true },
@@ -165,10 +306,16 @@ export default function AdminQuickActions() {
         ]);
 
         const invoices: RecentInvoice[] = invoicesRes.data || [];
+        const getInvoiceDate = (inv: RecentInvoice) =>
+          inv.invoiceDate || inv.createdAt || inv.created_at || null;
+        const sortedInvoices = [...invoices].sort((a, b) =>
+          new Date(getInvoiceDate(b) || 0).getTime() -
+          new Date(getInvoiceDate(a) || 0).getTime()
+        );
 
         setModalData({
           ...kpiRes.data,
-          recentItems: invoices.slice(0, 10), // last 5–10
+          recentItems: sortedInvoices.slice(0, 10),
         });
         return;
       }
@@ -180,16 +327,22 @@ export default function AdminQuickActions() {
 
         // Fetch invoices (same as invoices modal)
         const invoicesRes = await api.get("/invoices/admin");
-        const invoices = invoicesRes.data || [];
+        const invoices: RecentInvoice[] = invoicesRes.data || [];
+        const getReceiptDate = (inv: RecentInvoice) =>
+          inv.updated_at || inv.receiptDate || inv.createdAt || inv.created_at || null;
 
         // Only keep invoices with status 'paid'
         const paidInvoices = invoices.filter(
           (inv: any) => String(inv.status).toLowerCase() === "paid"
         );
+        const sortedPaid = [...paidInvoices].sort((a, b) =>
+          new Date(getReceiptDate(b) || 0).getTime() -
+          new Date(getReceiptDate(a) || 0).getTime()
+        );
 
         setModalData({
           ...kpiRes.data,
-          recentItems: paidInvoices.slice(0, 10),
+          recentItems: sortedPaid.slice(0, 10),
         });
 
         return;
@@ -282,8 +435,61 @@ export default function AdminQuickActions() {
   const computeAvg = (arr?: number[]) =>
     arr && arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1) : "0";
 
+  const formatUsd = (value: number | null) => {
+    if (value === null || Number.isNaN(value)) return "—";
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+  };
+
+  const formatShortDate = (date?: string | null) =>
+    date
+      ? new Date(date).toLocaleDateString(undefined, {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        })
+      : "—";
+
+  const getStatusClass = (status?: string) => {
+    const normalized = String(status || "").toLowerCase();
+    if (normalized === "paid" || normalized === "issued") {
+      return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
+    }
+    if (normalized === "overdue" || normalized === "unpaid" || normalized === "void" || normalized === "failed") {
+      return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+    }
+    if (normalized === "sent" || normalized === "partial") {
+      return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300";
+    }
+    return "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300";
+  };
+
   return (
     <div className="w-full max-w-6xl mx-auto px-4 py-4 font-sans">
+      <button
+        type="button"
+        onClick={() => setRevenueModalOpen(true)}
+        className="mb-4 w-full rounded-xl border border-gray-200 bg-white/90 px-4 py-3 text-left shadow-sm transition hover:shadow-md dark:border-white/[0.08] dark:bg-white/[0.03]"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Subscription Revenue</p>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              {revenueLoading ? "…" : formatUsd(subscriptionRevenueUsd)}
+            </h3>
+          </div>
+          <span className="rounded-full bg-[#0A66C2]/10 px-2.5 py-1 text-xs font-semibold text-[#0A66C2]">
+            USD
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          Total revenue over time (tap to view trend)
+        </p>
+      </button>
       <div className="grid grid-cols-3 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-4 justify-items-center">
         {combinedActions.map((item, idx) => (
           <div key={idx} className="w-full max-w-[140px]">
@@ -368,95 +574,164 @@ export default function AdminQuickActions() {
               {/* Charts + Breakdown */}
               {renderCharts()}
 
-              {/* Recent Items */}
-              <div>
-                <h3 className="font-semibold text-[#0A66C2] mb-3">
-                  Recent {modalContent}
-                </h3>
-
-                {(modalContent === "Invoices" || modalContent === "Receipts") ? (
-                  <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-                    <table className="min-w-full text-sm">
-                      <thead className="bg-gray-100 dark:bg-gray-800">
-                        <tr>
-                          <th className="px-4 py-2 text-left">
-                            {modalContent === "Invoices" ? "Invoice ID" : "Receipt ID"}
-                          </th>
-                          <th className="px-4 py-2 text-left">Status</th>
-                          <th className="px-4 py-2 text-left">Date</th>
-                        </tr>
-                      </thead>
-
-                      <tbody className="divide-y dark:divide-gray-700">
-                        {modalData.recentItems
-                          .filter((item: any) =>
-                            modalContent === "Receipts"
-                              ? String(item.status).toLowerCase() === "paid"
-                              : true
-                          )
-                          .map((item: any, idx: number) => {
-                            const date =
-                              modalContent === "Receipts"
-                                ? item.updated_at || item.receiptDate || item.createdAt
-                                : item.invoiceDate || item.createdAt;
-
-                            return (
-                              <tr
-                                key={idx}
-                                className="hover:bg-gray-50 dark:hover:bg-gray-800"
-                              >
-                                <td className="px-4 py-2 font-medium">
-                                  {item.userGeneratedInvoiceId ||
-                                    item.invoiceId ||
-                                    item.userGeneratedReceiptId ||
-                                    item.receiptId ||
-                                    "—"}
-                                </td>
-
-                                <td className="px-4 py-2 capitalize">
-                                  <span
-                                    className={`px-2 py-1 rounded-full text-xs font-semibold
-                                      ${
-                                        item.status === "issued" || item.status === "paid"
-                                          ? "bg-green-100 text-green-700"
-                                          : item.status === "partial"
-                                          ? "bg-yellow-100 text-yellow-700"
-                                          : item.status === "void" || item.status === "unpaid"
-                                          ? "bg-red-100 text-red-700"
-                                          : "bg-gray-100 text-gray-700"
-                                      }`}
-                                  >
-                                    {item.status ?? "—"}
-                                  </span>
-                                </td>
-
-                                <td className="px-4 py-2">
-                                  {date &&
-                                    new Date(date).toLocaleDateString(undefined, {
-                                      year: "numeric",
-                                      month: "short",
-                                      day: "numeric",
-                                    })}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
+              {(modalContent === "Invoices" || modalContent === "Receipts") ? (
+                <div className="rounded-xl border border-gray-200 bg-white/90 p-4 shadow-sm dark:border-white/[0.08] dark:bg-white/[0.03]">
+                  <div className="mb-3 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                        Latest {modalContent}
+                      </h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        Most recent {modalContent === "Invoices" ? "invoices" : "receipts"}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                      Top 10
+                    </span>
                   </div>
-                ) : (
-                  <ul className="list-disc list-inside">
+
+                  <div className="space-y-2">
+                    {modalData.recentItems.length === 0 ? (
+                      <div className="px-3 py-3 text-xs text-gray-500 dark:text-gray-400">
+                        No {modalContent === "Invoices" ? "invoices" : "receipts"} found.
+                      </div>
+                    ) : (
+                      modalData.recentItems.map((item: RecentInvoice, idx: number) => {
+                        const label =
+                          item.userGeneratedInvoiceId ||
+                          item.invoiceId ||
+                          item.userGeneratedReceiptId ||
+                          item.receiptId ||
+                          "—";
+                        const date =
+                          modalContent === "Receipts"
+                            ? item.updated_at || item.receiptDate || item.createdAt || item.created_at
+                            : item.invoiceDate || item.createdAt || item.created_at;
+                        return (
+                          <div
+                            key={`${label}-${idx}`}
+                            className="flex items-center justify-between rounded-lg border border-gray-200/80 bg-white px-3 py-2 shadow-sm dark:border-white/[0.08] dark:bg-white/[0.02]"
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate text-xs font-semibold text-gray-900 dark:text-white">
+                                {label}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {formatShortDate(date)}
+                              </p>
+                            </div>
+                            <span className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${getStatusClass(item.status)}`}>
+                              {(item.status || "unknown").toString().toUpperCase()}
+                            </span>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-gray-200 bg-white/90 p-4 shadow-sm dark:border-white/[0.08] dark:bg-white/[0.03]">
+                  <h3 className="font-semibold text-[#0A66C2] mb-3">
+                    Recent {modalContent}
+                  </h3>
+                  <ul className="space-y-2">
                     {modalData.recentItems.slice(0, 10).map((item, idx) => (
-                      <li key={idx}>{item}</li>
+                      <li key={idx} className="rounded-lg border border-gray-200/80 bg-white px-3 py-2 text-xs text-gray-700 dark:border-white/[0.08] dark:bg-white/[0.02] dark:text-gray-200">
+                        {item}
+                      </li>
                     ))}
                   </ul>
-                )}
-              </div>
+                </div>
+              )}
 
             </div>
           )
         )}
       </Modal>
+
+      {revenueModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-3xl rounded-2xl border border-white/10 bg-white/95 p-5 shadow-2xl dark:bg-gray-900/95">
+            <div className="flex items-center justify-between border-b border-gray-200/80 pb-3 dark:border-gray-700/80">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Subscription Revenue
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Total revenue over time
+                </p>
+              </div>
+              <button
+                onClick={() => setRevenueModalOpen(false)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full text-gray-500 hover:text-[#0A66C2] hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                aria-label="Close revenue modal"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              {["day", "week", "month", "year"].map((range) => (
+                <button
+                  key={range}
+                  onClick={() => setRevenueRange(range as "day" | "week" | "month" | "year")}
+                  className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+                    revenueRange === range
+                      ? "bg-[#0A66C2] text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+                  }`}
+                >
+                  {range.charAt(0).toUpperCase() + range.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-white/[0.08] dark:bg-white/[0.02]">
+              {trendLoading ? (
+                <div className="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                  Loading trend...
+                </div>
+              ) : revenueTrend.length === 0 ? (
+                <div className="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+                  No revenue data available.
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={260}>
+                  <LineChart data={revenueTrend} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid stroke="rgba(0,0,0,0.05)" vertical={false} />
+                    <XAxis
+                      dataKey="period"
+                      tick={{ fill: "#6B7280", fontSize: 12 }}
+                      axisLine={{ stroke: "#E5E7EB" }}
+                    />
+                    <YAxis
+                      tickFormatter={(value) => `$${Number(value).toLocaleString()}`}
+                      tick={{ fill: "#6B7280", fontSize: 12 }}
+                      axisLine={{ stroke: "#E5E7EB" }}
+                    />
+                    <Tooltip
+                      formatter={(value: number) => `$${Number(value).toLocaleString()}`}
+                      contentStyle={{
+                        backgroundColor: "rgba(255,255,255,0.95)",
+                        borderRadius: "8px",
+                        border: "1px solid #E5E7EB",
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="#0A66C2"
+                      strokeWidth={3}
+                      dot={{ r: 3, fill: "#0A66C2", stroke: "#fff", strokeWidth: 2 }}
+                      activeDot={{ r: 5, stroke: "#0A66C2", strokeWidth: 2 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

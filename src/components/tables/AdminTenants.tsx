@@ -11,7 +11,7 @@ import {
 import Badge from "../ui/badge/Badge";
 import Image from "next/image";
 import Link from "next/link";
-import { EyeIcon, ChevronLeftIcon } from "@/icons";
+import { ChevronLeftIcon } from "@/icons";
 import Icon from "@/components/Icons";
 import api from "../../../lib/api";
 import { useModal } from "../../../context/ModalContext";
@@ -299,20 +299,40 @@ export default function AdminTenants() {
     }
   };
 
+  const ViewButton = ({ onClick }: { onClick: () => void }) => (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      className="
+        relative inline-flex items-center justify-center
+        rounded-md bg-[#0A66C2]
+        px-3 py-1.5 text-xs font-medium text-white
+        shadow-sm transition-all duration-200
+        hover:bg-[#084d93] hover:-translate-y-[1px] hover:shadow-md
+        active:translate-y-0
+      "
+    >
+      View
+      <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-500 hover:translate-x-full" />
+    </button>
+  );
+
   return (
-    <div className="relative min-h-screen">
-      <div className="space-y-6 py-6 px-4 md:px-6 lg:px-8">
+    <div className="relative min-h-screen bg-gray-50 dark:bg-gray-950">
+      <div className="space-y-3 px-2 py-3 md:px-4 lg:px-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => window.history.back()}
-              className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900"
+              className="inline-flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
             >
-              <Icon src={ChevronLeftIcon} className="w-5 h-5" />
+              <Icon src={ChevronLeftIcon} className="w-4 h-4" />
               Back
             </button>
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+            <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
               Businesses Management
             </h1>
           </div>
@@ -323,11 +343,11 @@ export default function AdminTenants() {
         </div>
 
         {/* Mobile Card View */}
-        <div className="block md:hidden space-y-4">
+        <div className="block md:hidden space-y-2">
           {loading ? (
-            <div className="text-center py-12 text-gray-500">Loading businesses...</div>
+            <div className="text-center py-6 text-sm text-gray-500 dark:text-gray-400">Loading businesses…</div>
           ) : tenants.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-6 text-sm text-gray-500 dark:text-gray-400">
               No businesses found.
             </div>
           ) : (
@@ -335,22 +355,22 @@ export default function AdminTenants() {
               {paginatedTenants.map((tenant) => (
                 <div
                   key={tenant.tenantId}
-                  className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] p-5 shadow-sm"
+                  className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm transition hover:shadow-md dark:border-white/[0.08] dark:bg-white/[0.03]"
                 >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full overflow-hidden border flex-shrink-0">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full overflow-hidden border flex-shrink-0">
                         {tenant.tenantLogo ? (
                           <Image
-                            width={48}
-                            height={48}
+                            width={40}
+                            height={40}
                             src={`${process.env.NEXT_PUBLIC_FILE_URL}${tenant.tenantLogo}`}
                             alt={tenant.tenantName}
                             unoptimized
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-lg font-bold text-gray-600 dark:text-gray-400">
+                          <div className="w-full h-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-sm font-bold text-gray-600 dark:text-gray-400">
                             {tenant.tenantName[0].toUpperCase()}
                           </div>
                         )}
@@ -359,25 +379,19 @@ export default function AdminTenants() {
                         <h3 className="font-semibold text-gray-900 dark:text-white">
                           {tenant.tenantName}
                         </h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{tenant.tenantEmail}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{tenant.tenantEmail}</p>
                         {tenant.tenantPhone && (
                           <p className="text-xs text-gray-500 mt-1">{tenant.tenantPhone}</p>
                         )}
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => handleViewTenant(tenant)}
-                      className="p-2 text-gray-600 hover:text-brand-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                      title="View details"
-                    >
-                      <Icon src={EyeIcon} className="w-5 h-5" />
-                    </button>
+                    <ViewButton onClick={() => handleViewTenant(tenant)} />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 text-sm border-t pt-4 border-gray-100 dark:border-white/[0.08]">
+                  <div className="grid grid-cols-2 gap-2 text-xs border-t pt-2 border-gray-200 dark:border-white/[0.08]">
                     <div>
-                      <span className="text-gray-500">Status</span>
+                      <span className="text-gray-500 dark:text-gray-400">Status</span>
                       <div className="mt-1">
                         <Badge color={tenant.status === "active" ? "success" : "error"} size="sm">
                           {tenant.status.charAt(0).toUpperCase() + tenant.status.slice(1)}
@@ -385,7 +399,7 @@ export default function AdminTenants() {
                       </div>
                     </div>
                     <div>
-                      <span className="text-gray-500">Default</span>
+                      <span className="text-gray-500 dark:text-gray-400">Default</span>
                       <div className="mt-1">
                         {tenant.isDefault === 1 ? (
                           <Badge color="info" size="sm">Current</Badge>
@@ -395,15 +409,15 @@ export default function AdminTenants() {
                       </div>
                     </div>
                     <div>
-                      <span className="text-gray-500">Currency</span>
-                      <p className="font-medium">
+                      <span className="text-gray-500 dark:text-gray-400">Currency</span>
+                      <p className="font-medium text-gray-900 dark:text-gray-100">
                         {tenant.currency?.currencySymbol || "?"}{" "}
                         {tenant.currency?.currencyCode || "—"}
                       </p>
                     </div>
                     <div>
-                      <span className="text-gray-500">Created</span>
-                      <p className="font-medium text-xs">{formatDate(tenant.created_at)}</p>
+                      <span className="text-gray-500 dark:text-gray-400">Created</span>
+                      <p className="font-medium text-xs text-gray-900 dark:text-gray-100">{formatDate(tenant.created_at)}</p>
                     </div>
                   </div>
                 </div>
@@ -460,22 +474,22 @@ export default function AdminTenants() {
         </div>
 
         {/* Desktop Table View */}
-        <div className="hidden md:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+        <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03]">
           <div className="max-w-full overflow-x-auto">
             <div className="min-w-[900px]">
               <Table>
-                <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
+                <TableHeader className="border-b border-gray-200 dark:border-white/[0.08]">
                   <TableRow>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    <TableCell isHeader className="px-3 py-2 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
                       Business Name
                     </TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    <TableCell isHeader className="px-3 py-2 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
                       Contact
                     </TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    <TableCell isHeader className="px-3 py-2 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
                       Created
                     </TableCell>
-                    <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                    <TableCell isHeader className="px-3 py-2 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
                       Actions
                     </TableCell>
                   </TableRow>
@@ -498,15 +512,15 @@ export default function AdminTenants() {
                     paginatedTenants.map((tenant) => (
                       <TableRow
                         key={tenant.tenantId}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
+                        className="hover:bg-gray-50 dark:hover:bg-white/[0.04] cursor-pointer transition-colors"
                       >
-                        <TableCell className="px-5 py-4 text-start">
+                        <TableCell className="px-3 py-2 text-start">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full overflow-hidden border">
+                            <div className="w-9 h-9 rounded-full overflow-hidden border">
                               {tenant.tenantLogo ? (
                                 <Image
-                                  width={40}
-                                  height={40}
+                                  width={36}
+                                  height={36}
                                   src={`${process.env.NEXT_PUBLIC_FILE_URL}${tenant.tenantLogo}`}
                                   alt={tenant.tenantName}
                                   unoptimized
@@ -523,7 +537,7 @@ export default function AdminTenants() {
                           </div>
                         </TableCell>
 
-                        <TableCell className="px-5 py-4 text-start text-theme-sm text-gray-600 dark:text-gray-400">
+                        <TableCell className="px-3 py-2 text-start text-theme-sm text-gray-600 dark:text-gray-400">
                           <div>
                             <p>{tenant.tenantEmail}</p>
                             {tenant.tenantPhone && (
@@ -532,21 +546,12 @@ export default function AdminTenants() {
                           </div>
                         </TableCell>
 
-                        <TableCell className="px-5 py-4 text-start text-theme-sm text-gray-600 dark:text-gray-400">
+                        <TableCell className="px-3 py-2 text-start text-theme-sm text-gray-600 dark:text-gray-400">
                           {formatDate(tenant.created_at)}
                         </TableCell>
 
-                        <TableCell className="px-5 py-4 text-start">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewTenant(tenant);
-                            }}
-                            className="text-gray-600 hover:text-brand-600 transition"
-                            title="View business details"
-                          >
-                            <Icon src={EyeIcon} className="w-5 h-5" />
-                          </button>
+                        <TableCell className="px-3 py-2 text-start">
+                          <ViewButton onClick={() => handleViewTenant(tenant)} />
                         </TableCell>
                       </TableRow>
                     ))

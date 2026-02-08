@@ -141,20 +141,40 @@ export default function AdminCustomers() {
     document.body.style.overflow = "unset";
   };
 
+  const ViewButton = ({ onClick }: { onClick: () => void }) => (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      className="
+        relative inline-flex items-center justify-center
+        rounded-md bg-[#0A66C2]
+        px-3 py-1.5 text-xs font-medium text-white
+        shadow-sm transition-all duration-200
+        hover:bg-[#084d93] hover:-translate-y-[1px] hover:shadow-md
+        active:translate-y-0
+      "
+    >
+      View
+      <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-500 hover:translate-x-full" />
+    </button>
+  );
+
   return (
-    <div className="relative min-h-screen">
-      <div className="space-y-6 py-6 px-4 md:px-6 lg:px-8">
-        {/* Responsive Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-4">
+    <div className="relative min-h-screen bg-gray-50 dark:bg-gray-950">
+      <div className="space-y-3 px-2 py-3 md:px-4 lg:px-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => window.history.back()}
-              className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900"
+              className="inline-flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
             >
-              <Icon src={ChevronLeftIcon} className="w-5 h-5" />
+              <Icon src={ChevronLeftIcon} className="w-4 h-4" />
               Back
             </button>
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+            <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
               Customers Management
             </h1>
           </div>
@@ -162,28 +182,26 @@ export default function AdminCustomers() {
           <div className="text-sm text-gray-600 dark:text-gray-400">
             Total: <span className="font-medium">{customers.length}</span>
             {filteredCustomers.length !== customers.length && (
-              <span className="ml-2">
-                (Showing: {filteredCustomers.length})
-              </span>
+              <span className="ml-2">(Showing: {filteredCustomers.length})</span>
             )}
           </div>
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col md:flex-row gap-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+        <div className="flex flex-col md:flex-row gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
           <div className="flex-1">
             <input
               type="text"
               placeholder="Search by name, email, phone, or business..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
+              className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
             />
           </div>
           <select
             value={tenantFilter}
             onChange={(e) => setTenantFilter(e.target.value)}
-            className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
+            className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
           >
             <option value="all">All Businesses</option>
             {uniqueTenants.map((tenant) => (
@@ -195,13 +213,13 @@ export default function AdminCustomers() {
         </div>
 
         {/* Mobile Card View */}
-        <div className="block md:hidden space-y-4">
+        <div className="block md:hidden space-y-2">
           {loading ? (
-            <div className="text-center py-12 text-gray-500">Loading customers...</div>
+            <div className="text-center py-6 text-sm text-gray-500 dark:text-gray-400">Loading customers…</div>
           ) : error ? (
-            <div className="text-center py-12 text-red-600">{error}</div>
+            <div className="text-center py-6 text-sm text-red-600">{error}</div>
           ) : paginatedCustomers.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-6 text-sm text-gray-500 dark:text-gray-400">
               {searchTerm || tenantFilter !== "all"
                 ? "No customers match your filters."
                 : "No customers found."}
@@ -212,63 +230,54 @@ export default function AdminCustomers() {
                 <div
                   key={customer.customerId}
                   onClick={() => openModal(customer)}
-                  className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] p-5 shadow-sm cursor-pointer transition hover:shadow-md"
+                  className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm transition hover:shadow-md dark:border-white/[0.08] dark:bg-white/[0.03]"
                 >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center text-xl font-bold text-[#0A66C2]">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center text-base font-bold text-[#0A66C2]">
                         {customer.customerName.charAt(0).toUpperCase()}
                       </div>
                       <div>
                         <p className="font-semibold text-gray-900 dark:text-white">
                           {customer.customerName}
                         </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                           ID: #{customer.customerId}
                         </p>
                       </div>
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openModal(customer);
-                      }}
-                      className="p-2 text-gray-600 hover:text-brand-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                      title="View details"
-                    >
-                      <Icon src={EyeIcon} className="w-5 h-5" />
-                    </button>
+                    <ViewButton onClick={() => openModal(customer)} />
                   </div>
 
-                  <div className="space-y-3 text-sm">
+                  <div className="space-y-2 text-xs">
                     <div>
-                      <span className="text-gray-500">Contact</span>
+                      <span className="text-gray-500 dark:text-gray-400">Contact</span>
                       <div className="mt-1">
                         {customer.customerEmail ? (
-                          <p className="font-medium break-all">{customer.customerEmail}</p>
+                          <p className="font-medium break-all text-gray-900 dark:text-gray-100">{customer.customerEmail}</p>
                         ) : (
                           <p className="text-gray-400">No email</p>
                         )}
                         {customer.customerPhone && (
-                          <p className="text-gray-600 mt-1">{customer.customerPhone}</p>
+                          <p className="text-gray-600 dark:text-gray-400 mt-1">{customer.customerPhone}</p>
                         )}
                       </div>
                     </div>
 
                     <div>
-                      <span className="text-gray-500">Business</span>
+                      <span className="text-gray-500 dark:text-gray-400">Business</span>
                       <div className="mt-1 flex items-center gap-2">
                         <Icon src={InfoIcon} className="w-4 h-4 text-gray-500" />
                         <div>
-                          <p className="font-medium">{customer.tenant.tenantName}</p>
-                          <p className="text-xs text-gray-500">{customer.tenant.tenantEmail}</p>
+                          <p className="font-medium text-gray-900 dark:text-gray-100">{customer.tenant.tenantName}</p>
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400">{customer.tenant.tenantEmail}</p>
                         </div>
                       </div>
                     </div>
 
                     <div>
-                      <span className="text-gray-500">Created</span>
-                      <p className="font-medium text-sm mt-1">{formatDate(customer.created_at)}</p>
+                      <span className="text-gray-500 dark:text-gray-400">Created</span>
+                      <p className="font-medium text-xs mt-1 text-gray-900 dark:text-gray-100">{formatDate(customer.created_at)}</p>
                     </div>
                   </div>
                 </div>
@@ -325,24 +334,24 @@ export default function AdminCustomers() {
         </div>
 
         {/* Desktop Table View */}
-        <div className="hidden md:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+        <div className="hidden md:block overflow-x-auto rounded-lg border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03]">
           <div className="max-w-full overflow-x-auto">
             <Table>
-              <TableHeader className="border-b border-gray-100 dark:border-white/[0.05]">
+              <TableHeader className="border-b border-gray-200 dark:border-white/[0.08]">
                 <TableRow>
-                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                  <TableCell isHeader className="px-3 py-2 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
                     Customer
                   </TableCell>
-                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                  <TableCell isHeader className="px-3 py-2 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
                     Contact
                   </TableCell>
-                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                  <TableCell isHeader className="px-3 py-2 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
                     Business
                   </TableCell>
-                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                  <TableCell isHeader className="px-3 py-2 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
                     Created
                   </TableCell>
-                  <TableCell isHeader className="px-5 py-3 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                  <TableCell isHeader className="px-3 py-2 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
                     Actions
                   </TableCell>
                 </TableRow>
@@ -373,12 +382,12 @@ export default function AdminCustomers() {
                   paginatedCustomers.map((customer) => (
                     <TableRow
                       key={customer.customerId}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors"
+                      className="hover:bg-gray-50 dark:hover:bg-white/[0.04] cursor-pointer transition-colors"
                       onClick={() => openModal(customer)}
                     >
-                      <TableCell className="px-5 py-4 text-start">
+                      <TableCell className="px-3 py-2 text-start">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center font-semibold text-[#0A66C2]">
+                          <div className="w-9 h-9 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center text-sm font-semibold text-[#0A66C2]">
                             {customer.customerName.charAt(0).toUpperCase()}
                           </div>
                           <div>
@@ -390,7 +399,7 @@ export default function AdminCustomers() {
                         </div>
                       </TableCell>
 
-                      <TableCell className="px-5 py-4 text-start">
+                      <TableCell className="px-3 py-2 text-start">
                         <div className="space-y-1">
                           {customer.customerEmail ? (
                             <div className="text-theme-sm text-gray-600 dark:text-gray-400">
@@ -407,9 +416,9 @@ export default function AdminCustomers() {
                         </div>
                       </TableCell>
 
-                      <TableCell className="px-5 py-4 text-start">
+                      <TableCell className="px-3 py-2 text-start">
                         <div className="flex items-center gap-2">
-                          <Icon src={InfoIcon} className="w-5 h-5 text-gray-500" />
+                          <Icon src={InfoIcon} className="w-4 h-4 text-gray-500" />
                           <div>
                             <span className="font-medium block">{customer.tenant.tenantName}</span>
                             <span className="text-xs text-gray-500">
@@ -419,21 +428,12 @@ export default function AdminCustomers() {
                         </div>
                       </TableCell>
 
-                      <TableCell className="px-5 py-4 text-start text-theme-sm text-gray-600 dark:text-gray-400">
+                      <TableCell className="px-3 py-2 text-start text-theme-sm text-gray-600 dark:text-gray-400">
                         {formatDate(customer.created_at)}
                       </TableCell>
 
-                      <TableCell className="px-5 py-4 text-start">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openModal(customer);
-                          }}
-                          className="text-gray-600 hover:text-brand-600 transition"
-                          title="View customer details"
-                        >
-                          <Icon src={EyeIcon} className="w-5 h-5" />
-                        </button>
+                      <TableCell className="px-3 py-2 text-start">
+                        <ViewButton onClick={() => openModal(customer)} />
                       </TableCell>
                     </TableRow>
                   ))

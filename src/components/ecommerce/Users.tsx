@@ -9,7 +9,7 @@ import {
   TableRow,
 } from "../../components/ui/table";
 import Button from "../../components/ui/button/Button";
-import { ChevronLeftIcon, EyeIcon, MailIcon } from "@/icons";
+import { ChevronLeftIcon, MailIcon } from "@/icons";
 import Icon from "@/components/Icons";
 import api from "../../../lib/api";
 import Badge from "@/components/ui/badge/Badge";
@@ -233,6 +233,26 @@ export default function AdminUsersPage() {
     document.body.style.overflow = "unset";
   };
 
+  const ViewButton = ({ onClick }: { onClick: () => void }) => (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      className="
+        relative inline-flex items-center justify-center
+        rounded-md bg-[#0A66C2]
+        px-3 py-1.5 text-xs font-medium text-white
+        shadow-sm transition-all duration-200
+        hover:bg-[#084d93] hover:-translate-y-[1px] hover:shadow-md
+        active:translate-y-0
+      "
+    >
+      View
+      <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-500 hover:translate-x-full" />
+    </button>
+  );
+
   const handleStatusChange = async (userId: number, newStatus: User["status"]) => {
     try {
       await api.patch(`/users/${userId}/status`, { status: newStatus });
@@ -344,19 +364,19 @@ export default function AdminUsersPage() {
   };
 
   return (
-    <div className="relative min-h-screen">
-      <div className="space-y-6 py-6 px-4 md:px-6 lg:px-8">
+    <div className="relative min-h-screen bg-gray-50 dark:bg-gray-950">
+      <div className="space-y-3 px-2 py-3 md:px-4 lg:px-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => window.history.back()}
-              className="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900"
+              className="inline-flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
             >
-              <Icon src={ChevronLeftIcon} className="w-5 h-5" />
+              <Icon src={ChevronLeftIcon} className="w-4 h-4" />
               Back
             </button>
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+            <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
               Users Management
             </h1>
           </div>
@@ -382,21 +402,21 @@ export default function AdminUsersPage() {
         )}
 
         {/* Filters */}
-        <div className="flex flex-col md:flex-row gap-4 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+        <div className="flex flex-col md:flex-row gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
           <div className="flex-1">
             <input
               type="text"
               placeholder="Search by name, email, or phone..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
+              className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
             />
           </div>
           <div className="flex gap-4">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
+              className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
             >
               <option value="all">All Status</option>
               <option value="active">Active</option>
@@ -407,7 +427,7 @@ export default function AdminUsersPage() {
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
+              className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
             >
               <option value="all">All Roles</option>
               <option value="ADMIN">Admin</option>
@@ -417,21 +437,21 @@ export default function AdminUsersPage() {
         </div>
 
         {/* Mobile Card View */}
-        <div className="block md:hidden space-y-4">
+        <div className="block md:hidden space-y-2">
           {loading ? (
-            <div className="text-center py-12 text-gray-500">Loading users...</div>
+            <div className="text-center py-6 text-sm text-gray-500 dark:text-gray-400">Loading users…</div>
           ) : error ? (
-            <div className="text-center py-12 text-red-600">{error}</div>
+            <div className="text-center py-6 text-sm text-red-600">{error}</div>
           ) : filteredUsers.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">No users found.</div>
+            <div className="text-center py-6 text-sm text-gray-500 dark:text-gray-400">No users found.</div>
           ) : (
             <>
               {paginatedUsers.map((user) => (
                 <div
                   key={user.id}
-                  className="rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03] p-5 shadow-sm"
+                  className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm transition hover:shadow-md dark:border-white/[0.08] dark:bg-white/[0.03]"
                 >
-                  <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <input
                         type="checkbox"
@@ -439,22 +459,22 @@ export default function AdminUsersPage() {
                         onChange={() => toggleUserSelection(user.id)}
                         className="rounded mt-1"
                       />
-                      <div className="w-12 h-12 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center font-semibold text-[#0A66C2]">
+                      <div className="w-10 h-10 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center text-sm font-semibold text-[#0A66C2]">
                         {user.firstName ? user.firstName[0].toUpperCase() : "?"}
                       </div>
                       <div>
                         <p className="font-semibold text-gray-900 dark:text-white">
                           {user.firstName} {user.lastName}
-                          {user.otherNames && <span className="text-sm text-gray-500"> ({user.otherNames})</span>}
+                          {user.otherNames && <span className="text-xs text-gray-500"> ({user.otherNames})</span>}
                         </p>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">{user.email}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{user.email}</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 text-sm border-t pt-4 border-gray-100 dark:border-white/[0.08]">
+                  <div className="grid grid-cols-2 gap-2 text-xs border-t pt-2 border-gray-200 dark:border-white/[0.08]">
                     <div>
-                      <span className="text-gray-500">Role</span>
+                      <span className="text-gray-500 dark:text-gray-400">Role</span>
                       <div className="mt-1">
                         <Badge color={roleBadgeColor(user.user_role.roleName)} size="sm">
                           {user.user_role.roleName}
@@ -462,7 +482,7 @@ export default function AdminUsersPage() {
                       </div>
                     </div>
                     <div>
-                      <span className="text-gray-500">Status</span>
+                      <span className="text-gray-500 dark:text-gray-400">Status</span>
                       <div className="mt-1">
                         <Badge color={statusBadgeColor(user.status)} size="sm">
                           {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
@@ -470,23 +490,17 @@ export default function AdminUsersPage() {
                       </div>
                     </div>
                     <div>
-                      <span className="text-gray-500">Phone</span>
-                      <p className="font-medium">{user.phoneNumber || "—"}</p>
+                      <span className="text-gray-500 dark:text-gray-400">Phone</span>
+                      <p className="font-medium text-gray-900 dark:text-gray-100">{user.phoneNumber || "—"}</p>
                     </div>
                     <div>
-                      <span className="text-gray-500">Created</span>
-                      <p className="font-medium text-xs">{formatDate(user.created_at)}</p>
+                      <span className="text-gray-500 dark:text-gray-400">Created</span>
+                      <p className="font-medium text-xs text-gray-900 dark:text-gray-100">{formatDate(user.created_at)}</p>
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-2 pt-4 border-t border-gray-100 dark:border-white/[0.08]">
-                    <button
-                      onClick={() => openModal(user)}
-                      className="p-2 text-gray-600 hover:text-brand-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-                      title="View details"
-                    >
-                      <Icon src={EyeIcon} className="w-5 h-5" />
-                    </button>
+                  <div className="flex justify-end gap-2 pt-2 border-t border-gray-200 dark:border-white/[0.08]">
+                    <ViewButton onClick={() => openModal(user)} />
                     <Button
                       variant="outline"
                       size="sm"
@@ -547,12 +561,12 @@ export default function AdminUsersPage() {
         </div>
 
         {/* Desktop Table View */}
-        <div className="hidden md:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]">
+        <div className="hidden md:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.08] dark:bg-white/[0.03] shadow-sm">
           <div className="max-w-full overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableCell isHeader className="w-12 px-5 py-3">
+                  <TableCell isHeader className="w-12 px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     <input
                       type="checkbox"
                       checked={selectedUsers.size === paginatedUsers.length && paginatedUsers.length > 0}
@@ -560,25 +574,25 @@ export default function AdminUsersPage() {
                       className="rounded"
                     />
                   </TableCell>
-                  <TableCell isHeader>User</TableCell>
-                  <TableCell isHeader>Contact</TableCell>
-                  <TableCell isHeader>Role</TableCell>
-                  <TableCell isHeader>Created</TableCell>
-                  <TableCell isHeader>Actions</TableCell>
+                  <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">User</TableCell>
+                  <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Contact</TableCell>
+                  <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</TableCell>
+                  <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Created</TableCell>
+                  <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</TableCell>
                 </TableRow>
               </TableHeader>
 
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={6} className="py-10 text-center">Loading users...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="px-4 py-4 text-center text-sm text-gray-500 dark:text-gray-400">Loading users…</TableCell></TableRow>
                 ) : error ? (
-                  <TableRow><TableCell colSpan={6} className="py-10 text-center text-red-600">{error}</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="px-4 py-4 text-center text-sm text-red-600">{error}</TableCell></TableRow>
                 ) : filteredUsers.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="py-10 text-center">No users found.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="px-4 py-4 text-center text-sm text-gray-500 dark:text-gray-400">No users found.</TableCell></TableRow>
                 ) : (
                   paginatedUsers.map((user) => (
-                    <TableRow key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                      <TableCell className="px-5 py-4">
+                    <TableRow key={user.id} className="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                      <TableCell className="px-4 py-3">
                         <input
                           type="checkbox"
                           checked={selectedUsers.has(user.id)}
@@ -586,42 +600,36 @@ export default function AdminUsersPage() {
                           className="rounded"
                         />
                       </TableCell>
-                      <TableCell className="px-5 py-4">
+                      <TableCell className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center font-semibold text-[#0A66C2]">
+                          <div className="w-9 h-9 rounded-full bg-[#0A66C2]/10 dark:bg-[#0A66C2]/20 flex items-center justify-center text-xs font-semibold text-[#0A66C2]">
                             {user.firstName ? user.firstName[0].toUpperCase() : "?"}
                           </div>
                           <div>
-                            <span className="font-medium block">
+                            <span className="text-sm font-medium text-gray-900 dark:text-white block">
                               {user.firstName} {user.lastName}
                             </span>
-                            {user.otherNames && <span className="text-xs text-gray-500 block">({user.otherNames})</span>}
+                            {user.otherNames && <span className="text-xs text-gray-500 dark:text-gray-400 block">({user.otherNames})</span>}
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="px-5 py-4">
+                      <TableCell className="px-4 py-3">
                         <div className="space-y-1">
-                          <div className="text-theme-sm text-gray-600 dark:text-gray-400">{user.email}</div>
-                          {user.phoneNumber && <div className="text-xs text-gray-500">{user.phoneNumber}</div>}
+                          <div className="text-xs text-gray-600 dark:text-gray-400">{user.email}</div>
+                          {user.phoneNumber && <div className="text-xs text-gray-500 dark:text-gray-400">{user.phoneNumber}</div>}
                         </div>
                       </TableCell>
-                      <TableCell className="px-5 py-4">
+                      <TableCell className="px-4 py-3">
                         <Badge color={roleBadgeColor(user.user_role.roleName)} size="sm">
                           {user.user_role.roleName}
                         </Badge>
                       </TableCell>
-                      <TableCell className="px-5 py-4 text-theme-sm text-gray-600 dark:text-gray-400">
+                      <TableCell className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">
                         {formatDate(user.created_at)}
                       </TableCell>
-                      <TableCell className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={() => openModal(user)}
-                            className="text-gray-600 hover:text-brand-600"
-                            title="View details"
-                          >
-                            <Icon src={EyeIcon} className="w-5 h-5" />
-                          </button>
+                      <TableCell className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <ViewButton onClick={() => openModal(user)} />
                           <Button
                             variant="outline"
                             size="sm"
@@ -642,29 +650,29 @@ export default function AdminUsersPage() {
 
           {/* Desktop Pagination */}
           {totalPages > 1 && (
-            <div className="flex flex-col sm:flex-row justify-between items-center px-6 py-4 border-t border-gray-200 dark:border-white/[0.05] gap-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400 order-2 sm:order-1">
+            <div className="flex flex-col sm:flex-row justify-between items-center px-4 py-3 border-t border-gray-200 dark:border-white/[0.08] gap-3">
+              <p className="text-xs text-gray-600 dark:text-gray-400 order-2 sm:order-1">
                 Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filteredUsers.length)} of {filteredUsers.length} users
               </p>
 
-              <div className="flex items-center gap-4 order-1 sm:order-2 flex-wrap justify-center sm:justify-end">
+              <div className="flex items-center gap-3 order-1 sm:order-2 flex-wrap justify-center sm:justify-end">
                 <button
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-4 py-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-700 text-xs disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800"
                 >
                   Previous
                 </button>
 
-                <div className="flex items-center gap-3">
-                  <label htmlFor="desktop-page-select" className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap hidden sm:block">
+                <div className="flex items-center gap-2">
+                  <label htmlFor="desktop-page-select" className="text-xs text-gray-600 dark:text-gray-400 whitespace-nowrap hidden sm:block">
                     Go to page:
                   </label>
                   <select
                     id="desktop-page-select"
                     value={currentPage}
                     onChange={(e) => setCurrentPage(Number(e.target.value))}
-                    className="min-w-[90px] px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-[#0A66C2]"
+                    className="min-w-[90px] px-3 py-1.5 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs focus:outline-none focus:ring-2 focus:ring-[#0A66C2]"
                   >
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                       <option key={page} value={page}>
@@ -672,13 +680,13 @@ export default function AdminUsersPage() {
                       </option>
                     ))}
                   </select>
-                  <span className="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">of {totalPages}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">of {totalPages}</span>
                 </div>
 
                 <button
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="px-4 py-2 rounded border border-gray-300 dark:border-gray-700 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  className="px-3 py-1.5 rounded border border-gray-300 dark:border-gray-700 text-xs disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-800"
                 >
                   Next
                 </button>
