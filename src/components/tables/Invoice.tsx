@@ -182,6 +182,8 @@ interface FullInvoice {
     phone: string;
     logoUrl: string;
     signatureUrl: string;
+    taxId: string;
+    tenantAddres: string;
   };
   user: {
     currentPlan: number | string;
@@ -423,6 +425,8 @@ export default function InvoiceViewPage() {
             phone: raw.tenant.tenantPhone || "",
             logoUrl,
             signatureUrl,
+            tenantAddress: raw.tenant.tenantAddress,
+            taxId: raw.tenant.taxId,
           },
           user: {
             currentPlan: raw.creator?.currentPlan || 1,
@@ -610,8 +614,10 @@ export default function InvoiceViewPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start gap-2 border-b pb-2 border-gray-200 dark:border-gray-700">
             <div className="text-center sm:text-left">
               <h1 className="text-2xl sm:text-3xl font-bold text-[#0A66C2]">{invoice.company.name}</h1>
+              <p className="text-gray-800 dark:text-gray-300">{invoice.company?.tenantAddress}</p>
               <p className="text-gray-800 dark:text-gray-300">{invoice.company.email}</p>
               <p className="text-gray-800 dark:text-gray-300">{invoice.company.phone}</p>
+              {invoice.company.taxId && (<p className="text-gray-800 dark:text-gray-300 font-semibold">Tax ID: {invoice.company?.taxId}</p>)}
             </div>
             {invoice.company.logoUrl && (
               <img

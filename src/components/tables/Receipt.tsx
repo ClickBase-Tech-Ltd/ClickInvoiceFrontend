@@ -76,6 +76,8 @@ interface FullReceipt {
     phone: string;
     logoUrl: string;
     signatureUrl: string;
+    taxId: string;
+    tenantAddress: string;
   };
   user: {
     currentPlan: number | string;
@@ -382,6 +384,8 @@ export default function ReceiptViewPage() {
             phone: raw.tenant.tenantPhone,
             logoUrl,
             signatureUrl,
+            taxId: raw.tenant.taxId,
+            tenantAddress: raw.tenant.tenantAddress,
           },
           user: {
             currentPlan: raw.creator?.currentPlan || 1,
@@ -512,8 +516,10 @@ export default function ReceiptViewPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start gap-6 border-b pb-8">
             <div className="text-center sm:text-left">
               <h1 className="text-2xl sm:text-3xl font-bold text-[#0A66C2]">{receipt.company.name}</h1>
+              <p className="text-gray-600">{receipt.company?.tenantAddress}</p>
               <p className="text-gray-600">{receipt.company.email}</p>
               <p className="text-gray-600">{receipt.company.phone}</p>
+              {receipt.company.taxId && (<p className="text-gray-600 font-bold">Tax ID: {receipt.company?.taxId}</p>)}
             </div>
             {receipt.company.logoUrl && (
               <img

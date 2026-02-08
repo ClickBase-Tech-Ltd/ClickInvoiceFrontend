@@ -22,6 +22,8 @@ interface Tenant {
   tenantName: string;
   tenantEmail: string;
   tenantPhone: string;
+  tenantAddress: string | null;      // ← NEW
+  taxId: string | null;              // ← NEW
   tenantLogo: string | null;
   authorizedSignature: string | null;
   timezone: string;
@@ -243,8 +245,9 @@ export default function CompaniesListPage() {
       formData.append("tenantName", (form.elements.namedItem("tenantName") as HTMLInputElement).value);
       formData.append("tenantEmail", (form.elements.namedItem("tenantEmail") as HTMLInputElement).value);
       formData.append("tenantPhone", (form.elements.namedItem("tenantPhone") as HTMLInputElement).value);
+      formData.append("tenantAddress", (form.elements.namedItem("tenantAddress") as HTMLInputElement).value || "");  // ← NEW
+      formData.append("taxId", (form.elements.namedItem("taxId") as HTMLInputElement).value || "");                  // ← NEW
       formData.append("timezone", (form.elements.namedItem("timezone") as HTMLSelectElement).value);
-      // formData.append("currency", (form.elements.namedItem("currency") as HTMLSelectElement).value);
       formData.append("gatewayPreference", (form.elements.namedItem("gatewayPreference") as HTMLSelectElement).value);
 
       if (logoInputRef.current?.files?.[0]) {
@@ -304,7 +307,7 @@ export default function CompaniesListPage() {
         }`}
       >
         <div className="space-y-3 px-2 py-3 md:px-4 lg:px-6">
-          {/* Header - Responsive */}
+          {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-2">
               <button
@@ -326,7 +329,9 @@ export default function CompaniesListPage() {
             </Link>
           </div>
 
-          {/* Mobile Card View */}
+          {/* ────────────────────────────────────────────────
+              MOBILE CARD VIEW
+          ──────────────────────────────────────────────── */}
           <div className="block md:hidden space-y-2">
             {loading ? (
               <div className="text-center py-6 text-sm text-gray-500 dark:text-gray-400">Loading businesses...</div>
@@ -391,6 +396,18 @@ export default function CompaniesListPage() {
                       </p>
                     </div>
                     <div>
+                      <span className="text-gray-500 dark:text-gray-400">Address</span> {/* ← NEW */}
+                      <p className="font-medium text-gray-900 dark:text-gray-100 text-xs truncate">
+                        {tenant.tenantAddress || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">Tax ID</span> {/* ← NEW */}
+                      <p className="font-medium text-gray-900 dark:text-gray-100">
+                        {tenant.taxId || "—"}
+                      </p>
+                    </div>
+                    <div>
                       <span className="text-gray-500 dark:text-gray-400">Created</span>
                       <p className="font-medium text-xs text-gray-900 dark:text-gray-100">{formatDate(tenant.created_at)}</p>
                     </div>
@@ -441,16 +458,20 @@ export default function CompaniesListPage() {
             )}
           </div>
 
-          {/* Desktop Table View (hidden on mobile) */}
+          {/* ────────────────────────────────────────────────
+              DESKTOP TABLE VIEW
+          ──────────────────────────────────────────────── */}
           <div className="hidden md:block overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-white/[0.08] dark:bg-white/[0.03]">
             <div className="max-w-full overflow-x-auto">
-              <div className="min-w-[900px]">
+              <div className="min-w-[1200px]"> {/* Increased min-width to fit new columns */}
                 <Table>
                   <TableHeader className="border-b border-gray-200 dark:border-white/[0.08]">
                     <TableRow>
                       <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Business</TableCell>
                       <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Active</TableCell>
                       <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Contact</TableCell>
+                      <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Address</TableCell>           {/* ← NEW */}
+                      <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Tax ID</TableCell>           {/* ← NEW */}
                       <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Currency</TableCell>
                       <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</TableCell>
                       <TableCell isHeader className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Created</TableCell>
@@ -461,13 +482,13 @@ export default function CompaniesListPage() {
                   <TableBody className="divide-y divide-gray-200 dark:divide-white/[0.08]">
                     {loading ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="px-4 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                        <TableCell colSpan={9} className="px-4 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
                           Loading businesses...
                         </TableCell>
                       </TableRow>
                     ) : tenants.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="px-4 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                        <TableCell colSpan={9} className="px-4 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
                           No businesses found.{" "}
                           <Link href="/dashboard/tenants/create" className="text-brand-500 hover:underline">
                             Add your first business
@@ -511,6 +532,14 @@ export default function CompaniesListPage() {
                               <p className="text-xs text-gray-600 dark:text-gray-400">{tenant.tenantEmail}</p>
                               <p className="text-xs text-gray-500">{tenant.tenantPhone}</p>
                             </div>
+                          </TableCell>
+
+                          <TableCell className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400 truncate max-w-[180px]">
+                            {tenant.tenantAddress || "—"}  {/* ← NEW */}
+                          </TableCell>
+
+                          <TableCell className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">
+                            {tenant.taxId || "—"}  {/* ← NEW */}
                           </TableCell>
 
                           <TableCell className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">
@@ -565,192 +594,200 @@ export default function CompaniesListPage() {
         </div>
       </div>
 
- 
+      {/* View Details Modal – updated with new fields */}
+      {selectedTenant && !editingTenant && !statusError && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-gray-900 p-6 shadow-2xl">
+            <div className="flex justify-between items-start mb-6">
+              <h2 className="text-2xl font-semibold">Business Details</h2>
+              <button onClick={handleCloseModal} className="text-gray-500 hover:text-gray-700">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
 
-      {/* View Details Modal */}
-      {/* View Details Modal */}
-{selectedTenant && !editingTenant && !statusError && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">   <div className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl bg-white dark:bg-gray-900 p-6 shadow-2xl">
-      <div className="flex justify-between items-start mb-6">
-        <h2 className="text-2xl font-semibold">Business Details</h2>
-        <button onClick={handleCloseModal} className="text-gray-500 hover:text-gray-700">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-      
-      <div className="space-y-8">
-        {/* Company Header with Logo */}
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-          <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-700">
-            {selectedTenant.tenantLogo ? (
-              <Image 
-                width={96} 
-                height={96} 
-                src={`${process.env.NEXT_PUBLIC_FILE_URL}${selectedTenant.tenantLogo}`} 
-                alt={selectedTenant?.tenantName}
-                className="w-full h-full object-cover"
-                unoptimized 
-              />
-            ) : (
-              <div className="w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-3xl font-bold text-gray-600 dark:text-gray-400">
-                {selectedTenant?.tenantName[0].toUpperCase()}
+            <div className="space-y-8">
+              {/* Company Header with Logo */}
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+                <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-gray-200 dark:border-gray-700">
+                  {selectedTenant.tenantLogo ? (
+                    <Image
+                      width={96}
+                      height={96}
+                      src={`${process.env.NEXT_PUBLIC_FILE_URL}${selectedTenant.tenantLogo}`}
+                      alt={selectedTenant?.tenantName}
+                      className="w-full h-full object-cover"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-3xl font-bold text-gray-600 dark:text-gray-400">
+                      {selectedTenant?.tenantName[0].toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 text-center sm:text-left">
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{selectedTenant.tenantName}</h3>
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-3">
+                    {selectedTenant.isDefault === 1 && (
+                      <Badge color="info" size="md">Current Business</Badge>
+                    )}
+                    <Badge color={selectedTenant.status === "active" ? "success" : "error"} size="md">
+                      {selectedTenant.status.charAt(0).toUpperCase() + selectedTenant.status.slice(1)}
+                    </Badge>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      ID: #{selectedTenant.tenantId}
+                    </span>
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
-          <div className="flex-1 text-center sm:text-left">
-            <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{selectedTenant.tenantName}</h3>
-            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-3">
-              {selectedTenant.isDefault === 1 && (
-                <Badge color="info" size="md">Current Business</Badge>
+
+              {/* Business Information – now includes address & tax id */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b pb-2">
+                    Business Information
+                  </h4>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Address</p>
+                      <p className="font-medium">{selectedTenant.tenantAddress || "Not provided"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Tax ID / TIN / VAT</p>
+                      <p className="font-medium">{selectedTenant.taxId || "Not provided"}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b pb-2">
+                    Contact Information
+                  </h4>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Email Address</p>
+                      <p className="font-medium">{selectedTenant.tenantEmail}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Phone Number</p>
+                      <p className="font-medium">{selectedTenant.tenantPhone || "Not provided"}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Country Code</p>
+                      <p className="font-medium">{selectedTenant.countryCode || "Not specified"}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Financial Settings */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b pb-2">
+                    Financial Settings
+                  </h4>
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Currency</p>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold">{selectedTenant.currency?.currencySymbol || "?"}</span>
+                        <span className="font-medium">{selectedTenant.currency?.currencyCode || "—"}</span>
+                        <span className="text-sm text-gray-500">({selectedTenant.currency?.currencyName || "Unknown"})</span>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Payment Gateway</p>
+                      <p className="font-medium">
+                        {selectedTenant.payment_gateway?.paymentGatewayName || "Not set"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b pb-2">
+                    Regional Settings
+                  </h4>
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Timezone</p>
+                    <p className="font-medium">
+                      {timezones.find(t => t.value === selectedTenant.timezone)?.label || selectedTenant.timezone}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Timeline */}
+              <div className="space-y-4">
+                <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b pb-2">
+                  Timeline
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Created Date</p>
+                    <p className="font-medium">{formatDate(selectedTenant.created_at)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Last Updated</p>
+                    <p className="font-medium">{formatDate(selectedTenant.updated_at)}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Authorized Signature */}
+              {selectedTenant.authorizedSignature && (
+                <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Authorized Signature
+                  </h4>
+                  <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div className="flex flex-col items-center">
+                      <div className="w-64 h-24 border border-gray-300 dark:border-gray-600 rounded flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+                        <Image
+                          width={256}
+                          height={96}
+                          src={`${process.env.NEXT_PUBLIC_FILE_URL}${selectedTenant.authorizedSignature}`}
+                          alt="Authorized Signature"
+                          className="max-w-full max-h-full object-contain"
+                          unoptimized
+                        />
+                      </div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                        Official signature for documents
+                      </p>
+                    </div>
+                  </div>
+                </div>
               )}
-              <Badge color={selectedTenant.status === "active" ? "success" : "error"} size="md">
-                {selectedTenant.status.charAt(0).toUpperCase() + selectedTenant.status.slice(1)}
-              </Badge>
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                ID: #{selectedTenant.tenantId}
-              </span>
-            </div>
-          </div>
-        </div>
 
-        {/* Business Information Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Contact Information */}
-          <div className="space-y-4">
-            <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b pb-2">
-              Contact Information
-            </h4>
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Email Address</p>
-                <p className="font-medium">{selectedTenant.tenantEmail}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Phone Number</p>
-                <p className="font-medium">{selectedTenant.tenantPhone || "Not provided"}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Country Code</p>
-                <p className="font-medium">{selectedTenant.countryCode || "Not specified"}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Financial Settings */}
-          <div className="space-y-4">
-            <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b pb-2">
-              Financial Settings
-            </h4>
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Currency</p>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold">{selectedTenant.currency?.currencySymbol}</span>
-                  <span className="font-medium">{selectedTenant.currency?.currencyCode}</span>
-                  <span className="text-sm text-gray-500">({selectedTenant.currency?.currencyName})</span>
-                </div>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Payment Gateway</p>
-                <p className="font-medium">
-                  {selectedTenant.payment_gateway?.paymentGatewayName || "Not set"}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Gateway Preference ID</p>
-                <p className="font-medium">{selectedTenant.gatewayPreference}</p>
+              {/* Actions */}
+              <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={handleCloseModal}
+                  className="px-6 py-3 rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => {
+                    handleCloseModal();
+                    setTimeout(() => handleEditTenant(selectedTenant), 100);
+                  }}
+                  className="px-6 py-3 rounded-lg bg-[#0A66C2] hover:bg-[#084d93] text-white font-medium transition-colors"
+                >
+                  Edit Business
+                </button>
               </div>
             </div>
           </div>
         </div>
+      )}
 
-        {/* Timezone & Timeline */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b pb-2">
-              Regional Settings
-            </h4>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Timezone</p>
-              <p className="font-medium">
-                {(() => {
-                  const tz = timezones.find(t => t.value === selectedTenant.timezone);
-                  return tz ? tz.label : selectedTenant.timezone;
-                })()}
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b pb-2">
-              Timeline
-            </h4>
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Created Date</p>
-                <p className="font-medium">{formatDate(selectedTenant.created_at)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Last Updated</p>
-                <p className="font-medium">{formatDate(selectedTenant.updated_at)}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Authorized Signature */}
-        {selectedTenant.authorizedSignature && (
-          <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Authorized Signature
-            </h4>
-            <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-              <div className="flex flex-col items-center">
-                <div className="w-64 h-24 border border-gray-300 dark:border-gray-600 rounded flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-                  <Image
-                    width={256}
-                    height={96}
-                    src={`${process.env.NEXT_PUBLIC_FILE_URL}${selectedTenant.authorizedSignature}`}
-                    alt="Authorized Signature"
-                    className="max-w-full max-h-full object-contain"
-                    unoptimized
-                  />
-                </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                  Official signature for documents
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-gray-200 dark:border-gray-700">
-          <button
-            onClick={handleCloseModal}
-            className="px-6 py-3 rounded-lg border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          >
-            Close
-          </button>
-          <button
-            onClick={() => {
-              handleCloseModal();
-              setTimeout(() => handleEditTenant(selectedTenant), 100);
-            }}
-            className="px-6 py-3 rounded-lg bg-[#0A66C2] hover:bg-[#084d93] text-white font-medium transition-colors"
-          >
-            Edit Business
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
-      {/* Edit Modal */}
-     {editingTenant && !statusError && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 overflow-y-auto">     <div className="w-full max-w-4xl my-8 bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-6 max-h-[95vh] overflow-y-auto">
+      {/* Edit Modal – now includes tenantAddress & taxId */}
+      {editingTenant && !statusError && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 overflow-y-auto">
+          <div className="w-full max-w-4xl my-8 bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-6 max-h-[95vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-semibold">Edit Business</h2>
               <button onClick={handleCloseModal} className="text-gray-500 hover:text-gray-700">
@@ -801,26 +838,27 @@ export default function CompaniesListPage() {
                     className="mt-1 w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
                   />
                 </div>
-               {/* <div>
-  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Currency</label>
-  <select
-    name="currency"
-    defaultValue={
-      // Handle both cases: if currency is an object or just an ID
-      editingTenant.currency && typeof editingTenant.currency === 'object' 
-        ? editingTenant.currency.currencyId 
-        : editingTenant.currency
-    }
-    className="mt-1 w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
-    required
-  >
-    {currencies.map((cur) => (
-      <option key={cur.currencyId} value={cur.currencyId}>
-        {cur.currencyName} ({cur.currencyCode} - {cur.currencySymbol})
-      </option>
-    ))}
-  </select>
-</div> */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Tax ID / TIN / VAT Number</label>
+                  <input
+                    name="taxId"
+                    type="text"
+                    defaultValue={editingTenant.taxId || ""}
+                    placeholder="0123456789Z1 or A12345678"
+                    className="mt-1 w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Business Address</label>
+                <input
+                  name="tenantAddress"
+                  type="text"
+                  defaultValue={editingTenant.tenantAddress || ""}
+                  placeholder="123 Lagos Street, Ikeja, Lagos, Nigeria"
+                  className="mt-1 w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
+                />
               </div>
 
               <div>
@@ -915,40 +953,39 @@ export default function CompaniesListPage() {
       )}
 
       {statusError && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-    <div className="w-full max-w-md rounded-xl bg-white dark:bg-gray-900 p-6 shadow-2xl">
-      <div className="flex items-center gap-4 mb-6">
-        <div className="flex-shrink-0 w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
-          <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-md rounded-xl bg-white dark:bg-gray-900 p-6 shadow-2xl">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="flex-shrink-0 w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                Cannot Change Status
+              </h2>
+            </div>
+
+            <div className="mb-8">
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                {statusError}
+              </p>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                onClick={() => {
+                  setStatusError(null);
+                  closeModal();
+                }}
+                className="px-6 py-3 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition-colors"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
         </div>
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-          Cannot Change Status
-        </h2>
-      </div>
-
-      <div className="mb-8">
-        <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-          {statusError}
-        </p>
-      </div>
-
-      <div className="flex justify-end">
-        <button
-          onClick={() => {
-            setStatusError(null);
-            closeModal();
-          }}
-          className="px-6 py-3 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium transition-colors"
-        >
-          Got it
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
+      )}
     </div>
   );
 }
