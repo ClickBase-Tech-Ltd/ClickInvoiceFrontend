@@ -33,6 +33,95 @@ function EmailSuccessModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
   );
 }
 
+function StatusUpdateModal({
+  isOpen,
+  type,
+  title,
+  message,
+  onClose,
+  onCreateInvoice,
+  onGoToReceipts,
+}: {
+  isOpen: boolean;
+  type: "success" | "error";
+  title: string;
+  message: string;
+  onClose: () => void;
+  onCreateInvoice: () => void;
+  onGoToReceipts: () => void;
+}) {
+  if (!isOpen) return null;
+
+  const iconStyles =
+    type === "success"
+      ? "bg-[#0A66C2]/10 text-[#0A66C2]"
+      : "bg-red-100 text-red-600";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl ring-1 ring-black/5">
+        <div className="absolute right-4 top-4">
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+            aria-label="Close"
+          >
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="px-6 pb-6 pt-8">
+          <div className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full ${iconStyles}`}>
+            {type === "success" ? (
+              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 6L9 17l-5-5" />
+              </svg>
+            ) : (
+              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+            )}
+          </div>
+          <h3 className="text-center text-xl font-semibold text-gray-900">{title}</h3>
+          <p className="mt-2 text-center text-sm text-gray-600">{message}</p>
+
+          {type === "success" ? (
+            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Button
+                onClick={onCreateInvoice}
+                className="w-full !bg-[#0A66C2] !text-white !hover:bg-[#084e96]"
+              >
+                Create Another Invoice
+              </Button>
+              <Button
+                onClick={onGoToReceipts}
+                variant="outline"
+                className="w-full border-[#0A66C2]/30 text-[#0A66C2] hover:bg-[#0A66C2]/10"
+              >
+                Go to Receipts
+              </Button>
+            </div>
+          ) : (
+            <div className="mt-6">
+              <Button
+                onClick={onClose}
+                className="w-full !bg-[#0A66C2] !text-white !hover:bg-[#084e96]"
+              >
+                Close
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const ShareIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -211,6 +300,11 @@ export default function InvoiceViewPage() {
   const [logoBase64, setLogoBase64] = useState<string>("");
   const [signatureBase64, setSignatureBase64] = useState<string>("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [statusModal, setStatusModal] = useState<{
+    type: "success" | "error";
+    title: string;
+    message: string;
+  } | null>(null);
 
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -348,6 +442,10 @@ export default function InvoiceViewPage() {
     fetchInvoice();
   }, [invoiceId]);
 
+  const showStatusModal = (type: "success" | "error", title: string, message: string) => {
+    setStatusModal({ type, title, message });
+  };
+
   const handleStatusUpdate = async () => {
     if (!invoiceId || !selectedStatus) return;
     setIsUpdatingStatus(true);
@@ -374,9 +472,13 @@ export default function InvoiceViewPage() {
         setInvoice(updated);
       }
 
-      alert("Status updated successfully!");
+      showStatusModal("success", "Status updated", "Invoice status was updated successfully.");
     } catch (err: any) {
-      alert(err?.response?.data?.message || "Failed to update status");
+      showStatusModal(
+        "error",
+        "Update failed",
+        err?.response?.data?.message || "Failed to update status"
+      );
     } finally {
       setIsUpdatingStatus(false);
     }
@@ -467,6 +569,23 @@ export default function InvoiceViewPage() {
 
   return (
     <div className="max-w-4xl mx-auto p-0">
+      {statusModal && (
+        <StatusUpdateModal
+          isOpen={!!statusModal}
+          type={statusModal.type}
+          title={statusModal.title}
+          message={statusModal.message}
+          onClose={() => setStatusModal(null)}
+          onCreateInvoice={() => {
+            setStatusModal(null);
+            router.push("/dashboard/invoices/create");
+          }}
+          onGoToReceipts={() => {
+            setStatusModal(null);
+            router.push("/dashboard/receipts");
+          }}
+        />
+      )}
       <button
         onClick={() => window.history.back()}
         className="mb-6 inline-flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900"

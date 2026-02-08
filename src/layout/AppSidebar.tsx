@@ -244,7 +244,7 @@ const AppSidebar: React.FC = () => {
   className={`transition-colors ${
     isActive(nav.path)
       ? "invert brightness-0"
-      : "group-hover:invert group-hover:brightness-0"
+      : "group-hover:invert group-hover:brightness-0 dark:invert dark:brightness-0"
   }`}
 >
   {nav.icon}
