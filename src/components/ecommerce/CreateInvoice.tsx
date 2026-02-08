@@ -12,7 +12,9 @@ import Icon from "@/components/Icons";
 /* ---------------- types ---------------- */
 interface Item {
   itemDescription: string;
-  amount: number;
+  quantity: number;
+  unitPrice: number;
+  // discountAmount removed — now global
 }
 
 interface Currency {
@@ -61,32 +63,6 @@ function InvoiceSuccessModal({
   );
 }
 
-/* ---------------- error modal ---------------- */
-// function ErrorModal({
-//   isOpen,
-//   message,
-//   onClose,
-// }: {
-//   isOpen: boolean;
-//   message: string;
-//   onClose: () => void;
-// }) {
-//   if (!isOpen) return null;
-
-//   return (
-//     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur">
-//       <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md">
-//         <h3 className="text-xl font-semibold text-red-600 mb-2">Error</h3>
-//         <p className="mb-6 text-gray-700 dark:text-gray-300">{message}</p>
-//         <Button onClick={onClose} className="w-full" variant="outline">
-//           Close
-//         </Button>
-//       </div>
-//     </div>
-//   );
-// }
-
-
 function ErrorModal({ isOpen, message, onClose }: { isOpen: boolean; message: string; onClose: () => void }) {
   if (!isOpen) return null;
 
@@ -95,38 +71,26 @@ function ErrorModal({ isOpen, message, onClose }: { isOpen: boolean; message: st
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6 ring-1 ring-black/5 dark:ring-white/10">
         <div className="flex flex-col items-center text-center">
           <div className="w-16 h-16 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center mb-4">
-            <svg
-              className="w-8 h-8 text-red-600 dark:text-red-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </div>
-
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            Error
-          </h3>
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Error</h3>
           <p className="text-gray-600 dark:text-gray-300 mb-6">{message}</p>
-
-          <Button onClick={onClose} variant="outline" className="w-full">
-            Close
-          </Button>
+          <Button onClick={onClose} variant="outline" className="w-full">Close</Button>
         </div>
       </div>
     </div>
   );
 }
+
 /* ---------------- page ---------------- */
 export default function CreateInvoicePage() {
-  /* ---------------- tenant defaults ---------------- */
   const tenantDefaultCurrencyId = "";
   const tenantDefaultCurrencySymbol = "";
 
-  /* ---------------- state ---------------- */
   const [items, setItems] = useState<Item[]>([
-    { itemDescription: "", amount: 0 },
+    { itemDescription: "", quantity: 1, unitPrice: 0 },
   ]);
 
   const [form, setForm] = useState({
@@ -135,6 +99,7 @@ export default function CreateInvoicePage() {
     invoiceDate: new Date().toISOString().split("T")[0],
     dueDate: "",
     taxPercentage: "",
+    discountPercentage: "",     // ← new field
     amountPaid: 0,
     bank: "",
     accountName: "",
@@ -143,7 +108,6 @@ export default function CreateInvoicePage() {
     currency: tenantDefaultCurrencyId,
   });
 
-  /* ---------------- customers ---------------- */
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loadingCustomers, setLoadingCustomers] = useState(true);
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | "">("");
@@ -156,18 +120,19 @@ export default function CreateInvoicePage() {
     customerAddress: "",
   });
 
-  /* ---------------- currency ---------------- */
   const [useCustomCurrency, setUseCustomCurrency] = useState(false);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [loadingCurrencies, setLoadingCurrencies] = useState(true);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-
-  /* ---------------- error state ---------------- */
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  /* ---------------- load customers ---------------- */
+  const [isAddingCustomer, setIsAddingCustomer] = useState(false);
+
+  // ────────────────────────────────────────────────
+  //  Load data
+  // ────────────────────────────────────────────────
   useEffect(() => {
     const loadCustomers = async () => {
       try {
@@ -182,7 +147,6 @@ export default function CreateInvoicePage() {
     loadCustomers();
   }, []);
 
-  /* ---------------- load currencies ---------------- */
   useEffect(() => {
     const loadCurrencies = async () => {
       try {
@@ -197,23 +161,49 @@ export default function CreateInvoicePage() {
     loadCurrencies();
   }, []);
 
-  /* ---------------- calculations ---------------- */
-  const subTotal = useMemo(
-    () => items.reduce((sum, i) => sum + Number(i.amount || 0), 0),
-    [items]
-  );
+  // ────────────────────────────────────────────────
+  //  Calculations
+  // ────────────────────────────────────────────────
+const calculations = useMemo(() => {
+  let subTotal = 0;
 
-  const taxAmount = useMemo(() => {
-    if (!form.taxPercentage) return 0;
-    return subTotal * (Number(form.taxPercentage) / 100);
-  }, [subTotal, form.taxPercentage]);
+  const lineItems = items.map(item => {
+    const qty = Number(item.quantity) || 0;
+    const price = Number(item.unitPrice) || 0;
+    const lineTotal = qty * price;
 
-  const totalWithTax = subTotal + taxAmount;
-  const balanceDue = totalWithTax - Number(form.amountPaid || 0);
+    subTotal += lineTotal;
 
-  /* ---------------- item handlers ---------------- */
+    return { ...item, computedTotal: lineTotal };
+  });
+
+  const taxRate   = Number(form.taxPercentage)    || 0;
+  const discRate  = Number(form.discountPercentage) || 0;
+
+  // ─── NEW ORDER: discount first, then tax ───
+  const discountAmount = subTotal * (discRate / 100);
+  const subTotalAfterDiscount = Math.max(0, subTotal - discountAmount);
+
+  const taxAmount = subTotalAfterDiscount * (taxRate / 100);
+  const grandTotal = subTotalAfterDiscount + taxAmount;
+
+  const balanceDue = grandTotal - Number(form.amountPaid || 0);
+
+  return {
+    lineItems,
+    subTotal,
+    discountAmount,
+    discountPercentage: discRate,
+    taxAmount,
+    grandTotal,
+    balanceDue,
+  };
+}, [items, form.taxPercentage, form.discountPercentage, form.amountPaid]);
+  // ────────────────────────────────────────────────
+  //  Item handlers
+  // ────────────────────────────────────────────────
   const addItem = () =>
-    setItems([...items, { itemDescription: "", amount: 0 }]);
+    setItems([...items, { itemDescription: "", quantity: 1, unitPrice: 0 }]);
 
   const removeItem = (index: number) => {
     if (items.length > 1) {
@@ -221,47 +211,43 @@ export default function CreateInvoicePage() {
     }
   };
 
-  const updateItem = (
-    index: number,
-    field: keyof Item,
-    value: string
-  ) => {
+  const updateItem = (index: number, field: keyof Item, value: string | number) => {
     const updated = [...items];
-    updated[index][field] =
-      field === "amount" ? Number(value) : value;
+    if (field === "quantity" || field === "unitPrice") {
+      updated[index][field] = Number(value) || 0;
+    } else {
+      updated[index][field] = value as string;
+    }
     setItems(updated);
   };
 
-  // Add this new state near your other useState declarations
-const [isAddingCustomer, setIsAddingCustomer] = useState(false);
-  /* ---------------- add customer ---------------- */
+  // ────────────────────────────────────────────────
+  //  Add customer
+  // ────────────────────────────────────────────────
   const handleAddCustomer = async () => {
-  if (!newCustomer.customerName.trim()) {
-    setErrorMessage("Customer name is required");
-    return;
-  }
+    if (!newCustomer.customerName.trim()) {
+      setErrorMessage("Customer name is required");
+      return;
+    }
 
-  setIsAddingCustomer(true); // Disable main save button
+    setIsAddingCustomer(true);
+    try {
+      const res = await api.post("/customers/tenant", newCustomer);
+      setCustomers((prev) => [...prev, res.data]);
+      setSelectedCustomerId(res.data.customerId);
+      setShowAddCustomer(false);
+      setNewCustomer({ customerName: "", customerPhone: "", customerEmail: "", customerAddress: "" });
+      setErrorMessage(null);
+    } catch (err: any) {
+      setErrorMessage(err?.response?.data?.message || "Failed to add customer");
+    } finally {
+      setIsAddingCustomer(false);
+    }
+  };
 
-  try {
-    const res = await api.post("/customers/tenant", newCustomer);
-    setCustomers((prev) => [...prev, res.data]);
-    setSelectedCustomerId(res.data.customerId);
-    setShowAddCustomer(false);
-    setNewCustomer({
-      customerName: "",
-      customerPhone: "",
-      customerEmail: "",
-      customerAddress: "",
-    });
-    setErrorMessage(null); // Clear any previous errors
-  } catch (err: any) {
-    setErrorMessage(err?.response?.data?.message || "Failed to add customer");
-  } finally {
-    setIsAddingCustomer(false); // Re-enable main button
-  }
-};
-  /* ---------------- submit ---------------- */
+  // ────────────────────────────────────────────────
+  //  Submit
+  // ────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -275,13 +261,19 @@ const [isAddingCustomer, setIsAddingCustomer] = useState(false);
         dueDate: form.dueDate || null,
         customerId: selectedCustomerId,
         taxPercentage: form.taxPercentage || null,
+        discountPercentage: form.discountPercentage || null,     // ← added
         amountPaid: Number(form.amountPaid) || 0,
         currency: useCustomCurrency ? Number(form.currency) : undefined,
         bank: form.bank,
         accountName: form.accountName,
         accountNumber: form.accountNumber,
         notes: form.notes,
-        items,
+        items: calculations.lineItems.map(item => ({
+          itemDescription: item.itemDescription,
+          quantity: item.quantity,
+          amount: item.unitPrice,
+          // discountAmount removed from line items
+        })),
       };
 
       await api.post("/invoices", payload);
@@ -295,30 +287,38 @@ const [isAddingCustomer, setIsAddingCustomer] = useState(false);
     }
   };
 
-  /* ---------------- UI ---------------- */
+  const formatMoney = (value: number) => {
+    return `${new Intl.NumberFormat("en-NG", { minimumFractionDigits: 2 }).format(value)}`;
+  };
+
+  // ────────────────────────────────────────────────
+  //  Render
+  // ────────────────────────────────────────────────
   return (
     <div className="max-w-4xl mx-auto">
       <button
         onClick={() => history.back()}
         className="mb-6 inline-flex items-center gap-2 text-sm"
       >
-        {/* <ChevronLeftIcon className="w-5 h-5" /> */}
-         <Icon src={ChevronLeftIcon} className="w-5 h-5"/>
+        <Icon src={ChevronLeftIcon} className="w-5 h-5" />
         Return
       </button>
 
+      {/* User Notes */}
+      <div className="mb-4 p-2 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 rounded flex items-center gap-2">
+        <span className="text-lg">ℹ️</span>
+        <p className="text-sm text-blue-800 dark:text-blue-200">Fill all required fields, add a customer, include items, and bank details. Tax & balance calculate automatically.</p>
+      </div>
+
       <ComponentCard title="Create Invoice">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* ... [rest of the form fields remain unchanged] ... */}
-
           {/* Invoice ID */}
           <div>
-            <Label>Invoice ID (Optional)</Label>
+            <Label>Invoice ID (Optional. System will auto-generate if you leave blank)</Label>
             <Input
               value={form.userInvoiceId}
-              onChange={(e) =>
-                setForm({ ...form, userInvoiceId: e.target.value })
-              }
+              placeholder="E.g. INV-0001"
+              onChange={(e) => setForm({ ...form, userInvoiceId: e.target.value })}
             />
           </div>
 
@@ -327,10 +327,9 @@ const [isAddingCustomer, setIsAddingCustomer] = useState(false);
             <Label>Project / Title</Label>
             <Input
               value={form.projectName}
-              onChange={(e) =>
-                setForm({ ...form, projectName: e.target.value })
-              }
+              onChange={(e) => setForm({ ...form, projectName: e.target.value })}
               required
+              placeholder="The title or name of this invoice"
             />
           </div>
 
@@ -341,126 +340,188 @@ const [isAddingCustomer, setIsAddingCustomer] = useState(false);
               <select
                 className="w-full px-4 py-3 border rounded-lg"
                 value={selectedCustomerId}
-                onChange={(e) =>
-                  setSelectedCustomerId(
-                    e.target.value ? Number(e.target.value) : ""
-                  )
-                }
+                onChange={(e) => setSelectedCustomerId(e.target.value ? Number(e.target.value) : "")}
                 required
               >
-                <option value="">
-                  {loadingCustomers
-                    ? "Loading customers..."
-                    : "Select customer"}
-                </option>
+                <option value="">{loadingCustomers ? "Loading..." : "Select customer"}</option>
                 {customers.map((c) => (
                   <option key={c.customerId} value={c.customerId}>
                     {c.customerName}
                   </option>
                 ))}
               </select>
-
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowAddCustomer(true)}
-              >
+              <Button type="button" variant="outline" onClick={() => setShowAddCustomer(true)}>
                 + Add
               </Button>
             </div>
           </div>
 
-          {/* Items */}
+          {/* ────────────── Items ────────────── */}
           <div>
             <Label>Invoice Items</Label>
-            {items.map((item, i) => (
-              <div key={i} className="grid md:grid-cols-3 gap-4 mt-3">
-                <Input
-                  placeholder="Description"
-                  value={item.itemDescription}
-                  onChange={(e) =>
-                    updateItem(i, "itemDescription", e.target.value)
-                  }
-                  required
-                />
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={item.amount}
-                  onChange={(e) =>
-                    updateItem(i, "amount", e.target.value)
-                  }
-                  required
-                  placeholder="Amount"
-                />
-                {items.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeItem(i)}
-                    className="text-red-600 text-xl"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-            ))}
+
+            {items.map((item, i) => {
+              const line = calculations.lineItems[i];
+              return (
+                <div key={i} className="grid grid-cols-1 md:grid-cols-5 gap-3 mt-3 items-end">
+                  {/* Description */}
+<div className="md:col-span-2">
+  <Input
+    placeholder="Description"
+    value={item.itemDescription}
+    onChange={(e) => updateItem(i, "itemDescription", e.target.value)}
+    required
+  />
+</div>
+
+{/* Qty – smaller */}
+<div className="md:col-span-1 max-w-[150px]">
+  <Label className="text-xs">Qty</Label>
+  <Input
+    type="number"
+    min="1"
+    step="1"
+    value={item.quantity}
+    onChange={(e) => updateItem(i, "quantity", e.target.value)}
+    required
+    placeholder="1"
+  />
+</div>
+
+{/* Unit price + total + remove */}
+<div className="md:col-span-2 flex items-center gap-2">
+  <div className="flex-1">
+    <Label className="text-xs">Unit Price</Label>
+    <Input
+      type="number"
+      step="0.01"
+      min="0"
+      value={item.unitPrice}
+      placeholder="0"
+      onChange={(e) => updateItem(i, "unitPrice", e.target.value)}
+      required
+    />
+  </div>
+
+  <div className="text-right min-w-[100px] text-sm font-medium text-gray-700 dark:text-gray-300">
+    {/* formatMoney({line.computedTotal.toFixed(2)})} */}
+    {formatMoney(line.computedTotal)}
+  </div>
+
+  {items.length > 1 && (
+    <button
+      type="button"
+      onClick={() => removeItem(i)}
+      className="text-red-600 text-xl pb-2"
+    >
+      ×
+    </button>
+  )}
+</div>
+
+                </div>
+              );
+            })}
+
             <button
               type="button"
               onClick={addItem}
-              className="mt-3 text-sm text-brand-500"
+              className="mt-3 text-sm text-brand-500 hover:underline"
             >
               + Add item
             </button>
           </div>
 
-          {/* Tax & Payment */}
-          <div className="grid md:grid-cols-2 gap-6">
-            <Input
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="Tax % (e.g. 7.5)"
-              value={form.taxPercentage}
-              onChange={(e) =>
-                setForm({ ...form, taxPercentage: e.target.value })
-              }
-            />
-            <Input
-              type="number"
-              placeholder="Amount Paid"
-              value={form.amountPaid}
-              onChange={(e) =>
-                setForm({ ...form, amountPaid: Number(e.target.value) })
-              }
-            />
+          {/* Tax, Discount & Payment – now on same row */}
+          <div className="grid md:grid-cols-3 gap-6">
+            <div>
+              <Label>Discount %</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                placeholder="0"
+                value={form.discountPercentage}
+                onChange={(e) => setForm({ ...form, discountPercentage: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>Tax % (e.g. 7.5)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0"
+                value={form.taxPercentage}
+                onChange={(e) => setForm({ ...form, taxPercentage: e.target.value })}
+              />
+            </div>
+            
+            <div>
+              <Label>Amount Paid</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.amountPaid}
+                onChange={(e) => setForm({ ...form, amountPaid: Number(e.target.value) || 0 })}
+                placeholder="Amount Paid"
+              />
+            </div>
           </div>
 
           {/* Totals */}
-          <div className="bg-gray-50 p-4 rounded text-sm">
-            <p>Subtotal: {subTotal.toFixed(2)}</p>
-            <p>Tax: {taxAmount.toFixed(2)}</p>
-            <p className="font-semibold">
-              Balance Due: {balanceDue.toFixed(2)}
-            </p>
-          </div>
+          <div className="bg-gray-50 dark:bg-gray-800/50 p-5 rounded-lg text-sm space-y-1.5">
+  <div className="flex justify-between">
+    <span>Subtotal:</span>
+    
+    <span>{formatMoney(calculations.subTotal)}</span>
+  </div>
 
-          {/* Bank */}
+  <div className="flex justify-between text-amber-700 dark:text-amber-400">
+    <span>Discount ({form.discountPercentage || 0}%):</span>
+    <span>-{formatMoney(calculations.discountAmount)}</span>
+  </div>
+
+  <div className="flex justify-between">
+    <span>Subtotal after discount:</span>
+    <span>{formatMoney((calculations.subTotal - calculations.discountAmount))}</span>
+  </div>
+
+  <div className="flex justify-between">
+    <span>Tax ({form.taxPercentage || 0}%):</span>
+    <span>{formatMoney(calculations.taxAmount)}</span>
+  </div>
+
+  <div className="flex justify-between pt-3 border-t font-semibold text-base">
+    <span>Grand Total:</span>
+    <span>{formatMoney(calculations.grandTotal)}</span>
+  </div>
+
+  <div className="flex justify-between text-green-700 dark:text-green-400 font-medium">
+    <span>Balance Due:</span>
+    <span>{formatMoney(calculations.balanceDue)}</span>
+  </div>
+</div>
+
+          {/* Bank Details */}
           <div className="grid md:grid-cols-3 gap-6">
-            <Input
+            <input
               placeholder="Bank"
+              value={form.bank}
+              onChange={(e) => setForm({ ...form, bank: e.target.value })}
               required
-              onChange={(e) =>
-                setForm({ ...form, bank: e.target.value })
-              }
+              className="bg-neutral-secondary-medium border border-default-medium text-heading text-sm rounded-base focus:ring-brand focus:border-brand block w-full px-3 py-2.5 shadow-xs placeholder:text-body"
             />
-            <Input
+            <input
               placeholder="Account Name"
+              value={form.accountName}
+              onChange={(e) => setForm({ ...form, accountName: e.target.value })}
               required
-              onChange={(e) =>
-                setForm({ ...form, accountName: e.target.value })
-              }
+              className="bg-neutral-secondary-medium border border-default-medium text-heading text-sm rounded-base focus:ring-brand focus:border-brand block w-full px-3 py-2.5 shadow-xs placeholder:text-body"
             />
-            <Input
+            <input
               placeholder="Account Number"
               value={form.accountNumber}
               inputMode="numeric"
@@ -470,112 +531,69 @@ const [isAddingCustomer, setIsAddingCustomer] = useState(false);
                 setForm({ ...form, accountNumber: digitsOnly });
               }}
               required
+              className="bg-neutral-secondary-medium border border-default-medium text-heading text-sm rounded-base focus:ring-brand focus:border-brand block w-full px-3 py-2.5 shadow-xs placeholder:text-body"
             />
           </div>
 
           {/* Notes */}
           <textarea
             className="w-full p-3 border rounded"
-            placeholder="Notes (optional)"
-            onChange={(e) =>
-              setForm({ ...form, notes: e.target.value })
-            }
+            placeholder="Notes / Payment instructions (optional)"
+            rows={3}
+            value={form.notes}
+            onChange={(e) => setForm({ ...form, notes: e.target.value })}
           />
 
-          {/* <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Creating..." : "Save & Send"}
-          </Button> */}
-
-          <Button 
-  type="submit" 
-  disabled={isSubmitting || isAddingCustomer}
->
-  {isSubmitting 
-    ? "Creating..." 
-    : isAddingCustomer 
-      ? "Adding Customer..." 
-      : "Save"
-  }
-</Button>
+          <Button
+            type="submit"
+            disabled={isSubmitting || isAddingCustomer}
+            className="w-full md:w-auto !bg-[#0A66C2] hover:!bg-[#004182]" 
+          >
+            {isSubmitting ? "Creating..." : isAddingCustomer ? "Adding Customer..." : "Create Invoice"}
+          </Button>
         </form>
       </ComponentCard>
 
       {/* Modals */}
-      <InvoiceSuccessModal
-        isOpen={showSuccessModal}
-        onClose={() => setShowSuccessModal(false)}
-      />
+      <InvoiceSuccessModal isOpen={showSuccessModal} onClose={() => setShowSuccessModal(false)} />
+      <ErrorModal isOpen={!!errorMessage} message={errorMessage!} onClose={() => setErrorMessage(null)} />
 
-      <ErrorModal
-        isOpen={!!errorMessage}
-        message={errorMessage || "An unknown error occurred"}
-        onClose={() => setErrorMessage(null)}
-      />
-      
-
-      {/* Add customer modal */}
+      {/* Add Customer Modal */}
       {showAddCustomer && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md space-y-4">
-            <h3 className="text-lg font-semibold">Add Customer</h3>
+            <h3 className="text-lg font-semibold">Add New Customer</h3>
 
             <Input
-              placeholder="Customer Name"
+              placeholder="Customer Name *"
               value={newCustomer.customerName}
-              onChange={(e) =>
-                setNewCustomer({
-                  ...newCustomer,
-                  customerName: e.target.value,
-                })
-              }
+              onChange={(e) => setNewCustomer({ ...newCustomer, customerName: e.target.value })}
             />
             <Input
               placeholder="Phone"
-              value={newCustomer.customerPhone}
-              onChange={(e) =>
-                setNewCustomer({
-                  ...newCustomer,
-                  customerPhone: e.target.value,
-                })
-              }
+              value={newCustomer.customerPhone ?? ""}
+              onChange={(e) => setNewCustomer({ ...newCustomer, customerPhone: e.target.value })}
             />
             <Input
               placeholder="Email"
-              value={newCustomer.customerEmail}
-              onChange={(e) =>
-                setNewCustomer({
-                  ...newCustomer,
-                  customerEmail: e.target.value,
-                })
-              }
+              value={newCustomer.customerEmail ?? ""}
+              onChange={(e) => setNewCustomer({ ...newCustomer, customerEmail: e.target.value })}
             />
             <textarea
               className="w-full p-3 border rounded"
               placeholder="Address"
-              value={newCustomer.customerAddress}
-              onChange={(e) =>
-                setNewCustomer({
-                  ...newCustomer,
-                  customerAddress: e.target.value,
-                })
-              }
+              value={newCustomer.customerAddress ?? ""}
+              onChange={(e) => setNewCustomer({ ...newCustomer, customerAddress: e.target.value })}
             />
 
             <div className="flex justify-end gap-3">
-  <Button
-    variant="outline"
-    onClick={() => setShowAddCustomer(false)}
-    disabled={isAddingCustomer}
-  >
-    Cancel
-  </Button>
-  <Button 
-    onClick={handleAddCustomer}
-    disabled={isAddingCustomer}
-  >
-    {isAddingCustomer ? "Saving..." : "Save"}
-  </Button>
-</div>
+              <Button variant="outline" onClick={() => setShowAddCustomer(false)} disabled={isAddingCustomer}>
+                Cancel
+              </Button>
+              <Button onClick={handleAddCustomer} disabled={isAddingCustomer}>
+                {isAddingCustomer ? "Saving..." : "Save Customer"}
+              </Button>
+            </div>
           </div>
         </div>
       )}

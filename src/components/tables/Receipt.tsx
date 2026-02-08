@@ -18,7 +18,7 @@ import api from "../../../lib/api";
 import { ChevronLeftIcon } from "@/icons";
 import Icon from "@/components/Icons";
 
-// Success Modal (shared with invoice)
+// Success Modal
 function EmailSuccessModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   if (!isOpen) return null;
 
@@ -46,26 +46,30 @@ interface FullReceipt {
   receiptId: string;
   userGeneratedReceiptId?: string | null;
   projectName: string;
-  subtotal: number;
+  subtotal: number;               // sum of line totals (before discount & tax)
   taxPercentage: number;
   taxAmount: number;
-  totalAmount: number;
+  discountPercentage: number;
+  discountAmount: number;
+  totalAmount: number;            // grand total = (subtotal - discount) + tax
   amountPaid: number;
   currencySymbol: string;
   status: string;
   receiptDate: string;
   customerName: string;
-  customerEmail?: string;
-  customerPhone?: string;
-  customerAddress?: string;
+  customerEmail?: string | null;
+  customerPhone?: string | null;
+  customerAddress?: string | null;
   accountName: string;
   accountNumber: string;
   bank: string;
   items: Array<{
     description: string;
-    amount: number;
+    quantity: number;
+    unitPrice: number;
+    amount: number;               // computed: quantity × unitPrice
   }>;
-  notes?: string;
+  notes?: string | null;
   company: {
     name: string;
     email: string;
@@ -74,62 +78,47 @@ interface FullReceipt {
     signatureUrl: string;
   };
   user: {
-    currentPlan: number | string; // From creator.currentPlan
+    currentPlan: number | string;
   };
 }
 
 const pdfStyles = StyleSheet.create({
-  page: { padding: 50, fontSize: 11, fontFamily: "Helvetica", color: "#333" },
+  page: { padding: 40, fontSize: 11, fontFamily: "Helvetica", color: "#333" },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 40,
+    marginBottom: 30,
     borderBottom: "2 solid #e0e0e0",
-    paddingBottom: 20,
+    paddingBottom: 15,
   },
-  logo: { width: 150, height: "auto", objectFit: "contain" },
-  companyInfo: { textAlign: "right", maxWidth: 200 },
-  companyName: {
-    fontSize: 22,
-    fontFamily: "Helvetica-Bold",
-    marginBottom: 8,
-    color: "#16A34A",
-  },
-  title: {
-    fontSize: 30,
-    fontFamily: "Helvetica-Bold",
-    marginBottom: 10,
-    textAlign: "center",
-    color: "#16A34A",
-  },
-  receiptNumber: { textAlign: "center", marginBottom: 30, fontSize: 16 },
-  section: { marginBottom: 25 },
-  row: { flexDirection: "row", justifyContent: "space-between", marginBottom: 10 },
-  label: { color: "#666", fontSize: 10 },
+  logo: { width: 140, height: "auto" },
+  companyInfo: { textAlign: "right", maxWidth: 220 },
+  companyName: { fontSize: 20, fontFamily: "Helvetica-Bold", marginBottom: 6, color: "#16A34A" },
+  title: { fontSize: 28, fontFamily: "Helvetica-Bold", marginBottom: 8, textAlign: "center", color: "#16A34A" },
+  receiptNumber: { textAlign: "center", marginBottom: 25, fontSize: 14 },
+  section: { marginBottom: 20 },
+  row: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
+  label: { color: "#555", fontSize: 10 },
   value: { fontSize: 11, fontFamily: "Helvetica-Bold" },
-  customerAddress: { fontSize: 10, marginTop: 4, color: "#666", maxWidth: 200 },
-  table: { width: "100%", marginVertical: 20, border: "1px solid #e5e7eb" },
+  customerAddress: { fontSize: 10, marginTop: 3, color: "#555", maxWidth: 200 },
+  table: { width: "100%", marginVertical: 20, border: "1 solid #d1d5db" },
   tableHeader: {
     backgroundColor: "#f0fdf4",
     flexDirection: "row",
-    borderBottom: "1px solid #e5e7eb",
+    borderBottom: "1 solid #d1d5db",
   },
-  tableRow: { flexDirection: "row", borderBottom: "1px solid #e5e7eb" },
-  cell: { padding: 12, flex: 1 },
+  tableRow: { flexDirection: "row", borderBottom: "1 solid #d1d5db" },
+  cell: { padding: 8, flexGrow: 1, flexBasis: 0 },
+  cellCenter: { textAlign: "center" },
   cellRight: { textAlign: "right" },
-  totalRow: { backgroundColor: "#dcfce7", fontFamily: "Helvetica-Bold", fontSize: 12 },
-  paidRow: { backgroundColor: "#bbf7d0", fontFamily: "Helvetica-Bold", fontSize: 15 },
-  paymentSection: { marginTop: 30, padding: 15, backgroundColor: "#f0fdf4", borderRadius: 6 },
-  notes: {
-    marginTop: 40,
-    fontSize: 11,
-    backgroundColor: "#f9fafb",
-    padding: 15,
-    borderRadius: 6,
-  },
-  signatureSection: { marginTop: 50, flexDirection: "row", justifyContent: "flex-end" },
-  signatureImage: { width: 180, height: 80, objectFit: "contain" },
-  signatureLabel: { marginTop: 10, textAlign: "center", fontSize: 10 },
+  totalRow: { backgroundColor: "#dcfce7", fontFamily: "Helvetica-Bold" },
+  paidRow: { backgroundColor: "#bbf7d0", fontFamily: "Helvetica-Bold", fontSize: 13 },
+  discountRow: { color: "#dc2626" },
+  paymentSection: { marginTop: 25, padding: 12, backgroundColor: "#f0fdf4", borderRadius: 6 },
+  notes: { marginTop: 30, padding: 12, backgroundColor: "#f9fafb", borderRadius: 6 },
+  signatureSection: { marginTop: 45, alignItems: "flex-end" },
+  signatureImage: { width: 160, height: 70 },
+  signatureLabel: { marginTop: 6, fontSize: 9, textAlign: "center" },
 });
 
 const ReceiptPDF = ({ receipt }: { receipt: FullReceipt }) => {
@@ -143,7 +132,7 @@ const ReceiptPDF = ({ receipt }: { receipt: FullReceipt }) => {
           {receipt.company.logoUrl ? (
             <Image style={pdfStyles.logo} src={receipt.company.logoUrl} />
           ) : (
-            <View style={{ width: 150 }} />
+            <View style={{ width: 140 }} />
           )}
           <View style={pdfStyles.companyInfo}>
             <Text style={pdfStyles.companyName}>{receipt.company.name}</Text>
@@ -179,39 +168,63 @@ const ReceiptPDF = ({ receipt }: { receipt: FullReceipt }) => {
 
         <View style={pdfStyles.table}>
           <View style={pdfStyles.tableHeader}>
-            <Text style={pdfStyles.cell}>Description</Text>
-            <Text style={[pdfStyles.cell, pdfStyles.cellRight]}>Amount</Text>
+            <Text style={[pdfStyles.cell, { flexGrow: 3 }]}>Description</Text>
+            <Text style={[pdfStyles.cell, pdfStyles.cellCenter]}>Qty</Text>
+            <Text style={[pdfStyles.cell, pdfStyles.cellRight]}>Unit Price</Text>
+            <Text style={[pdfStyles.cell, pdfStyles.cellRight]}>Line Total</Text>
           </View>
+
           {receipt.items.map((item, idx) => (
             <View key={idx} style={pdfStyles.tableRow} wrap={false}>
-              <Text style={pdfStyles.cell}>{item.description}</Text>
+              <Text style={[pdfStyles.cell, { flexGrow: 3 }]}>{item.description}</Text>
+              <Text style={[pdfStyles.cell, pdfStyles.cellCenter]}>{item.quantity}</Text>
+              <Text style={[pdfStyles.cell, pdfStyles.cellRight]}>
+                {receipt.currencySymbol} {formatMoney(item.unitPrice)}
+              </Text>
               <Text style={[pdfStyles.cell, pdfStyles.cellRight]}>
                 {receipt.currencySymbol} {formatMoney(item.amount)}
               </Text>
             </View>
           ))}
+
           <View style={[pdfStyles.tableRow, pdfStyles.totalRow]}>
-            <Text style={[pdfStyles.cell, { textAlign: "right" }]}>Subtotal</Text>
+            <Text style={[pdfStyles.cell, { flexGrow: 3, textAlign: "right" }]}>Subtotal</Text>
             <Text style={[pdfStyles.cell, pdfStyles.cellRight]}>
               {receipt.currencySymbol} {formatMoney(receipt.subtotal)}
             </Text>
           </View>
+
+          {receipt.discountPercentage > 0 && (
+            <View style={[pdfStyles.tableRow, pdfStyles.totalRow]}>
+              <Text style={[pdfStyles.cell, { flexGrow: 3, textAlign: "right", color: "#dc2626" }]}>
+                Discount ({receipt.discountPercentage}%)
+              </Text>
+              <Text style={[pdfStyles.cell, pdfStyles.cellRight, { color: "#dc2626" }]}>
+                -{receipt.currencySymbol} {formatMoney(receipt.discountAmount)}
+              </Text>
+            </View>
+          )}
+
           <View style={[pdfStyles.tableRow, pdfStyles.totalRow]}>
-            <Text style={[pdfStyles.cell, { textAlign: "right" }]}>
+            <Text style={[pdfStyles.cell, { flexGrow: 3, textAlign: "right" }]}>
+              Amount after discount
+            </Text>
+            <Text style={[pdfStyles.cell, pdfStyles.cellRight]}>
+              {receipt.currencySymbol} {formatMoney(receipt.subtotal - receipt.discountAmount)}
+            </Text>
+          </View>
+
+          <View style={[pdfStyles.tableRow, pdfStyles.totalRow]}>
+            <Text style={[pdfStyles.cell, { flexGrow: 3, textAlign: "right" }]}>
               Tax ({receipt.taxPercentage}%)
             </Text>
             <Text style={[pdfStyles.cell, pdfStyles.cellRight]}>
               {receipt.currencySymbol} {formatMoney(receipt.taxAmount)}
             </Text>
           </View>
-          <View style={[pdfStyles.tableRow, pdfStyles.totalRow]}>
-            <Text style={[pdfStyles.cell, { textAlign: "right" }]}>Total</Text>
-            <Text style={[pdfStyles.cell, pdfStyles.cellRight]}>
-              {receipt.currencySymbol} {formatMoney(receipt.totalAmount)}
-            </Text>
-          </View>
+
           <View style={[pdfStyles.tableRow, pdfStyles.paidRow]}>
-            <Text style={[pdfStyles.cell, { textAlign: "right", color: "#16A34A" }]}>
+            <Text style={[pdfStyles.cell, { flexGrow: 3, textAlign: "right", color: "#16A34A" }]}>
               Amount Paid
             </Text>
             <Text style={[pdfStyles.cell, pdfStyles.cellRight, { color: "#16A34A" }]}>
@@ -221,7 +234,7 @@ const ReceiptPDF = ({ receipt }: { receipt: FullReceipt }) => {
         </View>
 
         <View style={pdfStyles.paymentSection}>
-          <Text style={{ fontFamily: "Helvetica-Bold", marginBottom: 10, fontSize: 12 }}>
+          <Text style={{ fontFamily: "Helvetica-Bold", marginBottom: 8, fontSize: 12 }}>
             Payment Received Via
           </Text>
           <Text>Account Name: {receipt.accountName}</Text>
@@ -231,9 +244,7 @@ const ReceiptPDF = ({ receipt }: { receipt: FullReceipt }) => {
 
         {receipt.notes && (
           <View style={pdfStyles.notes}>
-            <Text style={{ fontFamily: "Helvetica-Bold", marginBottom: 8 }}>
-              Notes
-            </Text>
+            <Text style={{ fontFamily: "Helvetica-Bold", marginBottom: 6 }}>Notes</Text>
             <Text>{receipt.notes}</Text>
           </View>
         )}
@@ -279,8 +290,6 @@ export default function ReceiptViewPage() {
   const [error, setError] = useState("");
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-
-  // Email sending states
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [alternateEmail, setAlternateEmail] = useState("");
@@ -308,16 +317,34 @@ export default function ReceiptViewPage() {
           throw new Error("Receipt or company data not found");
         }
 
-        const items = raw.items.map((item: any) => ({
-          description: item.itemDescription,
-          amount: parseFloat(item.amount),
-        }));
+        // Items transformation – backend now stores unit price in 'amount'
+        const items = raw.items.map((item: any) => {
+          const qty = Number(item.quantity ?? 1);
+          const unitPrice = Number(item.amount ?? 0); // unit price
+          const lineTotal = qty * unitPrice;
 
-        const subtotal = items.reduce((sum: number, item: any) => sum + item.amount, 0);
-        const taxPercentage = parseFloat(raw.taxPercentage || "0");
-        const taxAmount = subtotal * (taxPercentage / 100);
-        const totalAmount = subtotal + taxAmount;
-        const amountPaid = parseFloat(raw.amountPaid || totalAmount);
+          return {
+            description: item.itemDescription,
+            quantity: qty,
+            unitPrice,
+            amount: lineTotal,
+          };
+        });
+
+        // Prefer stored values, fallback to calculation
+        const subtotal = Number(raw.subtotal ?? items.reduce((sum: number, i) => sum + i.amount, 0));
+
+        const discountPercentage = Number(raw.discountPercentage ?? 0);
+        const discountAmount = Number(raw.discountAmount ?? subtotal * (discountPercentage / 100));
+
+        const amountAfterDiscount = Math.max(0, subtotal - discountAmount);
+
+        const taxPercentage = Number(raw.taxPercentage ?? 0);
+        const taxAmount = Number(raw.taxAmount ?? amountAfterDiscount * (taxPercentage / 100));
+
+        const totalAmount = Number(raw.totalAmount ?? amountAfterDiscount + taxAmount);
+
+        const amountPaid = Number(raw.amountPaid ?? totalAmount);
 
         const logoUrl = raw.tenant.tenantLogo
           ? `${process.env.NEXT_PUBLIC_FILE_URL}${raw.tenant.tenantLogo}`
@@ -333,6 +360,8 @@ export default function ReceiptViewPage() {
           subtotal,
           taxPercentage,
           taxAmount,
+          discountPercentage,
+          discountAmount,
           totalAmount,
           amountPaid,
           currencySymbol: raw.currency_detail?.currencySymbol || "₦",
@@ -465,16 +494,15 @@ export default function ReceiptViewPage() {
     );
   }
 
-  // const isPremium = receipt.user.currentPlan === 2 || receipt.user.currentPlan === 3;
-// Recommended: Explicit and safe comparison
-const isPremium = ["2", "3", 2, 3].includes(receipt.user.currentPlan);
+  const isPremium = ["2", "3", 2, 3].includes(receipt.user.currentPlan);
+
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <button
         onClick={() => window.history.back()}
         className="mb-6 inline-flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900"
       >
-        <Icon src={ChevronLeftIcon} className="w-5 h-5"/>
+        <Icon src={ChevronLeftIcon} className="w-5 h-5" />
         Back to Receipts
       </button>
 
@@ -541,29 +569,56 @@ const isPremium = ["2", "3", 2, 3].includes(receipt.user.currentPlan);
             <table className="w-full border-collapse min-w-full sm:min-w-0">
               <thead>
                 <tr className="border-b text-left text-gray-600 bg-blue-50">
-                  <th className="py-3 px-2">Description</th>
-                  <th className="py-3 px-2 text-right">Amount</th>
+                  <th className="py-3 px-3">Description</th>
+                  <th className="py-3 px-2 text-center">Qty</th>
+                  <th className="py-3 px-2 text-right">Unit Price</th>
+                  <th className="py-3 px-2 text-right">Line Total</th>
                 </tr>
               </thead>
               <tbody>
                 {receipt.items.map((item, idx) => (
                   <tr key={idx} className="border-b">
-                    <td className="py-4 px-2">{item.description}</td>
+                    <td className="py-4 px-3">{item.description}</td>
+                    <td className="py-4 px-2 text-center">{item.quantity}</td>
+                    <td className="py-4 px-2 text-right">{formatMoney(item.unitPrice, receipt.currencySymbol)}</td>
                     <td className="py-4 px-2 text-right font-medium">
                       {formatMoney(item.amount, receipt.currencySymbol)}
                     </td>
                   </tr>
                 ))}
+
                 <tr>
-                  <td className="py-3 px-2 text-right font-medium">Subtotal</td>
-                  <td className="py-3 px-2 text-right">{formatMoney(receipt.subtotal, receipt.currencySymbol)}</td>
+                  <td colSpan={3} className="py-3 px-3 text-right font-medium">Subtotal</td>
+                  <td className="py-3 px-2 text-right">
+                    {formatMoney(receipt.subtotal, receipt.currencySymbol)}
+                  </td>
                 </tr>
+
+                {receipt.discountPercentage > 0 && (
+                  <tr>
+                    <td colSpan={3} className="py-3 px-3 text-right font-medium text-red-700">
+                      Discount ({receipt.discountPercentage}%)
+                    </td>
+                    <td className="py-3 px-2 text-right text-red-700">
+                      -{formatMoney(receipt.discountAmount, receipt.currencySymbol)}
+                    </td>
+                  </tr>
+                )}
+
                 <tr>
-                  <td className="py-3 px-2 text-right font-medium">Tax ({receipt.taxPercentage}%)</td>
+                  <td colSpan={3} className="py-3 px-3 text-right font-medium">Amount after discount</td>
+                  <td className="py-3 px-2 text-right">
+                    {formatMoney(receipt.subtotal - receipt.discountAmount, receipt.currencySymbol)}
+                  </td>
+                </tr>
+
+                <tr>
+                  <td colSpan={3} className="py-3 px-3 text-right font-medium">Tax ({receipt.taxPercentage}%)</td>
                   <td className="py-3 px-2 text-right">{formatMoney(receipt.taxAmount, receipt.currencySymbol)}</td>
                 </tr>
+
                 <tr className="bg-blue-50">
-                  <td className="py-4 px-2 text-right font-bold text-lg">Total Paid</td>
+                  <td colSpan={3} className="py-4 px-3 text-right font-bold text-lg">Total Paid</td>
                   <td className="py-4 px-2 text-right font-bold text-xl text-[#0A66C2]">
                     {formatMoney(receipt.amountPaid, receipt.currencySymbol)}
                   </td>
@@ -606,7 +661,6 @@ const isPremium = ["2", "3", 2, 3].includes(receipt.user.currentPlan);
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row flex-wrap gap-4 pt-8 border-t">
             <div className="flex flex-col gap-4 w-full">
-              {/* Primary Send Button */}
               <button
                 onClick={() => handleSendEmail(false)}
                 disabled={isSendingEmail || !receipt.customerEmail}
@@ -629,7 +683,6 @@ const isPremium = ["2", "3", 2, 3].includes(receipt.user.currentPlan);
                 )}
               </button>
 
-              {/* Premium: Alternate Email */}
               {isPremium && (
                 <div className="flex flex-col gap-3 bg-green-50 p-4 rounded-lg border border-green-200">
                   <div className="flex items-center gap-2">
@@ -694,7 +747,6 @@ const isPremium = ["2", "3", 2, 3].includes(receipt.user.currentPlan);
             </Button>
           </div>
 
-          {/* Success Modal */}
           <EmailSuccessModal
             isOpen={showSuccessModal}
             onClose={() => setShowSuccessModal(false)}
