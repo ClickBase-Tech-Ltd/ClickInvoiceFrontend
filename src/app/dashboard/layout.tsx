@@ -4,6 +4,7 @@ import { useSidebar } from "@/context/SidebarContext";
 import AppHeader from "@/layout/AppHeader";
 import AppSidebar from "@/layout/AppSidebar";
 import Backdrop from "@/layout/Backdrop";
+import SupportBubble from "@/layout/SupportBubble";
 import React from "react";
 import { ModalProvider } from "../../../context/ModalContext";
 import { TenantProvider } from "../../context/TenantContext"; // ✅ ADD THIS
@@ -40,6 +41,8 @@ export default function AdminLayout({
             <div className="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-2">
               {children}
             </div>
+
+            <SupportBubble />
           </div>
         </div>
       </ModalProvider>

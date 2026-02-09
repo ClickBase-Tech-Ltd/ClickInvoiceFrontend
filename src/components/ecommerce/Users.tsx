@@ -42,6 +42,14 @@ interface User {
   user_role: UserRole;
 }
 
+interface TenantSummary {
+  tenantId: number;
+  tenantName: string;
+  tenantEmail: string | null;
+  status: "active" | "inactive" | string;
+  created_at: string;
+}
+
 /* ---------------- Modals ---------------- */
 
 // Success Modal
@@ -118,6 +126,9 @@ export default function AdminUsersPage() {
   const [error, setError] = useState("");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [userTenants, setUserTenants] = useState<TenantSummary[]>([]);
+  const [userTenantsLoading, setUserTenantsLoading] = useState(false);
+  const [userTenantsError, setUserTenantsError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [roleFilter, setRoleFilter] = useState<string>("all");
@@ -203,6 +214,20 @@ export default function AdminUsersPage() {
         })
       : "—";
 
+  const getTenantOwnerId = (tenant: any) => {
+    const candidate =
+      tenant?.userId ??
+      tenant?.user_id ??
+      tenant?.ownerId ??
+      tenant?.owner_id ??
+      tenant?.createdBy ??
+      tenant?.created_by ??
+      tenant?.user?.id ??
+      tenant?.owner?.id;
+    const num = Number(candidate);
+    return Number.isFinite(num) ? num : null;
+  };
+
   const statusBadgeColor = (status: User["status"]) => {
     switch (status) {
       case "active": return "success";
@@ -221,6 +246,17 @@ export default function AdminUsersPage() {
     }
   };
 
+  const statusTabs = useMemo(
+    () => [
+      { key: "all", label: "All", count: users.length },
+      { key: "active", label: "Active", count: users.filter((u) => u.status === "active").length },
+      { key: "pending", label: "Pending", count: users.filter((u) => u.status === "pending").length },
+      { key: "suspended", label: "Suspended", count: users.filter((u) => u.status === "suspended").length },
+      { key: "inactive", label: "Inactive", count: users.filter((u) => u.status === "inactive").length },
+    ],
+    [users]
+  );
+
   const openModal = (user: User) => {
     setSelectedUser(user);
     setIsModalOpen(true);
@@ -230,8 +266,42 @@ export default function AdminUsersPage() {
   const closeModal = () => {
     setIsModalOpen(false);
     setSelectedUser(null);
+    setUserTenants([]);
+    setUserTenantsError(null);
     document.body.style.overflow = "unset";
   };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchUserTenants = async (userId: number) => {
+      setUserTenantsLoading(true);
+      setUserTenantsError(null);
+      try {
+        const res = await api.get("/tenants", { params: { userId } });
+        if (!isMounted) return;
+        const data = res.data || [];
+        const filtered = data.filter((tenant: any) => getTenantOwnerId(tenant) === userId);
+        setUserTenants(filtered);
+      } catch (err: any) {
+        if (!isMounted) return;
+        setUserTenants([]);
+        setUserTenantsError(err?.response?.data?.message || "Failed to load businesses for this user");
+      } finally {
+        if (isMounted) {
+          setUserTenantsLoading(false);
+        }
+      }
+    };
+
+    if (isModalOpen && selectedUser?.id) {
+      fetchUserTenants(selectedUser.id);
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isModalOpen, selectedUser?.id]);
 
   const ViewButton = ({ onClick }: { onClick: () => void }) => (
     <button
@@ -381,28 +451,53 @@ export default function AdminUsersPage() {
             </h1>
           </div>
 
-          {filteredUsers.length > 0 && (
-            <Button
-              onClick={openBulkEmailModal}
-              className="!bg-[#0A66C2] hover:!bg-[#084d93] flex items-center gap-2 w-full sm:w-auto"
-            >
-              <Icon src={MailIcon} className="w-4 h-4" />
-              {selectedUsers.size > 0 ? `Email Selected (${selectedUsers.size})` : "Broadcast Email"}
-            </Button>
-          )}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Total: <span className="font-medium">{filteredUsers.length}</span> user{filteredUsers.length !== 1 ? "s" : ""}
+            </div>
+            {filteredUsers.length > 0 && (
+              <Button
+                onClick={openBulkEmailModal}
+                className="!bg-[#0A66C2] hover:!bg-[#084d93] flex items-center gap-2 w-full sm:w-auto"
+              >
+                <Icon src={MailIcon} className="w-4 h-4" />
+                {selectedUsers.size > 0 ? `Email Selected (${selectedUsers.size})` : "Broadcast Email"}
+              </Button>
+            )}
+          </div>
         </div>
 
-        {/* Selection Info */}
-        {filteredUsers.length > 0 && (
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            {selectedUsers.size > 0
-              ? `${selectedUsers.size} of ${filteredUsers.length} selected`
-              : `${filteredUsers.length} total users`}
-          </div>
-        )}
+        {/* Tabs */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {statusTabs.map((tab) => {
+            const isActive = statusFilter === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setStatusFilter(tab.key)}
+                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium transition ${
+                  isActive
+                    ? "border-[#0A66C2] bg-[#0A66C2]/10 text-[#0A66C2]"
+                    : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:border-white/[0.12] dark:bg-white/[0.02] dark:text-gray-300 dark:hover:bg-white/[0.05]"
+                }`}
+              >
+                {tab.label}
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[11px] ${
+                    isActive
+                      ? "bg-[#0A66C2]/15 text-[#0A66C2]"
+                      : "bg-gray-100 text-gray-600 dark:bg-white/[0.08] dark:text-gray-300"
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
 
         {/* Filters */}
-        <div className="flex flex-col md:flex-row gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+        <div className="flex flex-col md:flex-row gap-3">
           <div className="flex-1">
             <input
               type="text"
@@ -412,18 +507,7 @@ export default function AdminUsersPage() {
               className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
             />
           </div>
-          <div className="flex gap-4">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
-            >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="pending">Pending</option>
-              <option value="suspended">Suspended</option>
-              <option value="inactive">Inactive</option>
-            </select>
+          <div className="flex gap-3">
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
@@ -561,7 +645,7 @@ export default function AdminUsersPage() {
         </div>
 
         {/* Desktop Table View */}
-        <div className="hidden md:block overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-white/[0.08] dark:bg-white/[0.03] shadow-sm">
+        <div className="hidden md:block overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-white/[0.08] dark:bg-white/[0.03]">
           <div className="max-w-full overflow-x-auto">
             <Table>
               <TableHeader>
@@ -834,6 +918,72 @@ export default function AdminUsersPage() {
                       </div>
                     )}
                   </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b pb-2">
+                  Businesses
+                </h4>
+                <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-white/[0.08]">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-50 dark:bg-white/[0.04]">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          Business
+                        </th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          Email
+                        </th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          Created
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
+                      {userTenantsLoading ? (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-3 text-center text-xs text-gray-500 dark:text-gray-400">
+                            Loading businesses...
+                          </td>
+                        </tr>
+                      ) : userTenantsError ? (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-3 text-center text-xs text-red-600">
+                            {userTenantsError}
+                          </td>
+                        </tr>
+                      ) : userTenants.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="px-4 py-3 text-center text-xs text-gray-500 dark:text-gray-400">
+                            No businesses found for this user.
+                          </td>
+                        </tr>
+                      ) : (
+                        userTenants.map((tenant) => (
+                          <tr key={tenant.tenantId} className="hover:bg-gray-50 dark:hover:bg-white/[0.02]">
+                            <td className="px-4 py-3 text-gray-900 dark:text-white">
+                              {tenant.tenantName}
+                            </td>
+                            <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                              {tenant.tenantEmail || "—"}
+                            </td>
+                            <td className="px-4 py-3">
+                              <Badge color={tenant.status === "active" ? "success" : "error"} size="sm">
+                                {tenant.status.charAt(0).toUpperCase() + tenant.status.slice(1)}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                              {formatDate(tenant.created_at)}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 

@@ -1,8 +1,7 @@
 // app/support/page.tsx
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import ComponentCard from "../../components/common/ComponentCard";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import Button from "../../components/ui/button/Button";
 import api from "../../../lib/api";
 import { useModal } from "../../../context/ModalContext";
@@ -111,6 +110,10 @@ export default function SupportPage() {
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
   const [replyMessages, setReplyMessages] = useState<{ [key: number]: string }>({});
   const [replyErrors, setReplyErrors] = useState<{ [key: number]: string }>({});
+  const [statusFilter, setStatusFilter] = useState<"all" | SupportTicket["status"]>("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isChatClosing, setIsChatClosing] = useState(false);
 
   const { openModal } = useModal();
   const chatRef = useRef<HTMLDivElement | null>(null);
@@ -183,6 +186,15 @@ export default function SupportPage() {
   const formatDate = (date: string) =>
     new Date(date).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
+  const formatDateLong = (date: string) =>
+    new Date(date).toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
   const getStatusColor = (status: SupportTicket["status"]) => {
     switch (status) {
       case "open":
@@ -220,149 +232,344 @@ export default function SupportPage() {
     }
   };
 
+  const stats = useMemo(() => {
+    const counts = {
+      total: tickets.length,
+      open: tickets.filter((t) => t.status === "open").length,
+      in_progress: tickets.filter((t) => t.status === "in_progress").length,
+      resolved: tickets.filter((t) => t.status === "resolved").length,
+      closed: tickets.filter((t) => t.status === "closed").length,
+    };
+    return counts;
+  }, [tickets]);
+
+  const filteredTickets = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    return tickets.filter((ticket) => {
+      const matchesStatus = statusFilter === "all" || ticket.status === statusFilter;
+      const matchesTerm =
+        !term ||
+        ticket.subject.toLowerCase().includes(term) ||
+        ticket.message.toLowerCase().includes(term);
+      return matchesStatus && matchesTerm;
+    });
+  }, [tickets, statusFilter, searchTerm]);
+
+  useEffect(() => {
+    if (!filteredTickets.length) {
+      setSelectedTicketId(null);
+      setIsChatOpen(false);
+      return;
+    }
+    if (!selectedTicketId || !filteredTickets.some((t) => t.ticketId === selectedTicketId)) {
+      setSelectedTicketId(filteredTickets[0].ticketId);
+    }
+  }, [filteredTickets, selectedTicketId]);
+
+  useEffect(() => {
+    if (!selectedTicketId) setIsChatOpen(false);
+  }, [selectedTicketId]);
+
+  const openChat = (ticketId: number) => {
+    setSelectedTicketId(ticketId);
+    setIsChatOpen(true);
+  };
+
+  const closeChat = () => {
+    setIsChatClosing(true);
+    window.setTimeout(() => {
+      setIsChatOpen(false);
+      setIsChatClosing(false);
+    }, 200);
+  };
+
+  const statusOptions: Array<{ value: "all" | SupportTicket["status"]; label: string }> = [
+    { value: "all", label: "All" },
+    { value: "open", label: "Open" },
+    { value: "in_progress", label: "In Progress" },
+    { value: "resolved", label: "Resolved" },
+    { value: "closed", label: "Closed" },
+  ];
+
+  const selectedTicket = filteredTickets.find((t) => t.ticketId === selectedTicketId) || null;
+
   return (
-    <div className="max-w-7xl mx-auto px-4 py-12 grid lg:grid-cols-3 gap-6">
-      {/* Sidebar */}
-      <div className="lg:col-span-1 space-y-4">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Tickets</h2>
-          {currentUser?.role !== "admin" && (
-            <Button
-              className="!bg-[#0A66C2] !hover:bg-[#084d93]"
-              onClick={() =>
-                openModal({
-                  title: "Create Ticket",
-                  content: <CreateTicketForm onSuccess={() => fetchTickets(currentUser)} />,
-                })
-              }
+    <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+      <style jsx>{`
+        @keyframes supportFade {
+          from {
+            opacity: 0;
+            transform: translateY(12px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
+      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <section className="grid gap-3 lg:grid-cols-[1.05fr_0.95fr]">
+          <div className="rounded-2xl border border-black/5 bg-white/80 p-5 backdrop-blur dark:border-white/10 dark:bg-white/5">
+            <p className="text-xs uppercase tracking-[0.3em] text-[#0A66C2]">Support Center</p>
+            <h1 className="mt-3 text-3xl font-semibold leading-tight sm:text-4xl">
+              Resolve issues fast with a conversation-first support workspace.
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm text-gray-600 dark:text-gray-300">
+              Track every request, keep context with threaded replies, and get proactive updates as your tickets move
+              from open to resolved.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="rounded-full border border-[#0A66C2]/20 bg-[#0A66C2]/10 px-4 py-2 text-xs font-semibold text-[#0A66C2]">
+                24h response SLA
+              </span>
+              <span className="rounded-full border border-black/10 bg-white/70 px-4 py-2 text-xs font-semibold text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-200">
+                Real-time status updates
+              </span>
+              <span className="rounded-full border border-black/10 bg-white/70 px-4 py-2 text-xs font-semibold text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-200">
+                Secure audit trail
+              </span>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-black/5 bg-white/80 p-4 dark:border-white/10 dark:bg-white/5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-gray-500">Need help now</p>
+                <h2 className="mt-3 text-2xl font-semibold">Open a new ticket</h2>
+                <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
+                  Share the issue, attach context, and our team will jump in with a focused response plan.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4">
+              {currentUser?.role !== "admin" ? (
+                <Button
+                  className="w-full !bg-[#0A66C2] !hover:bg-[#084d93]"
+                  onClick={() =>
+                    openModal({
+                      title: "Create Ticket",
+                      content: <CreateTicketForm onSuccess={() => fetchTickets(currentUser)} />,
+                    })
+                  }
+                >
+                  Create Ticket
+                </Button>
+              ) : (
+                <div className="rounded-2xl border border-black/10 bg-white/80 px-4 py-3 text-sm text-gray-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-300">
+                  Admin accounts can manage tickets from the Admin Support dashboard.
+                </div>
+              )}
+            </div>
+            <div className="mt-4 rounded-2xl border border-black/10 bg-white/80 p-3 text-xs text-gray-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-300">
+              <p className="font-semibold text-gray-900 dark:text-white">Support hours</p>
+              <p className="mt-1">Monday to Saturday, 8:00am - 8:00pm (WAT)</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { label: "Total tickets", value: stats.total, accent: "text-gray-900" },
+            { label: "Open", value: stats.open, accent: "text-blue-700" },
+            { label: "In progress", value: stats.in_progress, accent: "text-amber-700" },
+            { label: "Resolved", value: stats.resolved + stats.closed, accent: "text-emerald-700" },
+          ].map((card) => (
+            <div
+              key={card.label}
+              className="rounded-2xl border border-black/5 bg-white/80 p-3 dark:border-white/10 dark:bg-white/5"
             >
-              New
-            </Button>
-          )}
-        </div>
+              <p className="text-xs uppercase tracking-[0.2em] text-gray-500">{card.label}</p>
+              <p className={`mt-2 text-2xl font-semibold ${card.accent} dark:text-white`}>{card.value}</p>
+            </div>
+          ))}
+        </section>
 
-        <div className="space-y-2 max-h-[75vh] overflow-y-auto">
-          {tickets.length === 0 ? (
-            <p className="text-gray-500">No tickets available.</p>
-          ) : (
-            tickets.map((ticket) => (
-              <button
-                key={ticket.ticketId}
-                onClick={() => setSelectedTicketId(ticket.ticketId)}
-                className={`w-full text-left px-4 py-3 rounded-lg shadow-sm transition-all duration-300 ${
-                  selectedTicketId === ticket.ticketId
-                    ? "bg-[#0A66C2] text-white scale-105"
-                    : "bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700"
-                }`}
-              >
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">{ticket.subject}</span>
-                  <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(ticket.status)}`}>
-                    {ticket.status.replace("_", " ").toUpperCase()}
-                  </span>
+        <section className="mt-4">
+          <div className="rounded-3xl border border-black/5 bg-white/85 p-5 dark:border-white/10 dark:bg-white/5">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-gray-500">Your tickets</p>
+                <h2 className="mt-2 text-2xl font-semibold">Ticket inbox</h2>
+              </div>
+              <div className="flex items-center gap-2 rounded-full border border-black/10 bg-white/80 px-4 py-2 text-xs text-gray-600 dark:border-white/10 dark:bg-white/10 dark:text-gray-300">
+                Last sync: {new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              {statusOptions.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => setStatusFilter(option.value)}
+                  className={`rounded-full px-4 py-2 text-xs font-semibold transition-all ${
+                    statusFilter === option.value
+                      ? "bg-[#0A66C2] text-white"
+                      : "border border-black/10 bg-white/70 text-gray-700 hover:border-[#0A66C2]/40 dark:border-white/10 dark:bg-white/5 dark:text-gray-200"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-3">
+              <label className="sr-only" htmlFor="ticket-search">
+                Search tickets
+              </label>
+              <input
+                id="ticket-search"
+                type="search"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by subject or message"
+                className="w-full rounded-2xl border border-black/10 bg-white/80 px-4 py-3 text-sm text-gray-700 focus:border-[#0A66C2] focus:outline-none focus:ring-2 focus:ring-[#0A66C2]/20 dark:border-white/10 dark:bg-white/5 dark:text-gray-200"
+              />
+            </div>
+
+            <div className="mt-4 space-y-3 max-h-[70vh] overflow-y-auto pr-2">
+              {filteredTickets.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-500 dark:border-white/10 dark:text-gray-400">
+                  No tickets yet. Start a new request to get help.
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{formatDate(ticket.created_at)}</p>
-              </button>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Selected Ticket */}
-      <div className="lg:col-span-2 flex flex-col space-y-6">
-        {selectedTicketId ? (
-          (() => {
-            const ticket = tickets.find((t) => t.ticketId === selectedTicketId);
-            if (!ticket) return null;
-
-            return (
-              <ComponentCard
-                key={ticket.ticketId}
-                className="flex flex-col space-y-6 p-6 bg-white dark:bg-gray-900 shadow-2xl transition-all duration-300"
-              >
-                <div className="flex justify-between items-center">
-                  <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">{ticket.subject}</h3>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>
-                    {ticket.status.replace("_", " ").toUpperCase()}
-                  </span>
-                </div>
-
-                {/* Conversation */}
-                <div className="flex flex-col space-y-4 max-h-[65vh] overflow-y-auto pr-2 animate-fadeIn">
-                  <div className="flex justify-end">
-                    <div className="max-w-lg">
-                      <div className="bg-[#0A66C2] text-white rounded-l-2xl rounded-tr-2xl px-5 py-3 shadow transition-all">
-                        {ticket.message}
-                      </div>
-                      <p className="text-xs text-gray-500 text-right mt-1">
-                        You • {formatDate(ticket.created_at)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {ticket.replies.map((reply) => (
-                    <div
-                      key={reply.replyId}
-                      className={`flex ${reply.is_admin ? "justify-start" : "justify-end"} transition-all duration-300`}
+              ) : (
+                filteredTickets.map((ticket) => {
+                  const isActive = selectedTicketId === ticket.ticketId;
+                  return (
+                    <button
+                      key={ticket.ticketId}
+                      onClick={() => openChat(ticket.ticketId)}
+                      className={`w-full rounded-2xl border px-4 py-4 text-left transition-all ${
+                        isActive
+                          ? "border-[#0A66C2]/40 bg-[#0A66C2]/10"
+                          : "border-black/10 bg-white/80 hover:border-[#0A66C2]/30 dark:border-white/10 dark:bg-white/5"
+                      }`}
                     >
-                      <div className="max-w-lg">
-                        <div
-                          className={`rounded-2xl px-5 py-3 shadow ${
-                            reply.is_admin
-                              ? "bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-r-2xl rounded-tl-2xl"
-                              : "bg-[#0A66C2] text-white rounded-l-2xl rounded-tr-2xl"
-                          }`}
-                        >
-                          <p className="text-sm font-medium mb-1">{reply.is_admin ? "Support Team" : "You"}</p>
-                          <p className="whitespace-pre-wrap">{reply.message}</p>
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className={`text-sm font-semibold ${isActive ? "text-[#0A66C2]" : "text-gray-900 dark:text-white"}`}>
+                            {ticket.subject}
+                          </p>
+                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            {formatDate(ticket.created_at)}
+                          </p>
                         </div>
-                        <p className={`text-xs mt-1 ${reply.is_admin ? "text-left" : "text-right"}`}>
-                          {formatDate(reply.created_at)}
-                        </p>
+                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${getStatusColor(ticket.status)}`}>
+                          {ticket.status.replace("_", " ").toUpperCase()}
+                        </span>
                       </div>
-                    </div>
-                  ))}
-                  <div ref={chatRef} />
-                </div>
-
-                {/* Reply Box */}
-                {(ticket.status === "open" || ticket.status === "in_progress") && (
-                  <div className="flex flex-col gap-2 animate-fadeIn">
-                    <div className="flex gap-3">
-                      <textarea
-                        value={replyMessages[ticket.ticketId] || ""}
-                        onChange={(e) => handleReplyChange(ticket.ticketId, e.target.value)}
-                        rows={3}
-                        placeholder="Type your reply..."
-                        className="flex-1 px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 resize-none focus:outline-none focus:ring-2 focus:ring-[#0A66C2]"
-                      />
-                      <Button
-                        onClick={() => handleReplySubmit(ticket.ticketId)}
-                        className="px-6 py-3 !bg-[#0A66C2] !hover:bg-[#084d93] rounded-xl"
-                      >
-                        Send
-                      </Button>
-                    </div>
-                    {replyErrors[ticket.ticketId] && (
-                      <p className="text-sm text-red-600 dark:text-red-400">{replyErrors[ticket.ticketId]}</p>
-                    )}
-                  </div>
-                )}
-
-                {(ticket.status === "resolved" || ticket.status === "closed") && (
-                  <div className="text-center py-4 text-green-700 dark:text-green-400 font-medium">
-                    This ticket is {ticket.status.toUpperCase()}.
-                  </div>
-                )}
-              </ComponentCard>
-            );
-          })()
-        ) : (
-          <ComponentCard className="p-8 text-center">
-            <p className="text-gray-500 dark:text-gray-400">Select a ticket to view conversation.</p>
-          </ComponentCard>
-        )}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </section>
       </div>
+
+      {isChatOpen && selectedTicket && (
+        <div
+          className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6 transition-opacity ${
+            isChatClosing ? "opacity-0" : "opacity-100"
+          }`}
+          onClick={closeChat}
+        >
+          <div
+            className={`relative flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-white border border-black/5 transition-all dark:border-white/10 dark:bg-[#0f141b] ${
+              isChatClosing ? "translate-y-4 scale-95 opacity-0" : "translate-y-0 scale-100 opacity-100"
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-black/5 px-6 py-4 dark:border-white/10">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-gray-500">Conversation</p>
+                <h3 className="mt-2 text-xl font-semibold">{selectedTicket.subject}</h3>
+              </div>
+              <button
+                onClick={closeChat}
+                className="rounded-full border border-black/10 p-2 text-gray-500 transition hover:text-gray-900 dark:border-white/10 dark:text-gray-300"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 py-6">
+              <div className="flex items-start justify-between">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Opened {formatDateLong(selectedTicket.created_at)}
+                </p>
+                <span className={`rounded-full px-4 py-2 text-xs font-semibold ${getStatusColor(selectedTicket.status)}`}>
+                  {selectedTicket.status.replace("_", " ").toUpperCase()}
+                </span>
+              </div>
+
+              <div className="flex justify-end">
+                <div className="max-w-lg">
+                  <div className="rounded-3xl rounded-tr-sm bg-[#0A66C2] px-5 py-4 text-sm text-white">
+                    {selectedTicket.message}
+                  </div>
+                  <p className="mt-2 text-right text-xs text-gray-500">You • {formatDate(selectedTicket.created_at)}</p>
+                </div>
+              </div>
+
+              {selectedTicket.replies.map((reply) => (
+                <div key={reply.replyId} className={`flex ${reply.is_admin ? "justify-start" : "justify-end"}`}>
+                  <div className="max-w-lg">
+                    <div
+                      className={`rounded-3xl px-5 py-4 text-sm ${
+                        reply.is_admin
+                          ? "bg-gray-100 text-gray-900 dark:bg-white/10 dark:text-white"
+                          : "bg-[#0A66C2] text-white"
+                      }`}
+                    >
+                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-300">
+                        {reply.is_admin ? "Support" : "You"}
+                      </p>
+                      <p className="mt-2 whitespace-pre-wrap">{reply.message}</p>
+                    </div>
+                    <p className={`mt-2 text-xs text-gray-500 ${reply.is_admin ? "text-left" : "text-right"}`}>
+                      {formatDate(reply.created_at)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              <div ref={chatRef} />
+            </div>
+
+            {(selectedTicket.status === "open" || selectedTicket.status === "in_progress") && (
+              <div className="border-t border-black/5 px-6 py-5 dark:border-white/10">
+                <div className="flex flex-col gap-3">
+                  <textarea
+                    value={replyMessages[selectedTicket.ticketId] || ""}
+                    onChange={(e) => handleReplyChange(selectedTicket.ticketId, e.target.value)}
+                    rows={3}
+                    placeholder="Write your reply with context, steps tried, and desired outcome."
+                    className="w-full rounded-2xl border border-black/10 bg-white/80 px-4 py-3 text-sm text-gray-700 focus:border-[#0A66C2] focus:outline-none focus:ring-2 focus:ring-[#0A66C2]/20 dark:border-white/10 dark:bg-white/5 dark:text-gray-200"
+                  />
+                  <div className="flex items-center justify-between">
+                    {replyErrors[selectedTicket.ticketId] && (
+                      <p className="text-xs text-red-500">{replyErrors[selectedTicket.ticketId]}</p>
+                    )}
+                    <Button
+                      onClick={() => handleReplySubmit(selectedTicket.ticketId)}
+                      className="ml-auto !bg-[#0A66C2] !hover:bg-[#084d93]"
+                    >
+                      Send Reply
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {(selectedTicket.status === "resolved" || selectedTicket.status === "closed") && (
+              <div className="border-t border-emerald-200 bg-emerald-50 px-6 py-4 text-sm text-emerald-700 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-200">
+                This ticket is {selectedTicket.status.toUpperCase()}. If you still need help, create a new ticket.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -90,6 +90,8 @@ export default function AdminTenants() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
+  const [tenantStats, setTenantStats] = useState<Record<number, { invoiceCount: number; receiptCount: number }>>({});
+  const [statsLoaded, setStatsLoaded] = useState(false);
 
   const logoInputRef = useRef<HTMLInputElement>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
@@ -136,6 +138,64 @@ export default function AdminTenants() {
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
+
+    const fetchTenantStats = async () => {
+      try {
+        const [invoicesRes, receiptsRes] = await Promise.allSettled([
+          api.get("/invoices/admin"),
+          api.get("/receipts"),
+        ]);
+
+        const nextStats: Record<number, { invoiceCount: number; receiptCount: number }> = {};
+
+        const addCount = (tenantId: number, field: "invoiceCount" | "receiptCount") => {
+          if (!nextStats[tenantId]) {
+            nextStats[tenantId] = { invoiceCount: 0, receiptCount: 0 };
+          }
+          nextStats[tenantId][field] += 1;
+        };
+
+        const applyCounts = (items: any[], field: "invoiceCount" | "receiptCount") => {
+          items.forEach((item) => {
+            const tenantId = getTenantIdFromRecord(item);
+            if (!tenantId) return;
+            addCount(tenantId, field);
+          });
+        };
+
+        if (invoicesRes.status === "fulfilled") {
+          applyCounts(invoicesRes.value.data || [], "invoiceCount");
+        } else {
+          console.error("Failed to fetch invoice stats:", invoicesRes.reason);
+        }
+
+        if (receiptsRes.status === "fulfilled") {
+          applyCounts(receiptsRes.value.data || [], "receiptCount");
+        } else {
+          console.error("Failed to fetch receipt stats:", receiptsRes.reason);
+        }
+
+        if (isMounted) {
+          setTenantStats(nextStats);
+        }
+      } catch (error) {
+        console.error("Failed to fetch tenant stats:", error);
+      } finally {
+        if (isMounted) {
+          setStatsLoaded(true);
+        }
+      }
+    };
+
+    fetchTenantStats();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (editingTenant) {
       const fetchData = async () => {
         try {
@@ -162,6 +222,23 @@ export default function AdminTenants() {
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  const getTenantIdFromRecord = (record: any) => {
+    const candidate =
+      record?.tenantId ??
+      record?.tenant_id ??
+      record?.tenant?.tenantId ??
+      record?.tenant?.tenant_id ??
+      record?.tenant?.id ??
+      record?.company?.tenantId ??
+      record?.company?.tenant_id;
+    const num = Number(candidate);
+    return Number.isFinite(num) ? num : null;
+  };
+
+  const getTenantCounts = (tenantId: number) => {
+    return tenantStats[tenantId] ?? { invoiceCount: 0, receiptCount: 0 };
   };
 
   const handleViewTenant = (tenant: Tenant) => {
@@ -419,6 +496,18 @@ export default function AdminTenants() {
                       <span className="text-gray-500 dark:text-gray-400">Created</span>
                       <p className="font-medium text-xs text-gray-900 dark:text-gray-100">{formatDate(tenant.created_at)}</p>
                     </div>
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">Invoices</span>
+                      <p className="font-medium text-gray-900 dark:text-gray-100">
+                        {statsLoaded ? getTenantCounts(tenant.tenantId).invoiceCount : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 dark:text-gray-400">Receipts</span>
+                      <p className="font-medium text-gray-900 dark:text-gray-100">
+                        {statsLoaded ? getTenantCounts(tenant.tenantId).receiptCount : "—"}
+                      </p>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -490,6 +579,12 @@ export default function AdminTenants() {
                       Created
                     </TableCell>
                     <TableCell isHeader className="px-3 py-2 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                      Invoices
+                    </TableCell>
+                    <TableCell isHeader className="px-3 py-2 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
+                      Receipts
+                    </TableCell>
+                    <TableCell isHeader className="px-3 py-2 font-medium text-gray-500 text-start text-theme-xs dark:text-gray-400">
                       Actions
                     </TableCell>
                   </TableRow>
@@ -498,13 +593,13 @@ export default function AdminTenants() {
                 <TableBody className="divide-y divide-gray-100 dark:divide-white/[0.05]">
                   {loading ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="py-10 text-center text-gray-500 dark:text-gray-400">
+                      <TableCell colSpan={6} className="py-10 text-center text-gray-500 dark:text-gray-400">
                         Loading businesses...
                       </TableCell>
                     </TableRow>
                   ) : tenants.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="py-10 text-center text-gray-500 dark:text-gray-400">
+                      <TableCell colSpan={6} className="py-10 text-center text-gray-500 dark:text-gray-400">
                         No businesses found.
                       </TableCell>
                     </TableRow>
@@ -548,6 +643,14 @@ export default function AdminTenants() {
 
                         <TableCell className="px-3 py-2 text-start text-theme-sm text-gray-600 dark:text-gray-400">
                           {formatDate(tenant.created_at)}
+                        </TableCell>
+
+                        <TableCell className="px-3 py-2 text-start text-theme-sm text-gray-600 dark:text-gray-400">
+                          {statsLoaded ? getTenantCounts(tenant.tenantId).invoiceCount : "—"}
+                        </TableCell>
+
+                        <TableCell className="px-3 py-2 text-start text-theme-sm text-gray-600 dark:text-gray-400">
+                          {statsLoaded ? getTenantCounts(tenant.tenantId).receiptCount : "—"}
                         </TableCell>
 
                         <TableCell className="px-3 py-2 text-start">
@@ -743,6 +846,29 @@ export default function AdminTenants() {
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white border-b pb-2">
+                    Activity
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Invoices</p>
+                      <p className="text-xl font-semibold text-gray-900 dark:text-white">
+                        {statsLoaded ? getTenantCounts(selectedTenant.tenantId).invoiceCount : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Receipts</p>
+                      <p className="text-xl font-semibold text-gray-900 dark:text-white">
+                        {statsLoaded ? getTenantCounts(selectedTenant.tenantId).receiptCount : "—"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div />
               </div>
 
               {selectedTenant.authorizedSignature && (

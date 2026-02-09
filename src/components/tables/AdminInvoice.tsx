@@ -3,15 +3,6 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import {
-  Document,
-  Page,
-  Text,
-  View,
-  StyleSheet,
-  Image,
-  pdf,
-} from "@react-pdf/renderer";
 import ComponentCard from "../common/ComponentCard";
 import Button from "../ui/button/Button";
 import api from "../../../lib/api";
@@ -38,6 +29,95 @@ function EmailSuccessModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =
         <Button onClick={onClose} className="w-full !bg-[#0A66C2] !hover:bg-[#084e96]">
           OK
         </Button>
+      </div>
+    </div>
+  );
+}
+
+function StatusUpdateModal({
+  isOpen,
+  type,
+  title,
+  message,
+  onClose,
+  onCreateInvoice,
+  onGoToReceipts,
+}: {
+  isOpen: boolean;
+  type: "success" | "error";
+  title: string;
+  message: string;
+  onClose: () => void;
+  onCreateInvoice: () => void;
+  onGoToReceipts: () => void;
+}) {
+  if (!isOpen) return null;
+
+  const iconStyles =
+    type === "success"
+      ? "bg-[#0A66C2]/10 text-[#0A66C2]"
+      : "bg-red-100 text-red-600";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl ring-1 ring-black/5">
+        <div className="absolute right-4 top-4">
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+            aria-label="Close"
+          >
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="px-6 pb-6 pt-8">
+          <div className={`mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full ${iconStyles}`}>
+            {type === "success" ? (
+              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 6L9 17l-5-5" />
+              </svg>
+            ) : (
+              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+            )}
+          </div>
+          <h3 className="text-center text-xl font-semibold text-gray-900">{title}</h3>
+          <p className="mt-2 text-center text-sm text-gray-600">{message}</p>
+
+          {type === "success" ? (
+            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Button
+                onClick={onCreateInvoice}
+                className="w-full !bg-[#0A66C2] !text-white !hover:bg-[#084e96]"
+              >
+                Create Another Invoice
+              </Button>
+              <Button
+                onClick={onGoToReceipts}
+                variant="outline"
+                className="w-full border-[#0A66C2]/30 text-[#0A66C2] hover:bg-[#0A66C2]/10"
+              >
+                Go to Receipts
+              </Button>
+            </div>
+          ) : (
+            <div className="mt-6">
+              <Button
+                onClick={onClose}
+                className="w-full !bg-[#0A66C2] !text-white !hover:bg-[#084e96]"
+              >
+                Close
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -101,192 +181,14 @@ interface FullInvoice {
     phone: string;
     logoUrl: string;
     signatureUrl: string;
+    taxId?: string | null;
+    tenantAddress?: string | null;
   };
   user: {
     currentPlan: number | string; // 1 = free, 2 = premium, 3 = pro, etc.
   };
 }
 
-// ==================== PDF STYLES (unchanged) ====================
-const pdfStyles = StyleSheet.create({
-  page: { padding: 50, fontSize: 11, fontFamily: "Helvetica", color: "#333" },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 40,
-    borderBottom: "2 solid #e0e0e0",
-    paddingBottom: 20,
-  },
-  logo: { width: 150, height: "auto", objectFit: "contain" },
-  companyInfo: { textAlign: "right", maxWidth: 200 },
-  companyName: {
-    fontSize: 22,
-    fontFamily: "Helvetica-Bold",
-    marginBottom: 8,
-    color: "#0A66C2",
-  },
-  title: {
-    fontSize: 30,
-    fontFamily: "Helvetica-Bold",
-    marginBottom: 10,
-    textAlign: "center",
-    color: "#0A66C2",
-  },
-  invoiceNumber: { textAlign: "center", marginBottom: 30, fontSize: 16 },
-  section: { marginBottom: 25 },
-  row: { flexDirection: "row", justifyContent: "space-between", marginBottom: 10 },
-  label: { color: "#666", fontSize: 10 },
-  value: { fontSize: 11, fontFamily: "Helvetica-Bold" },
-  customerAddress: { fontSize: 10, marginTop: 4, color: "#666", maxWidth: 200 },
-  table: { width: "100%", marginVertical: 20, border: "1px solid #e5e7eb" },
-  tableHeader: {
-    backgroundColor: "#f3f4f6",
-    flexDirection: "row",
-    borderBottom: "1px solid #e5e7eb",
-  },
-  tableRow: { flexDirection: "row", borderBottom: "1px solid #e5e7eb" },
-  cell: { padding: 12, flex: 1 },
-  cellRight: { textAlign: "right" },
-  totalRow: { backgroundColor: "#eff6ff", fontFamily: "Helvetica-Bold", fontSize: 12 },
-  balanceRow: { backgroundColor: "#fffbeb", fontFamily: "Helvetica-Bold", fontSize: 15 },
-  paymentSection: { marginTop: 30, padding: 15, backgroundColor: "#f0fdf4", borderRadius: 6 },
-  notes: {
-    marginTop: 40,
-    fontSize: 11,
-    backgroundColor: "#f9fafb",
-    padding: 15,
-    borderRadius: 6,
-  },
-  signatureSection: { marginTop: 50, flexDirection: "row", justifyContent: "flex-end" },
-  signatureImage: { width: 180, height: 80, objectFit: "contain" },
-  signatureLabel: { marginTop: 10, textAlign: "center", fontSize: 10 },
-});
-
-// ==================== PDF COMPONENT ====================
-const InvoicePDF = ({ invoice }: { invoice: FullInvoice }) => {
-  const formatMoney = (value: number) =>
-    new Intl.NumberFormat("en-NG", { minimumFractionDigits: 2 }).format(value);
-
-  return (
-    <Document>
-      <Page size="A4" style={pdfStyles.page}>
-        <View style={pdfStyles.header}>
-          {invoice.company.logoUrl ? (
-            <Image style={pdfStyles.logo} src={invoice.company.logoUrl} />
-          ) : (
-            <View style={{ width: 150 }} />
-          )}
-          <View style={pdfStyles.companyInfo}>
-            <Text style={pdfStyles.companyName}>{invoice.company.name}</Text>
-            <Text>{invoice.company.email}</Text>
-            <Text>{invoice.company.phone}</Text>
-          </View>
-        </View>
-
-        <Text style={pdfStyles.title}>INVOICE</Text>
-        <Text style={pdfStyles.invoiceNumber}>
-          {invoice.userGeneratedInvoiceId || invoice.invoiceId}
-        </Text>
-
-        <View style={pdfStyles.section}>
-          <View style={pdfStyles.row}>
-            <View>
-              <Text style={pdfStyles.label}>Bill To</Text>
-              <Text style={pdfStyles.value}>{invoice.customerName}</Text>
-              {invoice.customerAddress && (
-                <Text style={pdfStyles.customerAddress}>{invoice.customerAddress}</Text>
-              )}
-              {invoice.customerEmail && <Text>{invoice.customerEmail}</Text>}
-              {invoice.customerPhone && <Text>{invoice.customerPhone}</Text>}
-            </View>
-            <View>
-              <Text style={pdfStyles.label}>Invoice Date</Text>
-              <Text>{new Date(invoice.invoiceDate).toLocaleDateString("en-GB")}</Text>
-              {invoice.dueDate && (
-                <>
-                  <Text style={pdfStyles.label}>Due Date</Text>
-                  <Text>{new Date(invoice.dueDate).toLocaleDateString("en-GB")}</Text>
-                </>
-              )}
-              <Text style={pdfStyles.label}>Status</Text>
-              <Text style={pdfStyles.value}>{invoice.status}</Text>
-            </View>
-          </View>
-        </View>
-
-        <View style={pdfStyles.table}>
-          <View style={pdfStyles.tableHeader}>
-            <Text style={pdfStyles.cell}>Description</Text>
-            <Text style={[pdfStyles.cell, pdfStyles.cellRight]}>Amount</Text>
-          </View>
-          {invoice.items.map((item, idx) => (
-            <View key={idx} style={pdfStyles.tableRow} wrap={false}>
-              <Text style={pdfStyles.cell}>{item.description}</Text>
-              <Text style={[pdfStyles.cell, pdfStyles.cellRight]}>
-                {invoice.currencySymbol} {formatMoney(item.amount)}
-              </Text>
-            </View>
-          ))}
-          <View style={[pdfStyles.tableRow, pdfStyles.totalRow]}>
-            <Text style={[pdfStyles.cell, { textAlign: "right" }]}>Subtotal</Text>
-            <Text style={[pdfStyles.cell, pdfStyles.cellRight]}>
-              {invoice.currencySymbol} {formatMoney(invoice.subtotal)}
-            </Text>
-          </View>
-          <View style={[pdfStyles.tableRow, pdfStyles.totalRow]}>
-            <Text style={[pdfStyles.cell, { textAlign: "right" }]}>
-              Tax ({invoice.taxPercentage}%)
-            </Text>
-            <Text style={[pdfStyles.cell, pdfStyles.cellRight]}>
-              {invoice.currencySymbol} {formatMoney(invoice.taxAmount)}
-            </Text>
-          </View>
-          <View style={[pdfStyles.tableRow, pdfStyles.totalRow]}>
-            <Text style={[pdfStyles.cell, { textAlign: "right" }]}>Total</Text>
-            <Text style={[pdfStyles.cell, pdfStyles.cellRight]}>
-              {invoice.currencySymbol} {formatMoney(invoice.totalAmount)}
-            </Text>
-          </View>
-          <View style={[pdfStyles.tableRow, pdfStyles.balanceRow]}>
-            <Text style={[pdfStyles.cell, { textAlign: "right", color: "#d97706" }]}>
-              Balance Due
-            </Text>
-            <Text style={[pdfStyles.cell, pdfStyles.cellRight, { color: "#d97706" }]}>
-              {invoice.currencySymbol} {formatMoney(invoice.balanceDue)}
-            </Text>
-          </View>
-        </View>
-
-        <View style={pdfStyles.paymentSection}>
-          <Text style={{ fontFamily: "Helvetica-Bold", marginBottom: 10, fontSize: 12 }}>
-            Payment Details
-          </Text>
-          <Text>Account Name: {invoice.accountName}</Text>
-          <Text>Account Number: {invoice.accountNumber}</Text>
-          <Text>Bank: {invoice.bank}</Text>
-        </View>
-
-        {invoice.notes && (
-          <View style={pdfStyles.notes}>
-            <Text style={{ fontFamily: "Helvetica-Bold", marginBottom: 8 }}>
-              Notes
-            </Text>
-            <Text>{invoice.notes}</Text>
-          </View>
-        )}
-
-        {invoice.company.signatureUrl && (
-          <View style={pdfStyles.signatureSection}>
-            <View>
-              <Image style={pdfStyles.signatureImage} src={invoice.company.signatureUrl} />
-              <Text style={pdfStyles.signatureLabel}>Authorized Signature</Text>
-            </View>
-          </View>
-        )}
-      </Page>
-    </Document>
-  );
-};
 
 const StatusBadge = ({ status }: { status: string }) => {
   const statusColors: Record<string, string> = {
@@ -307,14 +209,13 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
-const ShareButtons = ({ invoice, pdfBlob }: { invoice: FullInvoice, pdfBlob: Blob | null }) => {
+const ShareButtons = ({ invoice }: { invoice: FullInvoice }) => {
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [shareableLink, setShareableLink] = useState<string>("");
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const currentUrl = window.location.href;
-      setShareableLink(currentUrl);
+      setShareableLink(window.location.href);
     }
   }, []);
 
@@ -338,50 +239,12 @@ View Invoice: ${shareableLink}`;
     window.open(`https://wa.me/?text=${message}`, '_blank');
   };
 
-  const shareOnTelegram = () => {
-    const message = encodeURIComponent(getShareMessage());
-    window.open(`https://t.me/share/url?url=${encodeURIComponent(shareableLink)}&text=${message}`, '_blank');
-  };
-
-  const shareOnLinkedIn = () => {
-    const title = encodeURIComponent(`Invoice: ${invoice.projectName}`);
-    const summary = encodeURIComponent(`Invoice ${invoice.userGeneratedInvoiceId || invoice.invoiceId} from ${invoice.company.name}`);
-    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareableLink)}&title=${title}&summary=${summary}`, '_blank');
-  };
-
-  const shareOnFacebook = () => {
-    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareableLink)}&quote=${encodeURIComponent(getShareMessage())}`, '_blank');
-  };
-
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(shareableLink);
-      alert('Link copied to clipboard!');
+      alert('Link copied!');
     } catch (err) {
-      alert('Failed to copy link');
-    }
-  };
-
-  const sharePDF = async () => {
-    if (!pdfBlob) {
-      alert('Please generate PDF first');
-      return;
-    }
-
-    try {
-      const file = new File([pdfBlob], `Invoice_${invoice.userGeneratedInvoiceId || invoice.invoiceId}.pdf`, { type: 'application/pdf' });
-      
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({
-          title: `Invoice ${invoice.userGeneratedInvoiceId || invoice.invoiceId}`,
-          text: getShareMessage(),
-          files: [file],
-        });
-      } else {
-        alert('Web Share API not supported. Download and share manually.');
-      }
-    } catch (err) {
-      console.error('Error sharing:', err);
+      alert('Failed to copy');
     }
   };
 
@@ -409,34 +272,12 @@ View Invoice: ${shareableLink}`;
               </button>
             </div>
             
-            <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => { shareOnWhatsApp(); setShowShareMenu(false); }} className="flex items-center justify-center gap-2 p-3 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg">
-                WhatsApp
-              </button>
-              <button onClick={() => { shareOnTelegram(); setShowShareMenu(false); }} className="flex items-center justify-center gap-2 p-3 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg">
-                Telegram
-              </button>
-              <button onClick={() => { shareOnLinkedIn(); setShowShareMenu(false); }} className="flex items-center justify-center gap-2 p-3 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-lg">
-                LinkedIn
-              </button>
-              <button onClick={() => { shareOnFacebook(); setShowShareMenu(false); }} className="flex items-center justify-center gap-2 p-3 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg">
-                Facebook
-              </button>
-            </div>
-
-            <div className="pt-3 border-t">
-              <button onClick={copyToClipboard} className="w-full p-3 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg">
-                Copy Link
-              </button>
-            </div>
-
-            {pdfBlob && (
-              <div className="pt-2 border-t">
-                <button onClick={sharePDF} className="w-full p-3 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg">
-                  Share PDF File
-                </button>
-              </div>
-            )}
+            <button onClick={() => { shareOnWhatsApp(); setShowShareMenu(false); }} className="w-full p-3 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg">
+              WhatsApp
+            </button>
+            <button onClick={copyToClipboard} className="w-full p-3 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg">
+              Copy Link
+            </button>
           </div>
         </div>
       )}
@@ -453,7 +294,6 @@ export default function AdminInvoice() {
   const [invoice, setInvoice] = useState<FullInvoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState("");
@@ -462,8 +302,13 @@ export default function AdminInvoice() {
   const [alternateEmail, setAlternateEmail] = useState("");
   const [useAlternateEmail, setUseAlternateEmail] = useState(false);
   
-  const [isSendingEmail, setIsSendingEmail] = useState(false); // New state for email sending
-  const [showSuccessModal, setShowSuccessModal] = useState(false); // For success modal
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [statusModal, setStatusModal] = useState<{
+    type: "success" | "error";
+    title: string;
+    message: string;
+  } | null>(null);
   const [logoBase64, setLogoBase64] = useState<string>("");
   const [signatureBase64, setSignatureBase64] = useState<string>("");
 
@@ -594,6 +439,8 @@ export default function AdminInvoice() {
             phone: raw.tenant.tenantPhone || "",
             logoUrl,
             signatureUrl,
+            tenantAddress: raw.tenant.tenantAddress,
+            taxId: raw.tenant.taxId,
           },
           user: {
             currentPlan: raw.creator?.currentPlan || 1,
@@ -612,6 +459,10 @@ export default function AdminInvoice() {
 
     fetchInvoice();
   }, [invoiceId]);
+
+  const showStatusModal = (type: "success" | "error", title: string, message: string) => {
+    setStatusModal({ type, title, message });
+  };
 
   const handleStatusUpdate = async () => {
     if (!invoiceId || !selectedStatus) return;
@@ -641,9 +492,13 @@ export default function AdminInvoice() {
         setInvoice(updatedInvoice);
       }
 
-      alert("Status updated successfully!");
+      showStatusModal("success", "Status updated", "Invoice status was updated successfully.");
     } catch (err: any) {
-      alert(err?.response?.data?.message || "Failed to update status");
+      showStatusModal(
+        "error",
+        "Update failed",
+        err?.response?.data?.message || "Failed to update status"
+      );
     } finally {
       setIsUpdatingStatus(false);
     }
@@ -662,25 +517,11 @@ export default function AdminInvoice() {
     }
   };
 
-  const generatePDF = async () => {
-    if (!invoice) return;
-    setIsGeneratingPdf(true);
-    try {
-      const blob = await pdf(<InvoicePDF invoice={invoice} />).toBlob();
-      setPdfBlob(blob);
-    } catch (err) {
-      console.error("PDF generation failed:", err);
-      alert("Failed to generate PDF");
-    } finally {
-      setIsGeneratingPdf(false);
-    }
-  };
-
   const handleDownloadPDF = async () => {
     if (!invoiceId) return;
 
     try {
-      setLoading(true);
+      setIsGeneratingPdf(true);
       const response = await api.get(`/invoices/${invoiceId}/pdf`, {
         responseType: "blob",
       });
@@ -699,7 +540,7 @@ export default function AdminInvoice() {
     } catch (err: any) {
       alert(err?.response?.data?.message || "Failed to download PDF");
     } finally {
-      setLoading(false);
+      setIsGeneratingPdf(false);
     }
   };
 
@@ -749,6 +590,23 @@ const isPremium = ["2", "3", 2, 3].includes(invoice.user.currentPlan);
 
   return (
     <div className="max-w-4xl mx-auto p-0">
+      {statusModal && (
+        <StatusUpdateModal
+          isOpen={!!statusModal}
+          type={statusModal.type}
+          title={statusModal.title}
+          message={statusModal.message}
+          onClose={() => setStatusModal(null)}
+          onCreateInvoice={() => {
+            setStatusModal(null);
+            router.push("/dashboard/invoices/create");
+          }}
+          onGoToReceipts={() => {
+            setStatusModal(null);
+            router.push("/dashboard/receipts");
+          }}
+        />
+      )}
       <button
         onClick={() => window.history.back()}
         className="mb-6 inline-flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900"
@@ -775,8 +633,14 @@ const isPremium = ["2", "3", 2, 3].includes(invoice.user.currentPlan);
               <h1 className="text-2xl sm:text-3xl font-bold text-[#0A66C2]">
                 {invoice.company.name}
               </h1>
+              {invoice.company.tenantAddress && (
+                <p className="text-gray-800 dark:text-gray-300">{invoice.company.tenantAddress}</p>
+              )}
               <p className="text-gray-800 dark:text-gray-300">{invoice.company.email}</p>
               <p className="text-gray-800 dark:text-gray-300">{invoice.company.phone}</p>
+              {invoice.company.taxId && (
+                <p className="text-gray-800 dark:text-gray-300 font-semibold">Tax ID: {invoice.company.taxId}</p>
+              )}
             </div>
             {invoice.company.logoUrl && (
               <img
@@ -1109,38 +973,22 @@ const isPremium = ["2", "3", 2, 3].includes(invoice.user.currentPlan);
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-            {invoice && <ShareButtons invoice={invoice} pdfBlob={pdfBlob} />}
+            {invoice && <ShareButtons invoice={invoice} />}
 
-            {!pdfBlob ? (
-              <Button
-                variant="outline"
-                onClick={generatePDF}
-                disabled={isGeneratingPdf}
-                className="
-                  w-full sm:w-auto px-6 py-3
-                  border border-gray-300 dark:border-gray-600
-                  text-gray-700 dark:text-gray-300
-                  hover:bg-gray-50 dark:hover:bg-gray-800
-                  disabled:opacity-60 disabled:cursor-not-allowed
-                "
-              >
-                {isGeneratingPdf ? "Generating PDF..." : "Download PDF"}
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                onClick={handleDownloadPDF}
-                className="
-                  w-full sm:w-auto px-6 py-3
-                  border border-gray-300 dark:border-gray-600
-                  text-gray-700 dark:text-gray-300
-                  hover:bg-gray-50 dark:hover:bg-gray-800
-                  disabled:opacity-60 disabled:cursor-not-allowed
-                "
-              >
-                Download PDF
-              </Button>
-            )}
+            <Button
+              variant="outline"
+              onClick={handleDownloadPDF}
+              disabled={isGeneratingPdf}
+              className="
+                w-full sm:w-auto px-6 py-3
+                border border-gray-300 dark:border-gray-600
+                text-gray-700 dark:text-gray-300
+                hover:bg-gray-50 dark:hover:bg-gray-800
+                disabled:opacity-60 disabled:cursor-not-allowed
+              "
+            >
+              {isGeneratingPdf ? "Generating PDF..." : "Download PDF"}
+            </Button>
           </div>
         </div>
 
