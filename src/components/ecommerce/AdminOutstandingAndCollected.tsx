@@ -15,17 +15,25 @@ interface AdminCurrencySummary {
   currency_symbol: string;
   collected: number;
   outstanding: number;
+  country?: string;
 }
 
-export default function AdminOutstandingAndCollected() {
+export default function AdminOutstandingAndCollected({
+  range,
+}: {
+  range?: "7d" | "30d" | "90d" | "ytd";
+}) {
   const [data, setData] = useState<AdminCurrencySummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     const fetchAdminSummary = async () => {
+      setLoading(true);
       try {
-        const res = await api.get("/invoices/admin-summary");
+        const res = await api.get("/invoices/admin-summary", {
+          params: range ? { range } : undefined,
+        });
         setData(res.data);
       } catch (error) {
         console.error("Failed to load admin invoice summary", error);
@@ -35,17 +43,17 @@ export default function AdminOutstandingAndCollected() {
     };
 
     fetchAdminSummary();
-  }, []);
+  }, [range]);
 
   const visibleData = showAll ? data : data.slice(0, 1);
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {[1, 2].map((i) => (
           <div
             key={i}
-            className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 animate-pulse h-24"
+            className="rounded-2xl border border-gray-200 bg-white p-5 animate-pulse h-24 dark:border-white/10 dark:bg-gray-900"
           />
         ))}
       </div>
@@ -54,27 +62,26 @@ export default function AdminOutstandingAndCollected() {
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {visibleData.map((item) => (
           <React.Fragment key={item.currency_code}>
             {/* Outstanding */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-white/10 dark:bg-gray-900">
               <div className="flex justify-between items-center">
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                     Total Outstanding
                   </p>
-                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">
                     {item.currency_symbol}{" "}
                     {item.outstanding.toLocaleString()}
                   </h3>
-                  <p className="text-sm text-[#0A66C2] dark:text-gray-400">
-                                        Currency Code: {item.currency_code} | Country: {item.country}
-
+                  <p className="text-xs text-[#0A66C2] dark:text-blue-300">
+                    Currency Code: {item.currency_code} | Country: {item.country}
                   </p>
                 </div>
 
-                <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                <div className="w-11 h-11 rounded-full bg-[#0A66C2]/10 flex items-center justify-center">
                   <FontAwesomeIcon
                     icon={faMoneyBillWave}
                     className="text-[#0A66C2]"
@@ -84,22 +91,22 @@ export default function AdminOutstandingAndCollected() {
             </div>
 
             {/* Collected */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-white/10 dark:bg-gray-900">
               <div className="flex justify-between items-center">
                 <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                  <p className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
                     Total Collected
                   </p>
-                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  <h3 className="text-2xl font-semibold text-gray-900 dark:text-white">
                     {item.currency_symbol}{" "}
                     {item.collected.toLocaleString()}
                   </h3>
-                  <p className="text-sm text-[#0A66C2] dark:text-gray-400">
+                  <p className="text-xs text-[#0A66C2] dark:text-blue-300">
                     Currency Code: {item.currency_code} | Country: {item.country}
                   </p>
                 </div>
 
-                <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                <div className="w-11 h-11 rounded-full bg-[#0A66C2]/10 flex items-center justify-center">
                   <FontAwesomeIcon
                     icon={faCircleCheck}
                     className="text-[#0A66C2]"

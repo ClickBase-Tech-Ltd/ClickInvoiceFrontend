@@ -172,6 +172,16 @@ export default function SupportPage() {
     })();
   }, []);
 
+  // --- Auto-fetch ticket list
+  useEffect(() => {
+    if (!currentUser) return;
+    const intervalId = window.setInterval(() => {
+      fetchTickets(currentUser);
+    }, 10000);
+
+    return () => window.clearInterval(intervalId);
+  }, [currentUser, selectedTicketId]);
+
   // --- Auto-fetch only replies for selected ticket
   useEffect(() => {
     if (!selectedTicketId || !currentUser) return;
@@ -294,7 +304,7 @@ export default function SupportPage() {
   const selectedTicket = filteredTickets.find((t) => t.ticketId === selectedTicketId) || null;
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+    <div className="min-h-screen bg-[#f7f9fc] text-gray-900 dark:bg-gray-950 dark:text-gray-100">
       <style jsx>{`
         @keyframes supportFade {
           from {
@@ -307,44 +317,20 @@ export default function SupportPage() {
           }
         }
       `}</style>
-      <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <section className="grid gap-3 lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="rounded-2xl border border-black/5 bg-white/80 p-5 backdrop-blur dark:border-white/10 dark:bg-white/5">
-            <p className="text-xs uppercase tracking-[0.3em] text-[#0A66C2]">Support Center</p>
-            <h1 className="mt-3 text-3xl font-semibold leading-tight sm:text-4xl">
-              Resolve issues fast with a conversation-first support workspace.
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm text-gray-600 dark:text-gray-300">
-              Track every request, keep context with threaded replies, and get proactive updates as your tickets move
-              from open to resolved.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <span className="rounded-full border border-[#0A66C2]/20 bg-[#0A66C2]/10 px-4 py-2 text-xs font-semibold text-[#0A66C2]">
-                24h response SLA
-              </span>
-              <span className="rounded-full border border-black/10 bg-white/70 px-4 py-2 text-xs font-semibold text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-200">
-                Real-time status updates
-              </span>
-              <span className="rounded-full border border-black/10 bg-white/70 px-4 py-2 text-xs font-semibold text-gray-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-200">
-                Secure audit trail
-              </span>
+      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+        <header className="flex flex-col gap-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Support</p>
+              <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">How can we help?</h1>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                Get quick answers, track tickets, and stay informed as your requests move forward.
+              </p>
             </div>
-          </div>
-
-          <div className="rounded-2xl border border-black/5 bg-white/80 p-4 dark:border-white/10 dark:bg-white/5">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-gray-500">Need help now</p>
-                <h2 className="mt-3 text-2xl font-semibold">Open a new ticket</h2>
-                <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
-                  Share the issue, attach context, and our team will jump in with a focused response plan.
-                </p>
-              </div>
-            </div>
-            <div className="mt-4">
+            <div className="flex items-center gap-3">
               {currentUser?.role !== "admin" ? (
                 <Button
-                  className="w-full !bg-[#0A66C2] !hover:bg-[#084d93]"
+                  className="!bg-[#0A66C2] !hover:bg-[#084d93]"
                   onClick={() =>
                     openModal({
                       title: "Create Ticket",
@@ -355,19 +341,39 @@ export default function SupportPage() {
                   Create Ticket
                 </Button>
               ) : (
-                <div className="rounded-2xl border border-black/10 bg-white/80 px-4 py-3 text-sm text-gray-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-300">
-                  Admin accounts can manage tickets from the Admin Support dashboard.
+                <div className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-xs text-gray-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-300">
+                  Admin accounts manage tickets in Admin Support.
                 </div>
               )}
             </div>
-            <div className="mt-4 rounded-2xl border border-black/10 bg-white/80 p-3 text-xs text-gray-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-300">
-              <p className="font-semibold text-gray-900 dark:text-white">Support hours</p>
-              <p className="mt-1">Monday to Saturday, 8:00am - 8:00pm (WAT)</p>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-[1.2fr_0.8fr]">
+            <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-white/5">
+              <label className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500" htmlFor="ticket-search">
+                Search tickets
+              </label>
+              <input
+                id="ticket-search"
+                type="search"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by subject or message"
+                className="mt-3 w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 focus:border-[#0A66C2] focus:outline-none focus:ring-2 focus:ring-[#0A66C2]/20 dark:border-white/10 dark:bg-white/5 dark:text-gray-200"
+              />
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-300">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">Support hours</p>
+              <p className="mt-2 font-medium text-gray-900 dark:text-gray-100">Monday to Saturday</p>
+              <p className="text-xs text-gray-500">8:00am - 8:00pm (WAT)</p>
+              <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-[#0A66C2]/10 px-3 py-1 text-xs font-semibold text-[#0A66C2]">
+                24h response SLA
+              </div>
             </div>
           </div>
-        </section>
+        </header>
 
-        <section className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { label: "Total tickets", value: stats.total, accent: "text-gray-900" },
             { label: "Open", value: stats.open, accent: "text-blue-700" },
@@ -376,7 +382,7 @@ export default function SupportPage() {
           ].map((card) => (
             <div
               key={card.label}
-              className="rounded-2xl border border-black/5 bg-white/80 p-3 dark:border-white/10 dark:bg-white/5"
+              className="rounded-xl border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-white/5"
             >
               <p className="text-xs uppercase tracking-[0.2em] text-gray-500">{card.label}</p>
               <p className={`mt-2 text-2xl font-semibold ${card.accent} dark:text-white`}>{card.value}</p>
@@ -384,14 +390,14 @@ export default function SupportPage() {
           ))}
         </section>
 
-        <section className="mt-4">
-          <div className="rounded-3xl border border-black/5 bg-white/85 p-5 dark:border-white/10 dark:bg-white/5">
+        <section className="mt-6">
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-white/10 dark:bg-white/5">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-gray-500">Your tickets</p>
-                <h2 className="mt-2 text-2xl font-semibold">Ticket inbox</h2>
+                <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Ticket inbox</p>
+                <h2 className="mt-2 text-2xl font-semibold">Your requests</h2>
               </div>
-              <div className="flex items-center gap-2 rounded-full border border-black/10 bg-white/80 px-4 py-2 text-xs text-gray-600 dark:border-white/10 dark:bg-white/10 dark:text-gray-300">
+              <div className="text-xs text-gray-500">
                 Last sync: {new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
               </div>
             </div>
@@ -404,7 +410,7 @@ export default function SupportPage() {
                   className={`rounded-full px-4 py-2 text-xs font-semibold transition-all ${
                     statusFilter === option.value
                       ? "bg-[#0A66C2] text-white"
-                      : "border border-black/10 bg-white/70 text-gray-700 hover:border-[#0A66C2]/40 dark:border-white/10 dark:bg-white/5 dark:text-gray-200"
+                      : "border border-gray-200 bg-white text-gray-700 hover:border-[#0A66C2]/40 dark:border-white/10 dark:bg-white/5 dark:text-gray-200"
                   }`}
                 >
                   {option.label}
@@ -412,23 +418,9 @@ export default function SupportPage() {
               ))}
             </div>
 
-            <div className="mt-3">
-              <label className="sr-only" htmlFor="ticket-search">
-                Search tickets
-              </label>
-              <input
-                id="ticket-search"
-                type="search"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by subject or message"
-                className="w-full rounded-2xl border border-black/10 bg-white/80 px-4 py-3 text-sm text-gray-700 focus:border-[#0A66C2] focus:outline-none focus:ring-2 focus:ring-[#0A66C2]/20 dark:border-white/10 dark:bg-white/5 dark:text-gray-200"
-              />
-            </div>
-
             <div className="mt-4 space-y-3 max-h-[70vh] overflow-y-auto pr-2">
               {filteredTickets.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-500 dark:border-white/10 dark:text-gray-400">
+                <div className="rounded-xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-500 dark:border-white/10 dark:text-gray-400">
                   No tickets yet. Start a new request to get help.
                 </div>
               ) : (
@@ -438,10 +430,10 @@ export default function SupportPage() {
                     <button
                       key={ticket.ticketId}
                       onClick={() => openChat(ticket.ticketId)}
-                      className={`w-full rounded-2xl border px-4 py-4 text-left transition-all ${
+                      className={`w-full rounded-xl border px-4 py-4 text-left transition-all ${
                         isActive
                           ? "border-[#0A66C2]/40 bg-[#0A66C2]/10"
-                          : "border-black/10 bg-white/80 hover:border-[#0A66C2]/30 dark:border-white/10 dark:bg-white/5"
+                          : "border-gray-200 bg-white hover:border-[#0A66C2]/30 dark:border-white/10 dark:bg-white/5"
                       }`}
                     >
                       <div className="flex items-center justify-between gap-3">
@@ -468,25 +460,25 @@ export default function SupportPage() {
 
       {isChatOpen && selectedTicket && (
         <div
-          className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6 transition-opacity ${
+          className={`fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6 transition-opacity ${
             isChatClosing ? "opacity-0" : "opacity-100"
           }`}
           onClick={closeChat}
         >
           <div
-            className={`relative flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl bg-white border border-black/5 transition-all dark:border-white/10 dark:bg-[#0f141b] ${
+            className={`relative flex max-h-[80vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white border border-gray-200 shadow-[0_20px_60px_rgba(15,23,42,0.18)] transition-all dark:border-white/10 dark:bg-[#0f141b] ${
               isChatClosing ? "translate-y-4 scale-95 opacity-0" : "translate-y-0 scale-100 opacity-100"
             }`}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-black/5 px-6 py-4 dark:border-white/10">
+            <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3 dark:border-white/10">
               <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-gray-500">Conversation</p>
-                <h3 className="mt-2 text-xl font-semibold">{selectedTicket.subject}</h3>
+                <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Conversation</p>
+                <h3 className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">{selectedTicket.subject}</h3>
               </div>
               <button
                 onClick={closeChat}
-                className="rounded-full border border-black/10 p-2 text-gray-500 transition hover:text-gray-900 dark:border-white/10 dark:text-gray-300"
+                className="rounded-full border border-gray-200 p-2 text-gray-500 transition hover:text-gray-900 dark:border-white/10 dark:text-gray-300"
               >
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -494,7 +486,7 @@ export default function SupportPage() {
               </button>
             </div>
 
-            <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 py-6">
+            <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-5 py-4">
               <div className="flex items-start justify-between">
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   Opened {formatDateLong(selectedTicket.created_at)}
@@ -505,30 +497,40 @@ export default function SupportPage() {
               </div>
 
               <div className="flex justify-end">
-                <div className="max-w-lg">
-                  <div className="rounded-3xl rounded-tr-sm bg-[#0A66C2] px-5 py-4 text-sm text-white">
+                <div className="max-w-md">
+                  <div className="rounded-xl rounded-tr-sm bg-gradient-to-br from-[#0A66C2] to-[#084d93] px-3 py-1.5 text-[13px] font-medium text-white ring-1 ring-white/15">
                     {selectedTicket.message}
                   </div>
-                  <p className="mt-2 text-right text-xs text-gray-500">You • {formatDate(selectedTicket.created_at)}</p>
+                  <p className="mt-0.5 text-right text-[11px] text-blue-100/95">
+                    You • {formatDate(selectedTicket.created_at)}
+                  </p>
                 </div>
               </div>
 
               {selectedTicket.replies.map((reply) => (
                 <div key={reply.replyId} className={`flex ${reply.is_admin ? "justify-start" : "justify-end"}`}>
-                  <div className="max-w-lg">
+                  <div className="max-w-md">
                     <div
-                      className={`rounded-3xl px-5 py-4 text-sm ${
+                      className={`rounded-xl px-3 py-1.5 text-[13px] font-medium ${
                         reply.is_admin
-                          ? "bg-gray-100 text-gray-900 dark:bg-white/10 dark:text-white"
-                          : "bg-[#0A66C2] text-white"
+                          ? "bg-white text-gray-900 ring-1 ring-gray-200/70 dark:bg-white/10 dark:text-white dark:ring-white/10"
+                          : "bg-gradient-to-br from-[#0A66C2] to-[#084d93] text-white ring-1 ring-white/15"
                       }`}
                     >
-                      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500 dark:text-gray-300">
+                      <p
+                        className={`text-[10px] font-semibold uppercase tracking-[0.2em] ${
+                          reply.is_admin ? "text-gray-500 dark:text-gray-300" : "text-blue-100/95"
+                        }`}
+                      >
                         {reply.is_admin ? "Support" : "You"}
                       </p>
-                      <p className="mt-2 whitespace-pre-wrap">{reply.message}</p>
+                      <p className="mt-0.5 whitespace-pre-wrap">{reply.message}</p>
                     </div>
-                    <p className={`mt-2 text-xs text-gray-500 ${reply.is_admin ? "text-left" : "text-right"}`}>
+                    <p
+                      className={`mt-0.5 text-[11px] ${
+                        reply.is_admin ? "text-left text-gray-500" : "text-right text-blue-100/95"
+                      }`}
+                    >
                       {formatDate(reply.created_at)}
                     </p>
                   </div>
@@ -538,14 +540,14 @@ export default function SupportPage() {
             </div>
 
             {(selectedTicket.status === "open" || selectedTicket.status === "in_progress") && (
-              <div className="border-t border-black/5 px-6 py-5 dark:border-white/10">
+              <div className="border-t border-gray-200 px-5 py-4 dark:border-white/10">
                 <div className="flex flex-col gap-3">
                   <textarea
                     value={replyMessages[selectedTicket.ticketId] || ""}
                     onChange={(e) => handleReplyChange(selectedTicket.ticketId, e.target.value)}
-                    rows={3}
+                    rows={2}
                     placeholder="Write your reply with context, steps tried, and desired outcome."
-                    className="w-full rounded-2xl border border-black/10 bg-white/80 px-4 py-3 text-sm text-gray-700 focus:border-[#0A66C2] focus:outline-none focus:ring-2 focus:ring-[#0A66C2]/20 dark:border-white/10 dark:bg-white/5 dark:text-gray-200"
+                    className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700 focus:border-[#0A66C2] focus:outline-none focus:ring-2 focus:ring-[#0A66C2]/20 dark:border-white/10 dark:bg-white/5 dark:text-gray-200"
                   />
                   <div className="flex items-center justify-between">
                     {replyErrors[selectedTicket.ticketId] && (

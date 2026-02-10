@@ -21,18 +21,18 @@ export default function QuickActions() {
   ];
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 py-2">
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-6 justify-items-center">
+    <div className="w-full">
+      <div className="grid grid-cols-3 gap-4">
         {actions.map((action) => (
           <a
             key={action.href}
             href={action.href}
-            className="flex flex-col items-center justify-center gap-2 w-full max-w-24 py-1 rounded-lg text-[#0A66C2] dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200 group"
+            className="flex flex-col items-center justify-center gap-2 group transition-all duration-300"
           >
-            <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center group-hover:scale-110 transition-transform">
-              <FontAwesomeIcon icon={action.icon} className="text-xl" />
+            <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white shadow-lg group-hover:shadow-xl group-hover:scale-110 group-hover:bg-white/30 transition-all duration-300 border border-white/30">
+              <FontAwesomeIcon icon={action.icon} className="text-base" />
             </div>
-            <span className="text-xs font-medium text-center leading-tight">
+            <span className="text-xs font-medium text-center leading-tight text-white group-hover:text-blue-50 transition-colors">
               {action.label}
             </span>
           </a>
