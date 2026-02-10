@@ -63,8 +63,15 @@ export default function AdminSupportPage() {
       const res = await api.get("/support/tickets/all");
       const nextTickets = res.data?.tickets || [];
       setTickets(nextTickets);
-      if (!selectedTicketId && nextTickets.length > 0) {
-        setSelectedTicketId(nextTickets[0].ticketId);
+      if (nextTickets.length > 0) {
+        setSelectedTicketId((prev) => {
+          if (prev && nextTickets.some((ticket) => ticket.ticketId === prev)) {
+            return prev;
+          }
+          return nextTickets[0].ticketId;
+        });
+      } else {
+        setSelectedTicketId(null);
       }
     } catch (err) {
       console.error("Failed to fetch tickets", err);
